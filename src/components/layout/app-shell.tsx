@@ -16,15 +16,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-// Button removed as it's not directly used for the trigger anymore, SidebarMenuButton is
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 import { UserRole } from '@/types';
 import {
@@ -40,11 +32,12 @@ import {
   Award,
   LogOut,
   Settings,
-  UserCircle,
   Menu,
-  // Sun, Moon removed as they are not used
+  Sun,
+  Moon,
 } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useTheme } from '@/hooks/useTheme';
 
 interface NavItem {
   href: string;
@@ -73,6 +66,8 @@ const navItems: NavItem[] = [
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout, loading } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
+  const [theme, toggleTheme] = useTheme('light');
 
   if (loading) {
     return (
@@ -91,6 +86,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   
   const sidebarCollapsibleType = "icon"; 
   const sidebarSidePlacement = "left"; 
+
+  const handleThemeToggle = () => {
+    toggleTheme();
+  };
 
   return (
     <SidebarProvider 
@@ -125,46 +124,55 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <SidebarFooter className="p-2 mt-auto border-t border-sidebar-border">
            <SidebarMenu>
              <SidebarMenuItem>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <SidebarMenuButton
-                      tooltip={user.name}
-                      className="h-auto py-2 group-data-[collapsible=icon]:justify-center"
-                    >
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={`https://picsum.photos/seed/${user.id}/40/40`} alt={user.name} data-ai-hint="profile avatar" />
-                        <AvatarFallback>{initials}</AvatarFallback>
-                      </Avatar>
-                      <span className="flex flex-col items-start group-data-[collapsible=icon]:hidden">
-                          <span className="text-sm font-medium leading-tight">{user.name}</span>
-                          <span className="text-xs text-sidebar-foreground/70 leading-tight">{user.email}</span>
-                      </span>
-                    </SidebarMenuButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent side="top" align="end" className="w-56" sideOffset={8}>
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.name}</p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {user.email}
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {/* Perfil link removed based on user request */}
-                    {/* <DropdownMenuItem asChild>
-                      <Link href="/perfil"><UserCircle className="mr-2 h-4 w-4" /> Perfil</Link>
-                    </DropdownMenuItem> */}
-                    <DropdownMenuItem asChild>
-                      <Link href="/configuracoes"><Settings className="mr-2 h-4 w-4" /> Configurações</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={logout}>
-                      <LogOut className="mr-2 h-4 w-4" /> Sair
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <SidebarMenuButton
+                  tooltip={user.name}
+                  className="h-auto py-2 group-data-[collapsible=icon]:justify-center cursor-default"
+                  asChild={false} // Ensures it's a button, but won't navigate
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={`https://picsum.photos/seed/${user.id}/40/40`} alt={user.name} data-ai-hint="profile avatar" />
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  </Avatar>
+                  <span className="flex flex-col items-start group-data-[collapsible=icon]:hidden">
+                      <span className="text-sm font-medium leading-tight">{user.name}</span>
+                      <span className="text-xs text-sidebar-foreground/70 leading-tight">{user.email}</span>
+                  </span>
+                </SidebarMenuButton>
              </SidebarMenuItem>
+            <SidebarMenuItem>
+                <Link href="/configuracoes" legacyBehavior passHref>
+                    <SidebarMenuButton isActive={pathname === '/configuracoes'} tooltip="Configurações">
+                        <Settings />
+                        <span>Configurações</span>
+                    </SidebarMenuButton>
+                </Link>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                    onClick={handleThemeToggle}
+                    tooltip={theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
+                    asChild={false}
+                    className="justify-start w-full"
+                >
+                    {theme === 'dark' ? <Sun /> : <Moon />}
+                    <span className="flex-grow">{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
+                    <Switch
+                        checked={theme === 'dark'}
+                        onCheckedChange={handleThemeToggle}
+                        aria-label="Alternar tema"
+                        className="ml-auto group-data-[collapsible=icon]:hidden"
+                        onClick={(e) => e.stopPropagation()} 
+                    />
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+                <SidebarMenuButton onClick={logout} tooltip="Sair">
+                    <LogOut />
+                    <span>Sair</span>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
            </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
@@ -177,7 +185,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex-1">
             {/* Can add breadcrumbs or page title here */}
           </div>
-          {/* User profile DropdownMenu and its container div are removed from here */}
         </header>
         <main className="flex-1 p-6">
           {children}
@@ -186,4 +193,3 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
