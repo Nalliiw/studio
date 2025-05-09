@@ -85,4 +85,11 @@
   body {
     @apply bg-background text-foreground;
   }
+  .dot-grid-background {
+    background-image: radial-gradient(circle, hsl(var(--muted-foreground) / 0.2) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+  .dark .dot-grid-background {
+    background-image: radial-gradient(circle, hsl(var(--muted-foreground) / 0.1) 1px, transparent 1px);
+  }
 }

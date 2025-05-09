@@ -1,7 +1,7 @@
 // src/app/(app)/flowbuilder/page.tsx
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Workflow, Save, PlusCircle, Trash2, Eye, PlayCircle, ListChecks, TextCursorInput,
-  CircleDot, ImageUp, Smile, Mic, Video as VideoIcon, FileText, Image as ImageIcon, FileAudio, Film, AlignLeft, HelpCircle, GripVertical, Link2, Variable
+  CircleDot, ImageUp, Smile, Mic, Video as VideoIcon, FileText, Image as ImageIcon, FileAudio, Film, AlignLeft, HelpCircle, Link2, Variable, ZoomIn, ZoomOut, Move
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -42,68 +42,73 @@ const toolPalette: Tool[] = [
   { type: 'display_video', label: 'Exibir Vídeo', icon: Film, defaultConfig: { url: '', text: 'Título do Vídeo' }, defaultTitle: 'Assistir Vídeo' },
 ];
 
-const NO_NEXT_STEP_VALUE = "__NO_NEXT_STEP__";
+const NO_NEXT_STEP_VALUE = "__NO_NEXT_STEP__"; // Ensure this value doesn't cause issues with SelectItem
 
-const FlowStepCardComponent = ({ step, onDragStart, onClick, isDraggingOver, onRemove, allSteps }: {
+const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownCard }: {
   step: FlowStep;
-  onDragStart: (e: React.DragEvent<HTMLDivElement>, id: string) => void;
   onClick: () => void;
-  isDraggingOver: boolean;
   onRemove: (id: string) => void;
   allSteps: FlowStep[];
+  onMouseDownCard: (e: React.MouseEvent<HTMLDivElement>, stepId: string) => void;
 }) => {
   const ToolIcon = toolPalette.find(t => t.type === step.type)?.icon || HelpCircle;
   const getStepTitleById = (id?: string) => allSteps.find(s => s.id === id)?.title || 'Próxima Etapa';
 
   return (
     <Card
-      draggable
-      onDragStart={(e) => onDragStart(e, step.id)}
+      onMouseDown={(e) => onMouseDownCard(e, step.id)}
       onClick={onClick}
       className={cn(
-        "p-4 mb-3 shadow-sm hover:shadow-md transition-all duration-150 ease-in-out cursor-pointer relative group/flowstepcard",
-        isDraggingOver && "ring-2 ring-primary scale-[1.02] shadow-xl z-10"
+        "p-3 mb-3 shadow-md hover:shadow-lg transition-all duration-150 ease-in-out cursor-grab absolute w-64",
+        // Removed isDraggingOver logic as drag-and-drop is now for positioning
       )}
       id={`step-card-${step.id}`}
+      style={{ left: step.position.x, top: step.position.y }}
     >
-      <div className="flex items-start gap-3">
-        <GripVertical className="h-5 w-5 text-muted-foreground mt-1 flex-shrink-0 opacity-30 group-hover/flowstepcard:opacity-100 cursor-grab transition-opacity" />
-        <ToolIcon className="h-5 w-5 text-muted-foreground mt-1 flex-shrink-0" />
-        <div className="flex-1">
-          <p className="font-semibold">{step.title || "Etapa Sem Título"}</p>
+      <div className="flex items-start gap-2">
+        <ToolIcon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+        <div className="flex-1 min-w-0"> {/* Added min-w-0 for truncation */}
+          <p className="font-semibold truncate">{step.title || "Etapa Sem Título"}</p>
           <p className="text-xs text-muted-foreground">Tipo: {toolPalette.find(t => t.type === step.type)?.label || step.type}</p>
+          
           {step.config.setOutputVariable && (
-            <p className="text-xs text-blue-600 mt-0.5">
-              <Variable className="inline h-3 w-3 mr-1" /> Salvar em: {step.config.setOutputVariable}
+            <p className="text-xs text-blue-600 mt-0.5 flex items-center truncate">
+              <Variable className="inline h-3 w-3 mr-1 flex-shrink-0" /> Salva em: <span className="font-mono ml-1 truncate">{step.config.setOutputVariable}</span>
             </p>
           )}
-          {step.type === 'information_text' && <p className="text-sm mt-1 truncate">{step.config.text}</p>}
+
+          {step.type === 'information_text' && step.config.text && (
+             <p className="text-xs mt-1 text-muted-foreground truncate">{step.config.text}</p>
+          )}
           
           {(step.type === 'multiple_choice' || step.type === 'single_choice') && step.config.options && (
             <div className="text-xs mt-1 space-y-0.5">
-              <p className="truncate font-medium">{step.config.text}</p>
-              {step.config.options.map(opt => (
-                <div key={opt.value} className="flex items-center">
+              <p className="truncate font-medium text-muted-foreground">{step.config.text}</p>
+              {step.config.options.slice(0, 2).map(opt => ( // Show max 2 options
+                <div key={opt.value} className="flex items-center truncate">
                   <span className="text-muted-foreground mr-1">- {opt.label}</span>
                   {opt.nextStepId && (
                     <span className="text-primary text-xs flex items-center">
-                      <Link2 className="inline h-3 w-3 mr-0.5" /> {getStepTitleById(opt.nextStepId)}
+                      <Link2 className="inline h-3 w-3 mr-0.5 flex-shrink-0" /> {getStepTitleById(opt.nextStepId)}
                     </span>
                   )}
                 </div>
               ))}
+              {step.config.options.length > 2 && <p className="text-muted-foreground text-xs">...</p>}
             </div>
           )}
+
            {(step.type.startsWith('display_') || step.type.endsWith('_upload') || step.type.endsWith('_record')) && step.config.text && (
-            <p className="text-sm mt-1 truncate">{step.config.text}</p>
+            <p className="text-xs mt-1 text-muted-foreground truncate">{step.config.text}</p>
           )}
+
           {step.config.defaultNextStepId && !step.type.includes('choice') && (
-             <p className="text-xs text-primary mt-1 flex items-center">
-                <Link2 className="inline h-3 w-3 mr-1" /> Próximo: {getStepTitleById(step.config.defaultNextStepId)}
+             <p className="text-xs text-primary mt-1 flex items-center truncate">
+                <Link2 className="inline h-3 w-3 mr-1 flex-shrink-0" /> Próximo: {getStepTitleById(step.config.defaultNextStepId)}
             </p>
           )}
         </div>
-        <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={(e) => { e.stopPropagation(); onRemove(step.id); }}>
+        <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={(e) => { e.stopPropagation(); onRemove(step.id); }}>
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </div>
@@ -136,6 +141,9 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
       setNewOptionLabel('');
     }
   };
+  
+  const safeSelectValue = (value: string | undefined) => value || NO_NEXT_STEP_VALUE;
+
 
   return (
     <ScrollArea className="h-[calc(70vh-100px)] pr-3">
@@ -243,7 +251,7 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
                     </Button>
                 </div>
                 <Select
-                  value={option.nextStepId || ''}
+                  value={safeSelectValue(option.nextStepId)}
                   onValueChange={(newNextStepId) => onOptionChange(step.id, option.value, option.label, newNextStepId === NO_NEXT_STEP_VALUE ? undefined : newNextStepId)}
                 >
                   <SelectTrigger>
@@ -281,12 +289,11 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
           </div>
         )}
 
-        {/* Default Next Step for non-choice or as fallback */}
         {(!step.type.includes('choice') || (step.type.includes('choice') && step.config.options && step.config.options.some(opt => !opt.nextStepId))) && (
             <div>
                 <Label htmlFor={`step-defaultnextstep-${step.id}`}>Próxima Etapa Padrão</Label>
                  <Select
-                    value={step.config.defaultNextStepId || ''}
+                    value={safeSelectValue(step.config.defaultNextStepId)}
                     onValueChange={(newDefaultNextStepId) => handleConfigChange('defaultNextStepId', newDefaultNextStepId === NO_NEXT_STEP_VALUE ? undefined : newDefaultNextStepId)}
                 >
                   <SelectTrigger id={`step-defaultnextstep-${step.id}`}>
@@ -317,49 +324,15 @@ export default function FlowBuilderPage() {
   const [flowName, setFlowName] = useState('');
   const [flowSteps, setFlowSteps] = useState<FlowStep[]>([]);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
-  const dragItem = useRef<string | null>(null);
-  const dragOverItem = useRef<string | null>(null);
+  
+  const [draggingStepId, setDraggingStepId] = useState<string | null>(null);
+  const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   const [isAddToolPopupOpen, setIsAddToolPopupOpen] = useState(false);
   const [isEditPropertiesPopupOpen, setIsEditPropertiesPopupOpen] = useState(false);
-
-
-  const handleStepDragStart = (e: React.DragEvent<HTMLDivElement>, stepId: string) => {
-    dragItem.current = stepId;
-    e.dataTransfer.setData('application/flow-step-id', stepId);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOverCanvas = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const targetCard = (e.target as HTMLElement).closest('[draggable="true"]');
-    if (targetCard && dragItem.current && targetCard.id !== `step-card-${dragItem.current}`) {
-        dragOverItem.current = targetCard.id.replace('step-card-','');
-    } else {
-        dragOverItem.current = null;
-    }
-    setFlowSteps(prev => [...prev]); 
-  };
-
-  const handleDropOnCanvas = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const draggedStepId = e.dataTransfer.getData('application/flow-step-id');
-
-    if (draggedStepId && dragItem.current && dragOverItem.current && dragItem.current !== dragOverItem.current) {
-      const activeStepIndex = flowSteps.findIndex(step => step.id === dragItem.current);
-      const overStepIndex = flowSteps.findIndex(step => step.id === dragOverItem.current);
-
-      if (activeStepIndex !== -1 && overStepIndex !== -1) {
-        const newSteps = [...flowSteps];
-        const [draggedItemElement] = newSteps.splice(activeStepIndex, 1);
-        newSteps.splice(overStepIndex, 0, draggedItemElement);
-        setFlowSteps(newSteps);
-      }
-    }
-    dragItem.current = null;
-    dragOverItem.current = null;
-    setFlowSteps(prev => [...prev]); 
-  };
+  
+  const [zoomLevel, setZoomLevel] = useState(1);
 
 
   const handleAddToolFromPopup = useCallback((toolType: FlowStepType) => {
@@ -371,14 +344,68 @@ export default function FlowBuilderPage() {
       type: tool.type,
       title: tool.defaultTitle,
       config: JSON.parse(JSON.stringify(tool.defaultConfig)), // Deep copy
+      position: { x: 50 + Math.random() * 50, y: 80 + flowSteps.length * 20 }, // Initial position
     };
     setFlowSteps(prev => [...prev, newStep]);
     toast({ title: "Elemento Adicionado", description: `${tool.label} foi adicionado ao fluxo.` });
     setIsAddToolPopupOpen(false);
-  }, [setFlowSteps, setIsAddToolPopupOpen]);
+  }, [flowSteps.length, setFlowSteps, setIsAddToolPopupOpen]);
+
+
+  const handleStepMouseDown = (e: React.MouseEvent<HTMLDivElement>, stepId: string) => {
+    e.preventDefault(); // Prevent text selection, etc.
+    const step = flowSteps.find(s => s.id === stepId);
+    if (!step || !canvasRef.current) return;
+
+    setDraggingStepId(stepId);
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    dragOffset.current = {
+      x: (e.clientX / zoomLevel) - step.position.x - (canvasRect.left / zoomLevel),
+      y: (e.clientY / zoomLevel) - step.position.y - (canvasRect.top / zoomLevel),
+    };
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!draggingStepId || !canvasRef.current) return;
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    
+    let newX = (e.clientX / zoomLevel) - dragOffset.current.x - (canvasRect.left / zoomLevel);
+    let newY = (e.clientY / zoomLevel) - dragOffset.current.y - (canvasRect.top / zoomLevel);
+
+    // Basic boundary collision (optional, can be improved)
+    newX = Math.max(0, newX);
+    newY = Math.max(0, newY);
+    // newX = Math.min(newX, canvasRef.current.offsetWidth - 256); // 256 is approx card width
+    // newY = Math.min(newY, canvasRef.current.offsetHeight - 100); // 100 is approx card height
+
+    setFlowSteps(prevSteps =>
+      prevSteps.map(step =>
+        step.id === draggingStepId ? { ...step, position: { x: newX, y: newY } } : step
+      )
+    );
+  }, [draggingStepId, zoomLevel]);
+
+  const handleMouseUp = useCallback(() => {
+    setDraggingStepId(null);
+  }, []);
+
+  useEffect(() => {
+    if (draggingStepId) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggingStepId, handleMouseMove, handleMouseUp]);
 
 
   const handleOpenEditProperties = (stepId: string) => {
+    if (draggingStepId) return; // Don't open edit if it was a drag
     setSelectedStepId(stepId);
     setIsEditPropertiesPopupOpen(true);
   };
@@ -449,104 +476,102 @@ export default function FlowBuilderPage() {
     await new Promise(resolve => setTimeout(resolve, 1000)); 
     toast({ title: "Fluxo Salvo!", description: `O fluxo "${flowName}" foi salvo com sucesso.` });
   };
+  
+  const handleZoom = (direction: 'in' | 'out') => {
+    setZoomLevel(prevZoom => direction === 'in' ? Math.min(prevZoom * 1.2, 2) : Math.max(prevZoom / 1.2, 0.5));
+  };
 
   const currentStepToEdit = flowSteps.find(s => s.id === selectedStepId);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)]">
-      <div className="flex justify-between items-center mb-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Criador de Fluxos</h1>
-          <p className="text-muted-foreground">Crie formulários e fluxos personalizados para seus pacientes.</p>
+    <div className="flex flex-col h-[calc(100vh-100px)] bg-muted/30">
+      <div className="flex justify-between items-center p-4 border-b bg-card">
+        <div className="flex items-center gap-2">
+          <Workflow className="h-6 w-6 text-primary" />
+          <Input
+            id="flowName"
+            placeholder="Nome do Fluxo (Ex: Questionário Inicial)"
+            value={flowName}
+            onChange={(e) => setFlowName(e.target.value)}
+            className="text-lg font-semibold border-0 shadow-none focus-visible:ring-0 w-auto max-w-md"
+          />
         </div>
-         <Link href="/flowbuilder" passHref> 
-            <Button variant="outline"><ListChecks className="mr-2 h-4 w-4" /> Meus Fluxos</Button>
-        </Link>
+         <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={() => handleZoom('in')} title="Aumentar Zoom"><ZoomIn className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" onClick={() => handleZoom('out')} title="Diminuir Zoom"><ZoomOut className="h-4 w-4" /></Button>
+            <Link href="/flowbuilder" passHref> 
+                <Button variant="outline"><ListChecks className="mr-2 h-4 w-4" /> Meus Fluxos</Button>
+            </Link>
+         </div>
       </div>
       
-      <Card className="mb-4 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Workflow className="mr-2 h-5 w-5 text-primary" />
-            Nome do Fluxo
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-            <Input
-              id="flowName"
-              placeholder="Ex: Questionário Inicial de Hábitos"
-              value={flowName}
-              onChange={(e) => setFlowName(e.target.value)}
-            />
-        </CardContent>
-      </Card>
-
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative"> {/* Canvas container */}
         <div
-          className="flex-1 p-4 bg-background rounded-lg shadow-md overflow-y-auto border border-dashed border-muted relative"
-          onDrop={handleDropOnCanvas}
-          onDragOver={handleDragOverCanvas}
+          ref={canvasRef}
+          className="flex-1 relative overflow-auto dot-grid-background cursor-grab active:cursor-grabbing"
+          // Add pan handlers here if needed with a pan mode
         >
-          <Dialog open={isAddToolPopupOpen} onOpenChange={setIsAddToolPopupOpen}>
-            <DialogTrigger asChild>
-              <Button
-                variant="default" 
-                size="lg"
-                className="absolute top-4 left-4 z-10 rounded-full shadow-lg"
-                aria-label="Adicionar Etapa ao Fluxo"
-                title="Adicionar Etapa ao Fluxo"
-              >
-                <PlusCircle className="mr-2 h-5 w-5" /> Adicionar Etapa
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl max-h-[85vh]">
-              <DialogHeader>
-                <DialogTitle>Adicionar Nova Etapa ao Fluxo</DialogTitle>
-                <DialogDescription>
-                  Selecione um tipo de etapa para adicionar ao seu fluxo.
-                </DialogDescription>
-              </DialogHeader>
-              <ScrollArea className="max-h-[65vh] p-1 -m-1">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 py-4">
-                  {toolPalette.map(tool => (
-                    <Card
-                      key={tool.type}
-                      onClick={() => handleAddToolFromPopup(tool.type)}
-                      className="p-4 flex flex-col items-center justify-center text-center gap-2 cursor-pointer hover:shadow-xl hover:border-primary transition-all duration-150 ease-in-out transform hover:scale-105"
-                    >
-                      <tool.icon className="h-10 w-10 text-primary mb-2" />
-                      <span className="text-sm font-medium">{tool.label}</span>
-                    </Card>
-                  ))}
-                </div>
-              </ScrollArea>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddToolPopupOpen(false)}>Fechar</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left', width: `${100/zoomLevel}%`, height: `${100/zoomLevel}%`}} className="relative h-full w-full">
+            {/* Add Step Button */}
+            <Dialog open={isAddToolPopupOpen} onOpenChange={setIsAddToolPopupOpen}>
+                <DialogTrigger asChild>
+                <Button
+                    variant="default" 
+                    size="icon"
+                    className="absolute top-4 left-4 z-20 rounded-full shadow-lg h-12 w-12"
+                    aria-label="Adicionar Etapa ao Fluxo"
+                    title="Adicionar Etapa ao Fluxo"
+                >
+                    <PlusCircle className="h-6 w-6" />
+                </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-2xl max-h-[85vh]">
+                <DialogHeader>
+                    <DialogTitle>Adicionar Nova Etapa ao Fluxo</DialogTitle>
+                    <DialogDescription>
+                    Selecione um tipo de etapa para adicionar ao seu fluxo.
+                    </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="max-h-[65vh] p-1 -m-1">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 py-4">
+                    {toolPalette.map(tool => (
+                        <Card
+                        key={tool.type}
+                        onClick={() => handleAddToolFromPopup(tool.type)}
+                        className="p-4 flex flex-col items-center justify-center text-center gap-2 cursor-pointer hover:shadow-xl hover:border-primary transition-all duration-150 ease-in-out transform hover:scale-105"
+                        >
+                        <tool.icon className="h-10 w-10 text-primary mb-2" />
+                        <span className="text-sm font-medium">{tool.label}</span>
+                        </Card>
+                    ))}
+                    </div>
+                </ScrollArea>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsAddToolPopupOpen(false)}>Fechar</Button>
+                </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-          {flowSteps.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                <Workflow className="h-16 w-16 mb-4 opacity-50" />
-                <p className="text-lg">Clique no botão <PlusCircle className="inline h-5 w-5 align-text-bottom" /> <span className="font-semibold">Adicionar Etapa</span> no canto superior para começar.</p>
-                <p className="text-sm">Você pode adicionar perguntas, informações, mídias e outras interações.</p>
-            </div>
-          ) : (
-            <div className="pt-20">
-                {flowSteps.map(step => (
-                <FlowStepCardComponent
-                    key={step.id}
-                    step={step}
-                    onDragStart={handleStepDragStart}
-                    onClick={() => handleOpenEditProperties(step.id)}
-                    isDraggingOver={dragOverItem.current === step.id && !!dragItem.current && dragItem.current !== step.id}
-                    onRemove={removeStep}
-                    allSteps={flowSteps}
-                />
-                ))}
-            </div>
-          )}
+            {/* Render Steps */}
+            {flowSteps.length === 0 && !isAddToolPopupOpen && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-muted-foreground z-10 pointer-events-none">
+                    <Move className="h-16 w-16 mb-4 opacity-50" />
+                    <p className="text-lg">Clique em <PlusCircle className="inline h-5 w-5 align-text-bottom" /> para adicionar a primeira etapa.</p>
+                    <p className="text-sm">Arraste as etapas para organizar seu fluxo.</p>
+                </div>
+            )}
+
+            {flowSteps.map(step => (
+            <FlowStepCardComponent
+                key={step.id}
+                step={step}
+                onClick={() => handleOpenEditProperties(step.id)}
+                onRemove={removeStep}
+                allSteps={flowSteps}
+                onMouseDownCard={handleStepMouseDown}
+            />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -576,7 +601,7 @@ export default function FlowBuilderPage() {
         </Dialog>
       )}
 
-      <CardFooter className="border-t pt-6 mt-auto flex justify-end gap-2 bg-card shadow-inner">
+      <CardFooter className="border-t pt-4 pb-4 flex justify-end gap-2 bg-card shadow-inner">
         <Button variant="outline" onClick={() => alert("Simulação de fluxo ainda não implementada.")}><Eye className="mr-2 h-4 w-4" /> Simular</Button>
         <Button variant="outline" onClick={() => alert("Ativação de fluxo ainda não implementada.")}><PlayCircle className="mr-2 h-4 w-4" /> Ativar Fluxo</Button>
         <Button onClick={handleSaveFlow}>

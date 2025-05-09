@@ -65,6 +65,7 @@ export interface FlowStep {
   // User-defined title for this step in the builder, displayed on the card
   title: string;
   config: FlowStepConfig;
+  position: { x: number; y: number }; // Position on the canvas
 }
 
 export interface Flow {
