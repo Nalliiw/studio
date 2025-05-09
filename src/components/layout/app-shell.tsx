@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -83,21 +84,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    // This should ideally be handled by AuthProvider redirecting, but as a fallback:
-    return null; // Or redirect, or show login
+    return null; 
   }
 
   const userNavItems = navItems.filter(item => item.roles.includes(user.role));
   const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
+  
+  const sidebarCollapsibleType = "icon"; // Or "offcanvas" or "none"
+  const sidebarSidePlacement = "left"; // Or "right"
 
   return (
-    <SidebarProvider defaultOpen={false}>
-      <Sidebar collapsible="icon" variant="sidebar" side="left">
+    <SidebarProvider 
+        defaultOpen={true} 
+        collapsible={sidebarCollapsibleType} 
+        side={sidebarSidePlacement}
+    >
+      <Sidebar collapsible={sidebarCollapsibleType} variant="sidebar" side={sidebarSidePlacement}>
         <SidebarHeader className="p-4 justify-center items-center flex flex-col">
-           <div className="p-2 rounded-md bg-primary/10 text-primary w-fit group-data-[collapsible=icon]:hidden">
+           <div className="p-2 rounded-md bg-primary/10 text-primary w-fit"> {/* group-data-[collapsible=icon]:hidden removed, handled by SidebarHeader internally */}
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M15.5 7.5c0-1.105-.895-2-2-2s-2 .895-2 2c0 1.105.895 2 2 2 .653 0 1.231-.316 1.601-.809l.007-.013c.055-.09.105-.184.149-.282.139-.31.243-.645.243-.996z"/><path d="M8.5 15c0-1.105.895-2 2-2s2 .895 2 2c0 1.105-.895 2-2 2s-2-.895-2-2z"/><path d="M12 12.5c-1.5 0-2.5 1-2.5 2.5S10.5 17.5 12 17.5s2.5-1 2.5-2.5S13.5 12.5 12 12.5zM12 9.5c-1.5 0-2.5-1-2.5-2.5S10.5 4.5 12 4.5s2.5 1 2.5 2.5S13.5 9.5 12 9.5z"/></svg>
            </div>
-          <h1 className="text-xl font-semibold text-sidebar-foreground mt-2 group-data-[collapsible=icon]:hidden">NutriTrack Lite</h1>
+          <h1 className="text-xl font-semibold text-sidebar-foreground mt-2">NutriTrack Lite</h1> {/* group-data-[collapsible=icon]:hidden removed */}
         </SidebarHeader>
         <SidebarContent className="p-2">
           <SidebarMenu>
@@ -145,11 +152,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {/* Can add breadcrumbs or page title here */}
           </div>
           <div className="flex items-center gap-4">
-            {/* <Button variant="ghost" size="icon">
-              <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Toggle theme</span>
-            </Button> */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -190,3 +192,4 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
