@@ -1,9 +1,10 @@
+// src/components/ui/sidebar.tsx
 "use client"
 
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft } from "lucide-react"
+import { PanelLeft, PanelRightOpen, PanelLeftOpen } from "lucide-react" // Added PanelRightOpen, PanelLeftOpen
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -353,17 +354,50 @@ SidebarInput.displayName = "SidebarInput"
 const SidebarHeader = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div">
->(({ className, ...props }, ref) => {
+>(({ className, children, ...props }, ref) => {
+  const { toggleSidebar, isMobile } = useSidebar();
+
   return (
     <div
       ref={ref}
       data-sidebar="header"
       className={cn("flex flex-col gap-2 p-2", className)}
       {...props}
-    />
-  )
-})
-SidebarHeader.displayName = "SidebarHeader"
+    >
+      {/* Expansion Toggle Button for Desktop Icon Mode when collapsed */}
+      {!isMobile && (
+        <div className={cn(
+          "items-center justify-center",
+          // Show if parent Sidebar (peer) is collapsed AND in icon mode. Otherwise, hidden.
+          "hidden peer-data-[state=collapsed]:peer-data-[collapsible=icon]:flex"
+        )}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="h-8 w-8" 
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+          >
+            {/* Icon depends on peer's side prop. Default (side=left): PanelRightOpen. If side=right: PanelLeftOpen. */}
+            <PanelRightOpen className="h-5 w-5 peer-data-[side=right]:hidden" />
+            <PanelLeftOpen className="h-5 w-5 hidden peer-data-[side=right]:inline" />
+          </Button>
+        </div>
+      )}
+
+      {/* Original children passed to SidebarHeader */}
+      {/* These children are hidden if parent Sidebar (peer) is collapsed AND in icon mode. */}
+      <div className={cn(
+        "contents peer-data-[state=collapsed]:peer-data-[collapsible=icon]:hidden"
+      )}>
+        {children}
+      </div>
+    </div>
+  );
+});
+SidebarHeader.displayName = "SidebarHeader";
+
 
 const SidebarFooter = React.forwardRef<
   HTMLDivElement,
