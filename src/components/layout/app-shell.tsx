@@ -91,7 +91,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
 
   return (
-    <SidebarProvider defaultOpen>
+    <SidebarProvider defaultOpen={false}>
       <Sidebar collapsible="icon" variant="sidebar" side="left">
         <SidebarHeader className="p-4 justify-center items-center flex flex-col">
            <div className="p-2 rounded-md bg-primary/10 text-primary w-fit group-data-[collapsible=icon]:hidden">
