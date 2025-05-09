@@ -43,8 +43,8 @@ const toolPalette: Tool[] = [
 ];
 
 const NO_NEXT_STEP_VALUE = "__NO_NEXT_STEP__";
-const CARD_WIDTH = 256; // 16rem
-const CARD_HEIGHT_ESTIMATE = 120; // Estimate, real height varies
+const CARD_WIDTH = 256; // 16rem, w-64
+const CARD_HEIGHT_ESTIMATE = 160; // Estimate, real height varies. Increased from 120
 
 interface ConnectingState {
   sourceStepId: string;
@@ -75,34 +75,34 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownC
       onMouseDown={(e) => onMouseDownCard(e, step.id)}
       onClick={onClick}
       className={cn(
-        "p-3 mb-3 shadow-md hover:shadow-lg transition-all duration-150 ease-in-out cursor-grab absolute w-64",
+        "p-4 mb-3 shadow-lg rounded-lg hover:shadow-xl transition-all duration-150 ease-in-out cursor-grab absolute w-64 bg-card", // Increased padding, shadow, rounded-lg
         isConnectingSource && "ring-2 ring-primary ring-offset-2",
         isPotentialTarget && "ring-2 ring-accent ring-offset-1 animate-pulse",
       )}
       id={`step-card-${step.id}`}
       style={{ left: step.position.x, top: step.position.y }}
     >
-      <div className="flex items-start gap-2">
-        <ToolIcon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold truncate">{step.title || "Etapa Sem Título"}</p>
+      <div className="flex items-start gap-3"> {/* Increased gap */}
+        <ToolIcon className="h-6 w-6 text-muted-foreground mt-0.5 flex-shrink-0" /> {/* Slightly larger icon */}
+        <div className="flex-1 min-w-0 space-y-1"> {/* Added space-y-1 for vertical spacing */}
+          <p className="font-semibold text-base truncate">{step.title || "Etapa Sem Título"}</p> {/* Larger title */}
           <p className="text-xs text-muted-foreground">Tipo: {toolPalette.find(t => t.type === step.type)?.label || step.type}</p>
           
           {step.config.setOutputVariable && (
-            <p className="text-xs text-blue-600 mt-0.5 flex items-center truncate">
+            <p className="text-xs text-primary mt-0.5 flex items-center truncate"> {/* Changed text-blue-600 to text-primary */}
               <Variable className="inline h-3 w-3 mr-1 flex-shrink-0" /> Salva em: <span className="font-mono ml-1 truncate">{step.config.setOutputVariable}</span>
             </p>
           )}
 
           {step.type === 'information_text' && step.config.text && (
-             <p className="text-xs mt-1 text-muted-foreground truncate">{step.config.text}</p>
+             <p className="text-sm mt-1 text-card-foreground/80 truncate">{step.config.text}</p> // Slightly larger text
           )}
           
           {(step.type === 'multiple_choice' || step.type === 'single_choice') && step.config.options && (
-            <div className="text-xs mt-1 space-y-0.5">
+            <div className="text-sm mt-1 space-y-1"> {/* Increased text size and spacing */}
               <p className="truncate font-medium text-muted-foreground">{step.config.text}</p>
               {step.config.options.slice(0, 2).map(opt => (
-                <div key={opt.value} className="flex items-center justify-between truncate">
+                <div key={opt.value} className="flex items-center justify-between truncate py-0.5"> {/* Added py-0.5 */}
                   <span className="text-muted-foreground mr-1">- {opt.label}</span>
                   <div className="flex items-center">
                     {opt.nextStepId && (
@@ -113,11 +113,11 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownC
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-5 w-5 p-0"
+                      className="h-7 w-7 p-0" // Standardized button size
                       onClick={(e) => handleConnectClick(e, 'option', opt.value)}
                       title={`Conectar opção "${opt.label}"`}
                     >
-                      <Link2 className="h-3 w-3" />
+                      <Link2 className="h-4 w-4" /> {/* Standardized icon size */}
                     </Button>
                   </div>
                 </div>
@@ -127,13 +127,13 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownC
           )}
 
            {(step.type.startsWith('display_') || step.type.endsWith('_upload') || step.type.endsWith('_record')) && step.config.text && (
-            <p className="text-xs mt-1 text-muted-foreground truncate">{step.config.text}</p>
+            <p className="text-sm mt-1 text-card-foreground/80 truncate">{step.config.text}</p> // Slightly larger text
           )}
 
           {(!step.type.includes('choice') || (step.config.options && step.config.options.some(opt => !opt.nextStepId))) && (
-             <div className="text-xs text-primary mt-1 flex items-center justify-between truncate">
+             <div className="text-sm text-primary mt-1 flex items-center justify-between truncate">
                 <div className="flex items-center">
-                  <Link2 className="inline h-3 w-3 mr-1 flex-shrink-0" />
+                  <Link2 className="inline h-4 w-4 mr-1 flex-shrink-0" /> {/* Standardized icon size */}
                    Próximo: {step.config.defaultNextStepId ? getStepTitleById(step.config.defaultNextStepId) : (
                     <span className="text-muted-foreground italic ml-1">
                         {step.type.includes('choice') ? "(padrão: fim)" : "(fim do fluxo)"}
@@ -143,17 +143,17 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownC
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 p-0"
+                    className="h-7 w-7 p-0" // Standardized button size
                     onClick={(e) => handleConnectClick(e, 'default')}
                     title="Conectar etapa padrão"
                   >
-                    <Link2 className="h-3 w-3" />
+                    <Link2 className="h-4 w-4" /> {/* Standardized icon size */}
                 </Button>
             </div>
           )}
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={(e) => { e.stopPropagation(); onRemove(step.id); }}>
-          <Trash2 className="h-4 w-4 text-destructive" />
+          <Trash2 className="h-4 w-4 text-destructive" /> {/* Standardized icon size */}
         </Button>
       </div>
     </Card>
@@ -167,7 +167,6 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
   onAddOption: (stepId: string, newOptionLabel: string) => void;
   onOptionChange: (stepId: string, optionValue: string, newLabel: string, newNextStepId?: string) => void;
   allSteps: FlowStep[];
-  // onInitiateConnection prop removed as connections are initiated from the card
 }) => {
   const [newOptionLabel, setNewOptionLabel] = useState('');
   const availableNextSteps = allSteps.filter(s => s.id !== step.id);
@@ -310,7 +309,6 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
                       ))}
                     </SelectContent>
                   </Select>
-                  {/* Removed visual connection button from here */}
                 </div>
               </div>
             ))}
@@ -355,7 +353,6 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
                       ))}
                     </SelectContent>
                   </Select>
-                  {/* Removed visual connection button from here */}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                     {step.type.includes('choice') 
@@ -405,12 +402,10 @@ export default function FlowBuilderPage() {
 
 
   const handleStepMouseDown = (e: React.MouseEvent<HTMLDivElement>, stepId: string) => {
-    if (connectingState) return; // Don't drag if in connecting mode
-    // e.preventDefault(); // Keep this commented out or be careful, might interfere with card's own text selection if not managed.
+    if (connectingState) return; 
     const step = flowSteps.find(s => s.id === stepId);
     if (!step || !canvasRef.current) return;
 
-    // Only set dragging if not clicking on an interactive element like a button inside the card
     if ((e.target as HTMLElement).closest('button')) {
         return;
     }
@@ -425,7 +420,7 @@ export default function FlowBuilderPage() {
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!draggingStepId || !canvasRef.current) return;
-    e.preventDefault(); // Prevent text selection during drag
+    e.preventDefault(); 
     const canvasRect = canvasRef.current.getBoundingClientRect();
     
     let newX = (e.clientX / zoomLevel) - dragOffset.current.x - (canvasRect.left / zoomLevel);
@@ -497,8 +492,6 @@ export default function FlowBuilderPage() {
     if (draggingStepId) return;
 
     if (connectingState) {
-      // e.stopPropagation(); // Already handled by individual button clicks inside card for initiating
-      // e.preventDefault();
       if (connectingState.sourceStepId === stepId) {
         toast({ title: "Ação Inválida", description: "Não é possível conectar uma etapa a ela mesma desta forma.", variant: "destructive" });
         setConnectingState(null); 
@@ -506,7 +499,6 @@ export default function FlowBuilderPage() {
       }
       completeConnection(stepId);
     } else {
-      // Only open editor if not clicking on an interactive element like a button for connection
       if (!(e.target as HTMLElement).closest('button[title^="Conectar"]')) {
         setSelectedStepId(stepId);
         setIsEditPropertiesPopupOpen(true);
@@ -525,7 +517,6 @@ export default function FlowBuilderPage() {
       setSelectedStepId(null);
       setIsEditPropertiesPopupOpen(false);
     }
-    // Also remove connections pointing to this step
     setFlowSteps(prev => prev.map(s => {
         const newConfig = {...s.config};
         if (newConfig.defaultNextStepId === idToRemove) {
@@ -630,7 +621,7 @@ export default function FlowBuilderPage() {
             "flex-1 relative overflow-auto dot-grid-background",
             connectingState ? "cursor-crosshair" : (draggingStepId ? "cursor-grabbing" : "cursor-grab")
           )}
-           onClick={(e) => { // Handle click on canvas itself to cancel connection mode
+           onClick={(e) => {
             if (connectingState && e.target === canvasRef.current) {
               setConnectingState(null);
               toast({ title: "Conexão Cancelada", description: "A tentativa de conexão foi cancelada." });
@@ -638,7 +629,6 @@ export default function FlowBuilderPage() {
           }}
         >
           <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left', width: `${100/zoomLevel}%`, height: `${100/zoomLevel}%`}} className="relative h-full w-full">
-            {/* SVG for Connection Lines */}
             <svg
               className="absolute top-0 left-0 w-full h-full pointer-events-none z-0"
               style={{ overflow: 'visible' }}
@@ -670,11 +660,21 @@ export default function FlowBuilderPage() {
                     x: sourceStep.position.x,
                     y: sourceStep.position.y,
                     width: CARD_WIDTH,
-                    height: CARD_HEIGHT_ESTIMATE, // Use estimate, actual may vary
+                    height: CARD_HEIGHT_ESTIMATE, 
                 };
-                const lines: JSX.Element[] = [];
+                const paths: JSX.Element[] = [];
 
-                // Default next step line
+                const getPathDefinition = (startX: number, startY: number, endX: number, endY: number) => {
+                    const dx = endX - startX;
+                    // const dy = endY - startY; // Not used in this curve type
+                    const controlOffset = Math.max(20, Math.min(Math.abs(dx) * 0.3, 75));
+                    const c1x = startX + controlOffset;
+                    const c1y = startY;
+                    const c2x = endX - controlOffset;
+                    const c2y = endY;
+                    return `M ${startX} ${startY} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${endX} ${endY}`;
+                };
+
                 if (sourceStep.config.defaultNextStepId) {
                   const targetStep = flowSteps.find(s => s.id === sourceStep.config.defaultNextStepId);
                   if (targetStep) {
@@ -683,16 +683,15 @@ export default function FlowBuilderPage() {
                     const startY = sourceCardRect.y + sourceCardRect.height / 2;
                     const endX = targetCardRect.x;
                     const endY = targetCardRect.y + targetCardRect.height / 2;
-                    lines.push(
-                      <line
+                    paths.push(
+                      <path
                         key={`${sourceStep.id}-default-${targetStep.id}`}
-                        x1={startX} y1={startY} x2={endX} y2={endY}
-                        stroke="hsl(var(--primary))" strokeWidth="2"
+                        d={getPathDefinition(startX, startY, endX, endY)}
+                        stroke="hsl(var(--primary))" strokeWidth="2" fill="none"
                         markerEnd="url(#arrowhead-default)"
                       />);
                   }
                 }
-                // Option next step lines
                 sourceStep.config.options?.forEach((option, index) => {
                   if (option.nextStepId) {
                     const targetStep = flowSteps.find(s => s.id === option.nextStepId);
@@ -701,21 +700,20 @@ export default function FlowBuilderPage() {
                       const numOptions = sourceStep.config.options?.length || 1;
                       const verticalOffsetFactor = (index - (numOptions -1) / 2); 
                       const startX = sourceCardRect.x + sourceCardRect.width;
-                      // Dynamically adjust startY based on the option's position on card if possible, or use a slight spread
-                      const startY = sourceCardRect.y + (sourceCardRect.height / 2) + (verticalOffsetFactor * 12); // Spread out option lines
+                      const startY = sourceCardRect.y + (sourceCardRect.height / 2) + (verticalOffsetFactor * 15); // Increased spread for option lines
                       const endX = targetCardRect.x;
                       const endY = targetCardRect.y + targetCardRect.height / 2;
-                       lines.push(
-                        <line
+                       paths.push(
+                        <path
                           key={`${sourceStep.id}-option-${option.value}-${targetStep.id}`}
-                          x1={startX} y1={startY} x2={endX} y2={endY}
-                          stroke="hsl(var(--muted-foreground))" strokeWidth="1.5" strokeDasharray="3 2"
+                          d={getPathDefinition(startX, startY, endX, endY)}
+                          stroke="hsl(var(--muted-foreground))" strokeWidth="1.5" fill="none" strokeDasharray="4 3" // Adjusted dasharray
                           markerEnd="url(#arrowhead-option)"
                         />);
                     }
                   }
                 });
-                return lines;
+                return paths;
               })}
             </svg>
             
@@ -800,7 +798,6 @@ export default function FlowBuilderPage() {
                 onRemoveOption={handleRemoveOptionFromStep}
                 onOptionChange={handleOptionChange}
                 allSteps={flowSteps}
-                // onInitiateConnection is no longer passed here
               />
             </div>
             <DialogFooter>
