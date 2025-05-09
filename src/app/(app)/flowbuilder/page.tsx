@@ -52,7 +52,7 @@ interface ConnectingState {
   sourceOptionValue?: string; // Only if sourceType is 'option'
 }
 
-const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownCard, isConnectingSource, isPotentialTarget }: {
+const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownCard, isConnectingSource, isPotentialTarget, onInitiateConnection }: {
   step: FlowStep;
   onClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   onRemove: (id: string) => void;
@@ -60,9 +60,15 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownC
   onMouseDownCard: (e: React.MouseEvent<HTMLDivElement>, stepId: string) => void;
   isConnectingSource: boolean;
   isPotentialTarget: boolean;
+  onInitiateConnection: (sourceStepId: string, sourceType: 'default' | 'option', sourceOptionValue?: string) => void;
 }) => {
   const ToolIcon = toolPalette.find(t => t.type === step.type)?.icon || HelpCircle;
   const getStepTitleById = (id?: string) => allSteps.find(s => s.id === id)?.title || 'Próxima Etapa';
+
+  const handleConnectClick = (e: React.MouseEvent, sourceType: 'default' | 'option', optionValue?: string) => {
+    e.stopPropagation(); // Prevent card click (opening editor)
+    onInitiateConnection(step.id, sourceType, optionValue);
+  };
 
   return (
     <Card
@@ -96,13 +102,24 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownC
             <div className="text-xs mt-1 space-y-0.5">
               <p className="truncate font-medium text-muted-foreground">{step.config.text}</p>
               {step.config.options.slice(0, 2).map(opt => (
-                <div key={opt.value} className="flex items-center truncate">
+                <div key={opt.value} className="flex items-center justify-between truncate">
                   <span className="text-muted-foreground mr-1">- {opt.label}</span>
-                  {opt.nextStepId && (
-                    <span className="text-primary text-xs flex items-center">
-                      <Link2 className="inline h-3 w-3 mr-0.5 flex-shrink-0" /> {getStepTitleById(opt.nextStepId)}
-                    </span>
-                  )}
+                  <div className="flex items-center">
+                    {opt.nextStepId && (
+                      <span className="text-primary text-xs flex items-center mr-1">
+                        <Link2 className="inline h-3 w-3 mr-0.5 flex-shrink-0" /> {getStepTitleById(opt.nextStepId)}
+                      </span>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 p-0"
+                      onClick={(e) => handleConnectClick(e, 'option', opt.value)}
+                      title={`Conectar opção "${opt.label}"`}
+                    >
+                      <Link2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               ))}
               {step.config.options.length > 2 && <p className="text-muted-foreground text-xs">...</p>}
@@ -113,10 +130,26 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownC
             <p className="text-xs mt-1 text-muted-foreground truncate">{step.config.text}</p>
           )}
 
-          {step.config.defaultNextStepId && !step.type.includes('choice') && (
-             <p className="text-xs text-primary mt-1 flex items-center truncate">
-                <Link2 className="inline h-3 w-3 mr-1 flex-shrink-0" /> Próximo: {getStepTitleById(step.config.defaultNextStepId)}
-            </p>
+          {(!step.type.includes('choice') || (step.config.options && step.config.options.some(opt => !opt.nextStepId))) && (
+             <div className="text-xs text-primary mt-1 flex items-center justify-between truncate">
+                <div className="flex items-center">
+                  <Link2 className="inline h-3 w-3 mr-1 flex-shrink-0" />
+                   Próximo: {step.config.defaultNextStepId ? getStepTitleById(step.config.defaultNextStepId) : (
+                    <span className="text-muted-foreground italic ml-1">
+                        {step.type.includes('choice') ? "(padrão: fim)" : "(fim do fluxo)"}
+                    </span>
+                    )}
+                </div>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 p-0"
+                    onClick={(e) => handleConnectClick(e, 'default')}
+                    title="Conectar etapa padrão"
+                  >
+                    <Link2 className="h-3 w-3" />
+                </Button>
+            </div>
           )}
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={(e) => { e.stopPropagation(); onRemove(step.id); }}>
@@ -127,14 +160,14 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownC
   );
 };
 
-const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onOptionChange, allSteps, onInitiateConnection }: {
+const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onOptionChange, allSteps }: {
   step: FlowStep;
   onUpdateStep: (updatedStep: FlowStep) => void;
   onRemoveOption: (stepId: string, optionValue: string) => void;
   onAddOption: (stepId: string, newOptionLabel: string) => void;
   onOptionChange: (stepId: string, optionValue: string, newLabel: string, newNextStepId?: string) => void;
   allSteps: FlowStep[];
-  onInitiateConnection: (sourceStepId: string, sourceType: 'default' | 'option', sourceOptionValue?: string) => void;
+  // onInitiateConnection prop removed as connections are initiated from the card
 }) => {
   const [newOptionLabel, setNewOptionLabel] = useState('');
   const availableNextSteps = allSteps.filter(s => s.id !== step.id);
@@ -277,9 +310,7 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button variant="outline" size="icon" title="Conectar etapa visualmente" onClick={() => onInitiateConnection(step.id, 'option', option.value)}>
-                      <Link2 className="h-4 w-4" />
-                  </Button>
+                  {/* Removed visual connection button from here */}
                 </div>
               </div>
             ))}
@@ -324,9 +355,7 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
                       ))}
                     </SelectContent>
                   </Select>
-                   <Button variant="outline" size="icon" title="Conectar etapa visualmente" onClick={() => onInitiateConnection(step.id, 'default')}>
-                      <Link2 className="h-4 w-4" />
-                  </Button>
+                  {/* Removed visual connection button from here */}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                     {step.type.includes('choice') 
@@ -377,9 +406,14 @@ export default function FlowBuilderPage() {
 
   const handleStepMouseDown = (e: React.MouseEvent<HTMLDivElement>, stepId: string) => {
     if (connectingState) return; // Don't drag if in connecting mode
-    e.preventDefault();
+    // e.preventDefault(); // Keep this commented out or be careful, might interfere with card's own text selection if not managed.
     const step = flowSteps.find(s => s.id === stepId);
     if (!step || !canvasRef.current) return;
+
+    // Only set dragging if not clicking on an interactive element like a button inside the card
+    if ((e.target as HTMLElement).closest('button')) {
+        return;
+    }
 
     setDraggingStepId(stepId);
     const canvasRect = canvasRef.current.getBoundingClientRect();
@@ -391,6 +425,7 @@ export default function FlowBuilderPage() {
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!draggingStepId || !canvasRef.current) return;
+    e.preventDefault(); // Prevent text selection during drag
     const canvasRect = canvasRef.current.getBoundingClientRect();
     
     let newX = (e.clientX / zoomLevel) - dragOffset.current.x - (canvasRect.left / zoomLevel);
@@ -426,7 +461,7 @@ export default function FlowBuilderPage() {
 
   const handleInitiateConnection = (sourceStepId: string, sourceType: 'default' | 'option', sourceOptionValue?: string) => {
     setConnectingState({ sourceStepId, sourceType, sourceOptionValue });
-    setIsEditPropertiesPopupOpen(false); // Close properties to allow canvas click
+    setIsEditPropertiesPopupOpen(false); 
     toast({ title: "Conectando Etapa", description: "Clique na etapa de destino para criar a ligação." });
   };
 
@@ -462,17 +497,20 @@ export default function FlowBuilderPage() {
     if (draggingStepId) return;
 
     if (connectingState) {
-      e.stopPropagation();
-      e.preventDefault();
+      // e.stopPropagation(); // Already handled by individual button clicks inside card for initiating
+      // e.preventDefault();
       if (connectingState.sourceStepId === stepId) {
         toast({ title: "Ação Inválida", description: "Não é possível conectar uma etapa a ela mesma desta forma.", variant: "destructive" });
-        setConnectingState(null); // Cancel connection
+        setConnectingState(null); 
         return;
       }
       completeConnection(stepId);
     } else {
-      setSelectedStepId(stepId);
-      setIsEditPropertiesPopupOpen(true);
+      // Only open editor if not clicking on an interactive element like a button for connection
+      if (!(e.target as HTMLElement).closest('button[title^="Conectar"]')) {
+        setSelectedStepId(stepId);
+        setIsEditPropertiesPopupOpen(true);
+      }
     }
   };
 
@@ -590,8 +628,14 @@ export default function FlowBuilderPage() {
           ref={canvasRef}
           className={cn(
             "flex-1 relative overflow-auto dot-grid-background",
-            connectingState ? "cursor-crosshair" : "cursor-grab active:cursor-grabbing"
+            connectingState ? "cursor-crosshair" : (draggingStepId ? "cursor-grabbing" : "cursor-grab")
           )}
+           onClick={(e) => { // Handle click on canvas itself to cancel connection mode
+            if (connectingState && e.target === canvasRef.current) {
+              setConnectingState(null);
+              toast({ title: "Conexão Cancelada", description: "A tentativa de conexão foi cancelada." });
+            }
+          }}
         >
           <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left', width: `${100/zoomLevel}%`, height: `${100/zoomLevel}%`}} className="relative h-full w-full">
             {/* SVG for Connection Lines */}
@@ -604,7 +648,7 @@ export default function FlowBuilderPage() {
                   id="arrowhead-default"
                   markerWidth="10"
                   markerHeight="7"
-                  refX="8" // Adjusted for better arrow tip placement
+                  refX="8" 
                   refY="3.5"
                   orient="auto"
                 >
@@ -612,10 +656,10 @@ export default function FlowBuilderPage() {
                 </marker>
                  <marker
                   id="arrowhead-option"
-                  markerWidth="8" // Smaller arrow for option lines
-                  markerHeight="5.6" // (7 * 0.8)
-                  refX="6.4" // (8 * 0.8)
-                  refY="2.8" // (3.5 * 0.8)
+                  markerWidth="8" 
+                  markerHeight="5.6" 
+                  refX="6.4" 
+                  refY="2.8" 
                   orient="auto"
                 >
                   <polygon points="0 0, 8 2.8, 0 5.6" fill="hsl(var(--muted-foreground))" />
@@ -626,7 +670,7 @@ export default function FlowBuilderPage() {
                     x: sourceStep.position.x,
                     y: sourceStep.position.y,
                     width: CARD_WIDTH,
-                    height: CARD_HEIGHT_ESTIMATE,
+                    height: CARD_HEIGHT_ESTIMATE, // Use estimate, actual may vary
                 };
                 const lines: JSX.Element[] = [];
 
@@ -655,9 +699,10 @@ export default function FlowBuilderPage() {
                     if (targetStep) {
                       const targetCardRect = { x: targetStep.position.x, y: targetStep.position.y, width: CARD_WIDTH, height: CARD_HEIGHT_ESTIMATE };
                       const numOptions = sourceStep.config.options?.length || 1;
-                      const verticalOffsetFactor = (index - (numOptions -1) / 2);
+                      const verticalOffsetFactor = (index - (numOptions -1) / 2); 
                       const startX = sourceCardRect.x + sourceCardRect.width;
-                      const startY = sourceCardRect.y + (sourceCardRect.height / 2) + (verticalOffsetFactor * 12); // Spread out option lines a bit
+                      // Dynamically adjust startY based on the option's position on card if possible, or use a slight spread
+                      const startY = sourceCardRect.y + (sourceCardRect.height / 2) + (verticalOffsetFactor * 12); // Spread out option lines
                       const endX = targetCardRect.x;
                       const endY = targetCardRect.y + targetCardRect.height / 2;
                        lines.push(
@@ -674,7 +719,6 @@ export default function FlowBuilderPage() {
               })}
             </svg>
             
-            {/* Add Step Button */}
             <Dialog open={isAddToolPopupOpen} onOpenChange={setIsAddToolPopupOpen}>
                 <DialogTrigger asChild>
                 <Button
@@ -732,6 +776,7 @@ export default function FlowBuilderPage() {
                 onMouseDownCard={handleStepMouseDown}
                 isConnectingSource={connectingState?.sourceStepId === step.id}
                 isPotentialTarget={!!connectingState && connectingState.sourceStepId !== step.id}
+                onInitiateConnection={handleInitiateConnection}
             />
             ))}
           </div>
@@ -755,7 +800,7 @@ export default function FlowBuilderPage() {
                 onRemoveOption={handleRemoveOptionFromStep}
                 onOptionChange={handleOptionChange}
                 allSteps={flowSteps}
-                onInitiateConnection={handleInitiateConnection}
+                // onInitiateConnection is no longer passed here
               />
             </div>
             <DialogFooter>
@@ -775,4 +820,3 @@ export default function FlowBuilderPage() {
     </div>
   );
 }
-
