@@ -55,8 +55,8 @@ const FlowStepCardComponent = ({ step, onDragStart, onClick, isDraggingOver, onR
       onDragStart={(e) => onDragStart(e, step.id)}
       onClick={onClick}
       className={cn(
-        "p-4 mb-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative group/flowstepcard",
-        isDraggingOver && "ring-2 ring-primary opacity-50"
+        "p-4 mb-3 shadow-sm hover:shadow-md transition-all duration-150 ease-in-out cursor-pointer relative group/flowstepcard",
+        isDraggingOver && "ring-2 ring-primary scale-[1.02] shadow-xl z-10"
       )}
       id={`step-card-${step.id}`}
     >
@@ -256,9 +256,6 @@ export default function FlowBuilderPage() {
         dragOverItem.current = null;
     }
     // Force re-render to update visual feedback on dragOverItem
-    // This is a bit of a hack, ideally state update should trigger this.
-    // For simple cases, direct manipulation or a targeted update could be better.
-    // Forcing a lightweight state update:
     setFlowSteps(prev => [...prev]); 
   };
 
@@ -503,4 +500,3 @@ export default function FlowBuilderPage() {
     </div>
   );
 }
-
