@@ -9,28 +9,29 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Workflow, Save, PlusCircle, Trash2, Eye, PlayCircle, ListChecks, TextCursorInput,
-  CircleDot, ImageUp, Smile, Mic, Video as VideoIcon, FileText, Image as ImageIcon, FileAudio, Film, AlignLeft, HelpCircle, GripVertical
+  CircleDot, ImageUp, Smile, Mic, Video as VideoIcon, FileText, Image as ImageIcon, FileAudio, Film, AlignLeft, HelpCircle, GripVertical, Link2, Variable
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import type { FlowStep, FlowStepType } from '@/types';
+import type { FlowStep, FlowStepType, FlowStepOption, FlowStepConfig } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface Tool {
   type: FlowStepType;
   label: string;
   icon: React.ElementType;
-  defaultConfig: FlowStep['config'];
+  defaultConfig: FlowStepConfig;
   defaultTitle: string;
 }
 
 const toolPalette: Tool[] = [
   { type: 'information_text', label: 'Bloco de Texto', icon: AlignLeft, defaultConfig: { text: 'Texto informativo...' }, defaultTitle: 'Informação' },
   { type: 'text_input', label: 'Campo de Texto', icon: TextCursorInput, defaultConfig: { text: 'Qual sua pergunta?', placeholder: 'Digite aqui...' }, defaultTitle: 'Pergunta Texto' },
-  { type: 'multiple_choice', label: 'Múltipla Escolha', icon: ListChecks, defaultConfig: { text: 'Escolha várias:', options: ['Opção 1', 'Opção 2'] }, defaultTitle: 'Múltipla Escolha' },
-  { type: 'single_choice', label: 'Escolha Única', icon: CircleDot, defaultConfig: { text: 'Escolha uma:', options: ['Opção A', 'Opção B'] }, defaultTitle: 'Escolha Única' },
+  { type: 'multiple_choice', label: 'Múltipla Escolha', icon: ListChecks, defaultConfig: { text: 'Escolha várias:', options: [{value: 'opt1', label:'Opção 1'}, {value: 'opt2', label:'Opção 2'}] }, defaultTitle: 'Múltipla Escolha' },
+  { type: 'single_choice', label: 'Escolha Única', icon: CircleDot, defaultConfig: { text: 'Escolha uma:', options: [{value: 'optA', label:'Opção A'}, {value: 'optB', label:'Opção B'}] }, defaultTitle: 'Escolha Única' },
   { type: 'image_upload', label: 'Envio de Imagem', icon: ImageUp, defaultConfig: { text: 'Envie uma imagem' }, defaultTitle: 'Upload Imagem' },
   { type: 'emoji_rating', label: 'Avaliação Emoji', icon: Smile, defaultConfig: { text: 'Como você se sente?', maxEmojis: 5 }, defaultTitle: 'Avaliação Emoji' },
   { type: 'audio_record', label: 'Gravar Áudio', icon: Mic, defaultConfig: { text: 'Grave um áudio' }, defaultTitle: 'Gravar Áudio' },
@@ -41,14 +42,17 @@ const toolPalette: Tool[] = [
   { type: 'display_video', label: 'Exibir Vídeo', icon: Film, defaultConfig: { url: '', text: 'Título do Vídeo' }, defaultTitle: 'Assistir Vídeo' },
 ];
 
-const FlowStepCardComponent = ({ step, onDragStart, onClick, isDraggingOver, onRemove }: {
+const FlowStepCardComponent = ({ step, onDragStart, onClick, isDraggingOver, onRemove, allSteps }: {
   step: FlowStep;
   onDragStart: (e: React.DragEvent<HTMLDivElement>, id: string) => void;
   onClick: () => void;
   isDraggingOver: boolean;
   onRemove: (id: string) => void;
+  allSteps: FlowStep[];
 }) => {
   const ToolIcon = toolPalette.find(t => t.type === step.type)?.icon || HelpCircle;
+  const getStepTitleById = (id?: string) => allSteps.find(s => s.id === id)?.title || 'Próxima Etapa';
+
   return (
     <Card
       draggable
@@ -66,15 +70,35 @@ const FlowStepCardComponent = ({ step, onDragStart, onClick, isDraggingOver, onR
         <div className="flex-1">
           <p className="font-semibold">{step.title || "Etapa Sem Título"}</p>
           <p className="text-xs text-muted-foreground">Tipo: {toolPalette.find(t => t.type === step.type)?.label || step.type}</p>
+          {step.config.setOutputVariable && (
+            <p className="text-xs text-blue-600 mt-0.5">
+              <Variable className="inline h-3 w-3 mr-1" /> Salvar em: {step.config.setOutputVariable}
+            </p>
+          )}
           {step.type === 'information_text' && <p className="text-sm mt-1 truncate">{step.config.text}</p>}
-          {(step.type === 'multiple_choice' || step.type === 'single_choice') && (
-            <div className="text-xs mt-1">
-              <p className="truncate">{step.config.text}</p>
-              <p className="text-muted-foreground">Opções: {step.config.options?.join(', ') || 'N/A'}</p>
+          
+          {(step.type === 'multiple_choice' || step.type === 'single_choice') && step.config.options && (
+            <div className="text-xs mt-1 space-y-0.5">
+              <p className="truncate font-medium">{step.config.text}</p>
+              {step.config.options.map(opt => (
+                <div key={opt.value} className="flex items-center">
+                  <span className="text-muted-foreground mr-1">- {opt.label}</span>
+                  {opt.nextStepId && (
+                    <span className="text-primary text-xs flex items-center">
+                      <Link2 className="inline h-3 w-3 mr-0.5" /> {getStepTitleById(opt.nextStepId)}
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
           )}
            {(step.type.startsWith('display_') || step.type.endsWith('_upload') || step.type.endsWith('_record')) && step.config.text && (
             <p className="text-sm mt-1 truncate">{step.config.text}</p>
+          )}
+          {step.config.defaultNextStepId && !step.type.includes('choice') && (
+             <p className="text-xs text-primary mt-1 flex items-center">
+                <Link2 className="inline h-3 w-3 mr-1" /> Próximo: {getStepTitleById(step.config.defaultNextStepId)}
+            </p>
           )}
         </div>
         <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={(e) => { e.stopPropagation(); onRemove(step.id); }}>
@@ -85,16 +109,18 @@ const FlowStepCardComponent = ({ step, onDragStart, onClick, isDraggingOver, onR
   );
 };
 
-const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onOptionChange }: {
+const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onOptionChange, allSteps }: {
   step: FlowStep;
   onUpdateStep: (updatedStep: FlowStep) => void;
-  onRemoveOption: (stepId: string, optionIndex: number) => void;
-  onAddOption: (stepId: string, newOption: string) => void;
-  onOptionChange: (stepId: string, optionIndex: number, newValue: string) => void;
+  onRemoveOption: (stepId: string, optionValue: string) => void;
+  onAddOption: (stepId: string, newOptionLabel: string) => void;
+  onOptionChange: (stepId: string, optionValue: string, newLabel: string, newNextStepId?: string) => void;
+  allSteps: FlowStep[];
 }) => {
-  const [newOptionText, setNewOptionText] = useState('');
+  const [newOptionLabel, setNewOptionLabel] = useState('');
+  const availableNextSteps = allSteps.filter(s => s.id !== step.id);
 
-  const handleConfigChange = (field: keyof FlowStep['config'], value: any) => {
+  const handleConfigChange = (field: keyof FlowStepConfig, value: any) => {
     onUpdateStep({ ...step, config: { ...step.config, [field]: value } });
   };
   
@@ -103,14 +129,14 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
   }
 
   const addOption = () => {
-    if (newOptionText.trim()) {
-      onAddOption(step.id, newOptionText.trim());
-      setNewOptionText('');
+    if (newOptionLabel.trim()) {
+      onAddOption(step.id, newOptionLabel.trim());
+      setNewOptionLabel('');
     }
   };
 
   return (
-    <ScrollArea className="h-[calc(70vh-100px)] pr-3"> {/* Adjusted height for dialog context */}
+    <ScrollArea className="h-[calc(70vh-100px)] pr-3">
       <div className="space-y-4">
         <div>
           <Label htmlFor={`step-title-${step.id}`}>Título da Etapa</Label>
@@ -156,6 +182,18 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
           </div>
         )}
 
+        <div>
+            <Label htmlFor={`step-setoutputvariable-${step.id}`}>Nome da Variável de Saída (Opcional)</Label>
+            <Input
+                id={`step-setoutputvariable-${step.id}`}
+                value={step.config.setOutputVariable || ''}
+                onChange={(e) => handleConfigChange('setOutputVariable', e.target.value)}
+                placeholder="Ex: sentimento_usuario, foto_refeicao"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Se preenchido, a resposta desta etapa será salva nesta variável.</p>
+        </div>
+
+
         {(step.type.startsWith('display_') && (step.type !== 'display_pdf')) && (
           <div>
             <Label htmlFor={`step-url-${step.id}`}>URL do Conteúdo ({step.type.replace('display_','')})</Label>
@@ -188,27 +226,43 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
 
 
         {(step.type === 'multiple_choice' || step.type === 'single_choice') && (
-          <div className="space-y-2 border p-3 rounded-md">
-            <Label>Opções de Resposta</Label>
-            {step.config.options?.map((option, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <Input
-                  value={option}
-                  onChange={(e) => onOptionChange(step.id, index, e.target.value)}
-                  placeholder={`Opção ${index + 1}`}
-                />
-                <Button variant="ghost" size="icon" onClick={() => onRemoveOption(step.id, index)}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+          <div className="space-y-3 border p-3 rounded-md">
+            <Label>Opções de Resposta e Ramificações</Label>
+            {step.config.options?.map((option) => (
+              <div key={option.value} className="space-y-2 border-b pb-2 last:border-b-0 last:pb-0">
+                <div className="flex items-center gap-2">
+                    <Input
+                    value={option.label}
+                    onChange={(e) => onOptionChange(step.id, option.value, e.target.value, option.nextStepId)}
+                    placeholder={`Rótulo da Opção`}
+                    />
+                    <Button variant="ghost" size="icon" onClick={() => onRemoveOption(step.id, option.value)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                </div>
+                <Select
+                  value={option.nextStepId || ''}
+                  onValueChange={(newNextStepId) => onOptionChange(step.id, option.value, option.label, newNextStepId === '' ? undefined : newNextStepId)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Próxima etapa para esta opção..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhuma (Fim do fluxo ou padrão)</SelectItem>
+                    {availableNextSteps.map(nextStep => (
+                      <SelectItem key={nextStep.id} value={nextStep.id}>{nextStep.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             ))}
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center gap-2 pt-2">
               <Input
-                value={newOptionText}
-                onChange={(e) => setNewOptionText(e.target.value)}
-                placeholder="Nova opção"
+                value={newOptionLabel}
+                onChange={(e) => setNewOptionLabel(e.target.value)}
+                placeholder="Novo rótulo de opção"
               />
-              <Button variant="outline" size="sm" onClick={addOption}>Adicionar</Button>
+              <Button variant="outline" size="sm" onClick={addOption}>Adicionar Opção</Button>
             </div>
           </div>
         )}
@@ -224,6 +278,33 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
             />
           </div>
         )}
+
+        {/* Default Next Step for non-choice or as fallback */}
+        {(!step.type.includes('choice') || (step.type.includes('choice') && step.config.options && step.config.options.some(opt => !opt.nextStepId))) && (
+            <div>
+                <Label htmlFor={`step-defaultnextstep-${step.id}`}>Próxima Etapa Padrão</Label>
+                 <Select
+                    value={step.config.defaultNextStepId || ''}
+                    onValueChange={(newDefaultNextStepId) => handleConfigChange('defaultNextStepId', newDefaultNextStepId === '' ? undefined : newDefaultNextStepId)}
+                >
+                  <SelectTrigger id={`step-defaultnextstep-${step.id}`}>
+                    <SelectValue placeholder="Selecione a próxima etapa padrão..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhuma (Fim do fluxo)</SelectItem>
+                    {availableNextSteps.map(nextStep => (
+                      <SelectItem key={nextStep.id} value={nextStep.id}>{nextStep.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                    {step.type.includes('choice') 
+                    ? "Usado se uma opção não tiver ramificação específica."
+                    : "Próxima etapa após esta."}
+                </p>
+            </div>
+        )}
+
       </div>
     </ScrollArea>
   );
@@ -255,7 +336,6 @@ export default function FlowBuilderPage() {
     } else {
         dragOverItem.current = null;
     }
-    // Force re-render to update visual feedback on dragOverItem
     setFlowSteps(prev => [...prev]); 
   };
 
@@ -276,7 +356,6 @@ export default function FlowBuilderPage() {
     }
     dragItem.current = null;
     dragOverItem.current = null;
-    // Force re-render to clear visual feedback after drop
     setFlowSteps(prev => [...prev]); 
   };
 
@@ -289,7 +368,7 @@ export default function FlowBuilderPage() {
       id: Date.now().toString(),
       type: tool.type,
       title: tool.defaultTitle,
-      config: { ...tool.defaultConfig },
+      config: JSON.parse(JSON.stringify(tool.defaultConfig)), // Deep copy
     };
     setFlowSteps(prev => [...prev, newStep]);
     toast({ title: "Elemento Adicionado", description: `${tool.label} foi adicionado ao fluxo.` });
@@ -315,10 +394,12 @@ export default function FlowBuilderPage() {
     toast({ title: "Elemento Removido", description: "A etapa foi removida do fluxo." });
   };
   
-  const handleAddOptionToStep = (stepId: string, newOption: string) => {
+  const handleAddOptionToStep = (stepId: string, newOptionLabel: string) => {
     setFlowSteps(prevSteps =>
       prevSteps.map(step => {
         if (step.id === stepId && (step.type === 'multiple_choice' || step.type === 'single_choice')) {
+          const newOptionValue = `opt_${Date.now()}`;
+          const newOption: FlowStepOption = { value: newOptionValue, label: newOptionLabel };
           const options = step.config.options ? [...step.config.options, newOption] : [newOption];
           return { ...step, config: { ...step.config, options } };
         }
@@ -327,11 +408,11 @@ export default function FlowBuilderPage() {
     );
   };
 
-  const handleRemoveOptionFromStep = (stepId: string, optionIndex: number) => {
+  const handleRemoveOptionFromStep = (stepId: string, optionValue: string) => {
     setFlowSteps(prevSteps =>
       prevSteps.map(step => {
         if (step.id === stepId && (step.type === 'multiple_choice' || step.type === 'single_choice')) {
-          const options = step.config.options?.filter((_, idx) => idx !== optionIndex);
+          const options = step.config.options?.filter(opt => opt.value !== optionValue);
           return { ...step, config: { ...step.config, options } };
         }
         return step;
@@ -339,12 +420,13 @@ export default function FlowBuilderPage() {
     );
   };
   
-  const handleOptionChange = (stepId: string, optionIndex: number, newValue: string) => {
+  const handleOptionChange = (stepId: string, optionValue: string, newLabel: string, newNextStepId?: string) => {
     setFlowSteps(prevSteps =>
       prevSteps.map(step => {
         if (step.id === stepId && step.config.options) {
-          const newOptions = [...step.config.options];
-          newOptions[optionIndex] = newValue;
+          const newOptions = step.config.options.map(opt =>
+            opt.value === optionValue ? { ...opt, label: newLabel, nextStepId: newNextStepId } : opt
+          );
           return { ...step, config: { ...step.config, options: newOptions } };
         }
         return step;
@@ -369,7 +451,7 @@ export default function FlowBuilderPage() {
   const currentStepToEdit = flowSteps.find(s => s.id === selectedStepId);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)]"> {/* Adjusted for better screen fit with footer */}
+    <div className="flex flex-col h-[calc(100vh-100px)]">
       <div className="flex justify-between items-center mb-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Criador de Fluxos</h1>
@@ -415,7 +497,7 @@ export default function FlowBuilderPage() {
                 <PlusCircle className="mr-2 h-5 w-5" /> Adicionar Etapa
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl max-h-[85vh]"> {/* Wider dialog */}
+            <DialogContent className="sm:max-w-2xl max-h-[85vh]">
               <DialogHeader>
                 <DialogTitle>Adicionar Nova Etapa ao Fluxo</DialogTitle>
                 <DialogDescription>
@@ -449,7 +531,7 @@ export default function FlowBuilderPage() {
                 <p className="text-sm">Você pode adicionar perguntas, informações, mídias e outras interações.</p>
             </div>
           ) : (
-            <div className="pt-20"> {/* Increased padding top */}
+            <div className="pt-20">
                 {flowSteps.map(step => (
                 <FlowStepCardComponent
                     key={step.id}
@@ -458,6 +540,7 @@ export default function FlowBuilderPage() {
                     onClick={() => handleOpenEditProperties(step.id)}
                     isDraggingOver={dragOverItem.current === step.id && !!dragItem.current && dragItem.current !== step.id}
                     onRemove={removeStep}
+                    allSteps={flowSteps}
                 />
                 ))}
             </div>
@@ -467,7 +550,7 @@ export default function FlowBuilderPage() {
 
       {currentStepToEdit && (
         <Dialog open={isEditPropertiesPopupOpen} onOpenChange={setIsEditPropertiesPopupOpen}>
-          <DialogContent className="sm:max-w-xl max-h-[85vh]"> {/* Wider dialog for properties */}
+          <DialogContent className="sm:max-w-xl max-h-[85vh]">
             <DialogHeader>
               <DialogTitle>Editar Etapa: <span className="font-semibold">{currentStepToEdit.title}</span></DialogTitle>
               <DialogDescription>
@@ -481,6 +564,7 @@ export default function FlowBuilderPage() {
                 onAddOption={handleAddOptionToStep}
                 onRemoveOption={handleRemoveOptionFromStep}
                 onOptionChange={handleOptionChange}
+                allSteps={flowSteps}
               />
             </div>
             <DialogFooter>

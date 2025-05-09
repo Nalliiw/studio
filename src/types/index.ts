@@ -29,7 +29,6 @@ export interface Patient {
   nutritionistId: string;
 }
 
-// Renamed FormQuestion to FlowStepConfig and made it more generic for flow steps
 export type FlowStepType =
   | 'information_text'
   | 'text_input'
@@ -44,26 +43,34 @@ export type FlowStepType =
   | 'display_audio'
   | 'display_video';
 
+export interface FlowStepOption {
+  value: string; // Internal value/ID of the option, can be same as label for simplicity
+  label: string; // Display label for the option
+  nextStepId?: string; // If this option is chosen, go to this step ID
+}
+
+export interface FlowStepConfig {
+  text?: string; // For prompts, instructions, content titles
+  options?: FlowStepOption[]; // For multiple_choice, single_choice
+  url?: string; // For display_pdf, display_image, display_audio, display_video
+  placeholder?: string; // For text_input
+  maxEmojis?: number; // For emoji_rating
+  setOutputVariable?: string; // Name of the variable this step's result will be stored in
+  defaultNextStepId?: string; // Default next step for non-branching steps or fallback
+}
+
 export interface FlowStep {
   id: string;
   type: FlowStepType;
   // User-defined title for this step in the builder, displayed on the card
-  title: string; 
-  // Type-specific configuration
-  config: {
-    text?: string; // For text_input, information_text, choice questions prompt
-    options?: string[]; // For multiple_choice, single_choice
-    url?: string; // For display_pdf, display_image, display_audio, display_video
-    placeholder?: string; // For text_input
-    maxEmojis?: number; // For emoji_rating
-    // Add other specific config fields as needed per type
-  };
+  title: string;
+  config: FlowStepConfig;
 }
 
 export interface Flow {
   id: string;
   name: string;
-  steps: FlowStep[]; // Changed from questions to steps
+  steps: FlowStep[];
   nutritionistId: string;
 }
 
