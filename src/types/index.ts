@@ -31,9 +31,9 @@ export interface Patient {
 
 export interface FormQuestion {
   id: string;
-  type: 'text' | 'multiple_choice' | 'emoji' | 'audio' | 'video' | 'image_upload';
+  type: 'text' | 'multiple_choice' | 'single_choice' | 'emoji' | 'audio' | 'video' | 'image_upload';
   text: string;
-  options?: string[]; // For multiple_choice
+  options?: string[]; // For multiple_choice and single_choice
 }
 
 export interface Flow {
@@ -68,3 +68,4 @@ export interface FormResponse {
   status: 'pending' | 'completed';
   submittedAt?: string; // ISO date string
 }
+

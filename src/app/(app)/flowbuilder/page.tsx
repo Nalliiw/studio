@@ -1,3 +1,4 @@
+// src/app/(app)/flowbuilder/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -6,11 +7,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Workflow, Save, PlusCircle, Trash2, Eye, PlayCircle, ListChecks, TextCursorInput } from 'lucide-react';
+import { Workflow, Save, PlusCircle, Trash2, Eye, PlayCircle, ListChecks, TextCursorInput, CircleDot, ImageUp, Smile, Mic, Video as VideoIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import type { FormQuestion } from '@/types';
+
+const questionTypePalette: { type: FormQuestion['type']; label: string; icon: React.ElementType }[] = [
+  { type: 'text', label: 'Texto', icon: TextCursorInput },
+  { type: 'multiple_choice', label: 'Múltipla Escolha', icon: ListChecks },
+  { type: 'single_choice', label: 'Escolha Única', icon: CircleDot },
+  { type: 'image_upload', label: 'Envio de Imagem', icon: ImageUp },
+  { type: 'emoji', label: 'Emoji (Avaliação)', icon: Smile },
+  { type: 'audio', label: 'Gravar Áudio', icon: Mic },
+  { type: 'video', label: 'Gravar Vídeo', icon: VideoIcon },
+];
+
 
 export default function FlowBuilderPage() {
   const [flowName, setFlowName] = useState('');
@@ -21,6 +32,15 @@ export default function FlowBuilderPage() {
   const [currentQuestionType, setCurrentQuestionType] = useState<FormQuestion['type']>('text');
   const [currentQuestionOptions, setCurrentQuestionOptions] = useState<string[]>([]);
   const [newOptionText, setNewOptionText] = useState('');
+
+  const handleSelectQuestionType = (type: FormQuestion['type']) => {
+    setCurrentQuestionType(type);
+    setCurrentQuestionText(''); // Reset text for new type
+    setCurrentQuestionOptions([]); // Reset options for new type
+    setNewOptionText('');
+    const selectedType = questionTypePalette.find(p => p.type === type);
+    toast({ title: "Tipo de Campo Selecionado", description: `Editor pronto para configurar o campo: ${selectedType?.label}`});
+  };
 
   const addOptionToCurrentQuestion = () => {
     if (newOptionText.trim() === '') {
@@ -40,8 +60,8 @@ export default function FlowBuilderPage() {
       toast({ title: "Erro", description: "O texto da pergunta não pode estar vazio.", variant: "destructive" });
       return;
     }
-    if (currentQuestionType === 'multiple_choice' && currentQuestionOptions.length < 2) {
-      toast({ title: "Erro", description: "Perguntas de múltipla escolha devem ter pelo menos duas opções.", variant: "destructive" });
+    if ((currentQuestionType === 'multiple_choice' || currentQuestionType === 'single_choice') && currentQuestionOptions.length < 2) {
+      toast({ title: "Erro", description: "Perguntas de múltipla escolha ou escolha única devem ter pelo menos duas opções.", variant: "destructive" });
       return;
     }
 
@@ -49,14 +69,13 @@ export default function FlowBuilderPage() {
       id: Date.now().toString(),
       text: currentQuestionText.trim(),
       type: currentQuestionType,
-      options: currentQuestionType === 'multiple_choice' ? currentQuestionOptions : undefined,
+      options: (currentQuestionType === 'multiple_choice' || currentQuestionType === 'single_choice') ? currentQuestionOptions : undefined,
     };
 
     setQuestions([...questions, newQuestion]);
 
-    // Reset form for new question
+    // Reset form for new question, keep current type selected or revert to 'text'
     setCurrentQuestionText('');
-    setCurrentQuestionType('text');
     setCurrentQuestionOptions([]);
     setNewOptionText('');
     toast({ title: "Sucesso", description: "Pergunta adicionada ao fluxo." });
@@ -84,17 +103,15 @@ export default function FlowBuilderPage() {
       title: "Fluxo Salvo!",
       description: `O fluxo "${flowName}" foi salvo com sucesso.`,
     });
-    // Optionally reset the flow builder page or redirect
-    // setFlowName('');
-    // setQuestions([]);
   };
 
   const getQuestionTypeIcon = (type: FormQuestion['type']) => {
-    switch(type) {
-      case 'text': return <TextCursorInput className="h-4 w-4 text-muted-foreground mr-2" />;
-      case 'multiple_choice': return <ListChecks className="h-4 w-4 text-muted-foreground mr-2" />;
-      default: return null;
+    const qType = questionTypePalette.find(item => item.type === type);
+    if (qType) {
+        const IconComponent = qType.icon;
+        return <IconComponent className="h-4 w-4 text-muted-foreground mr-2" />;
     }
+    return <TextCursorInput className="h-4 w-4 text-muted-foreground mr-2" />; // Default icon
   }
 
   return (
@@ -104,7 +121,7 @@ export default function FlowBuilderPage() {
           <h1 className="text-3xl font-bold tracking-tight">Criador de Fluxos</h1>
           <p className="text-muted-foreground">Crie formulários e fluxos personalizados para seus pacientes.</p>
         </div>
-        <Link href="/flowbuilder" passHref> {/* Assuming /flowbuilder is the list of flows, or /flowbuilder/novo is the same page */}
+        <Link href="/flowbuilder" passHref>
             <Button variant="outline"><PlusCircle className="mr-2 h-4 w-4" /> Novo Fluxo</Button>
         </Link>
       </div>
@@ -130,8 +147,29 @@ export default function FlowBuilderPage() {
 
       <Card className="shadow-md">
         <CardHeader>
-            <CardTitle>Editor de Nova Pergunta</CardTitle>
-            <CardDescription>Adicione perguntas de texto ou múltipla escolha ao seu fluxo.</CardDescription>
+          <CardTitle>Adicionar Novo Campo ao Fluxo</CardTitle>
+          <CardDescription>Clique em um tipo de campo abaixo para selecioná-lo e configurá-lo no editor.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          {questionTypePalette.map((item) => (
+            <Button
+              key={item.type}
+              variant={currentQuestionType === item.type ? "default" : "outline"}
+              className="flex flex-col h-28 items-center justify-center p-3 space-y-1.5 text-center hover:shadow-md transition-shadow"
+              onClick={() => handleSelectQuestionType(item.type)}
+            >
+              <item.icon className="h-7 w-7 mb-1" />
+              <span className="text-xs leading-tight">{item.label}</span>
+            </Button>
+          ))}
+        </CardContent>
+      </Card>
+
+
+      <Card className="shadow-md">
+        <CardHeader>
+            <CardTitle>Editor de Pergunta ({questionTypePalette.find(p=>p.type === currentQuestionType)?.label || 'N/A'})</CardTitle>
+            <CardDescription>Configure os detalhes da pergunta selecionada.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
             <div>
@@ -144,20 +182,8 @@ export default function FlowBuilderPage() {
                     className="mt-1 min-h-[60px]"
                 />
             </div>
-            <div>
-                <Label htmlFor="currentQuestionType">Tipo da Pergunta</Label>
-                <Select value={currentQuestionType} onValueChange={(value: FormQuestion['type']) => setCurrentQuestionType(value)}>
-                    <SelectTrigger id="currentQuestionType" className="mt-1">
-                        <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="text">Texto</SelectItem>
-                        <SelectItem value="multiple_choice">Múltipla Escolha</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
 
-            {currentQuestionType === 'multiple_choice' && (
+            {(currentQuestionType === 'multiple_choice' || currentQuestionType === 'single_choice') && (
                 <div className="space-y-3 rounded-md border p-4">
                     <Label className="text-base font-medium">Opções da Pergunta</Label>
                     {currentQuestionOptions.length > 0 && (
@@ -172,8 +198,8 @@ export default function FlowBuilderPage() {
                             ))}
                         </ul>
                     )}
-                     {currentQuestionOptions.length < 2 && (
-                         <p className="text-xs text-muted-foreground">Adicione pelo menos duas opções.</p>
+                     {(currentQuestionOptions.length < 2) && (
+                         <p className="text-xs text-muted-foreground">Adicione pelo menos duas opções para este tipo de pergunta.</p>
                      )}
                     <div className="flex items-center gap-2">
                         <Input
@@ -188,6 +214,7 @@ export default function FlowBuilderPage() {
                     </div>
                 </div>
             )}
+            {/* Future: Add specific configuration UI for other types like emoji, image, etc. */}
         </CardContent>
         <CardFooter className="border-t pt-6">
             <Button onClick={addCurrentQuestionToFlow}>
@@ -212,7 +239,7 @@ export default function FlowBuilderPage() {
                                 {getQuestionTypeIcon(q.type)}
                                 <span>{index + 1}. {q.text}</span>
                             </div>
-                            {q.type === 'multiple_choice' && q.options && (
+                            {(q.type === 'multiple_choice' || q.type === 'single_choice') && q.options && (
                                 <ul className="list-disc list-inside pl-5 mt-1 text-xs text-muted-foreground">
                                     {q.options.map((opt, optIndex) => <li key={optIndex}>{opt}</li>)}
                                 </ul>
