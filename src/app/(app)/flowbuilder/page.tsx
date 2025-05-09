@@ -255,6 +255,11 @@ export default function FlowBuilderPage() {
     } else {
         dragOverItem.current = null;
     }
+    // Force re-render to update visual feedback on dragOverItem
+    // This is a bit of a hack, ideally state update should trigger this.
+    // For simple cases, direct manipulation or a targeted update could be better.
+    // Forcing a lightweight state update:
+    setFlowSteps(prev => [...prev]); 
   };
 
   const handleDropOnCanvas = (e: React.DragEvent<HTMLDivElement>) => {
@@ -274,6 +279,8 @@ export default function FlowBuilderPage() {
     }
     dragItem.current = null;
     dragOverItem.current = null;
+    // Force re-render to clear visual feedback after drop
+    setFlowSteps(prev => [...prev]); 
   };
 
 
@@ -496,3 +503,4 @@ export default function FlowBuilderPage() {
     </div>
   );
 }
+
