@@ -1,269 +1,473 @@
 // src/app/(app)/flowbuilder/page.tsx
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Workflow, Save, PlusCircle, Trash2, Eye, PlayCircle, ListChecks, TextCursorInput, CircleDot, ImageUp, Smile, Mic, Video as VideoIcon } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import {
+  Workflow, Save, PlusCircle, Trash2, Eye, PlayCircle, ListChecks, TextCursorInput,
+  CircleDot, ImageUp, Smile, Mic, Video as VideoIcon, FileText, Image as ImageIcon, FileAudio, Film, AlignLeft, HelpCircle
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import type { FormQuestion } from '@/types';
+import type { FlowStep, FlowStepType } from '@/types';
+import { cn } from '@/lib/utils';
 
-const questionTypePalette: { type: FormQuestion['type']; label: string; icon: React.ElementType }[] = [
-  { type: 'text', label: 'Texto', icon: TextCursorInput },
-  { type: 'multiple_choice', label: 'Múltipla Escolha', icon: ListChecks },
-  { type: 'single_choice', label: 'Escolha Única', icon: CircleDot },
-  { type: 'image_upload', label: 'Envio de Imagem', icon: ImageUp },
-  { type: 'emoji', label: 'Emoji (Avaliação)', icon: Smile },
-  { type: 'audio', label: 'Gravar Áudio', icon: Mic },
-  { type: 'video', label: 'Gravar Vídeo', icon: VideoIcon },
+interface Tool {
+  type: FlowStepType;
+  label: string;
+  icon: React.ElementType;
+  defaultConfig: FlowStep['config'];
+  defaultTitle: string;
+}
+
+const toolPalette: Tool[] = [
+  { type: 'information_text', label: 'Bloco de Texto', icon: AlignLeft, defaultConfig: { text: 'Texto informativo...' }, defaultTitle: 'Informação' },
+  { type: 'text_input', label: 'Campo de Texto', icon: TextCursorInput, defaultConfig: { text: 'Qual sua pergunta?', placeholder: 'Digite aqui...' }, defaultTitle: 'Pergunta Texto' },
+  { type: 'multiple_choice', label: 'Múltipla Escolha', icon: ListChecks, defaultConfig: { text: 'Escolha várias:', options: ['Opção 1', 'Opção 2'] }, defaultTitle: 'Múltipla Escolha' },
+  { type: 'single_choice', label: 'Escolha Única', icon: CircleDot, defaultConfig: { text: 'Escolha uma:', options: ['Opção A', 'Opção B'] }, defaultTitle: 'Escolha Única' },
+  { type: 'image_upload', label: 'Envio de Imagem', icon: ImageUp, defaultConfig: { text: 'Envie uma imagem' }, defaultTitle: 'Upload Imagem' },
+  { type: 'emoji_rating', label: 'Avaliação Emoji', icon: Smile, defaultConfig: { text: 'Como você se sente?', maxEmojis: 5 }, defaultTitle: 'Avaliação Emoji' },
+  { type: 'audio_record', label: 'Gravar Áudio', icon: Mic, defaultConfig: { text: 'Grave um áudio' }, defaultTitle: 'Gravar Áudio' },
+  { type: 'video_record', label: 'Gravar Vídeo', icon: VideoIcon, defaultConfig: { text: 'Grave um vídeo' }, defaultTitle: 'Gravar Vídeo' },
+  { type: 'display_pdf', label: 'Exibir PDF/eBook', icon: FileText, defaultConfig: { url: '', text: 'Título do PDF' }, defaultTitle: 'Visualizar PDF' },
+  { type: 'display_image', label: 'Exibir Imagem', icon: ImageIcon, defaultConfig: { url: '', text: 'Legenda da Imagem' }, defaultTitle: 'Visualizar Imagem' },
+  { type: 'display_audio', label: 'Tocar Áudio', icon: FileAudio, defaultConfig: { url: '', text: 'Título do Áudio' }, defaultTitle: 'Ouvir Áudio' },
+  { type: 'display_video', label: 'Exibir Vídeo', icon: Film, defaultConfig: { url: '', text: 'Título do Vídeo' }, defaultTitle: 'Assistir Vídeo' },
 ];
+
+const DraggableToolItem = ({ tool }: { tool: Tool }) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    e.dataTransfer.setData('text/plain', tool.type);
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  return (
+    <Card
+      draggable
+      onDragStart={handleDragStart}
+      className="p-3 flex items-center gap-3 cursor-grab hover:shadow-md transition-shadow bg-muted/50 mb-2"
+    >
+      <tool.icon className="h-6 w-6 text-primary flex-shrink-0" />
+      <span className="text-sm font-medium">{tool.label}</span>
+    </Card>
+  );
+};
+
+const FlowStepCardComponent = ({ step, onDragStart, onClick, isDraggingOver, onRemove }: {
+  step: FlowStep;
+  onDragStart: (e: React.DragEvent<HTMLDivElement>, id: string) => void;
+  onClick: () => void;
+  isDraggingOver: boolean;
+  onRemove: (id: string) => void;
+}) => {
+  const ToolIcon = toolPalette.find(t => t.type === step.type)?.icon || HelpCircle;
+  return (
+    <Card
+      draggable
+      onDragStart={(e) => onDragStart(e, step.id)}
+      onClick={onClick}
+      className={cn("p-4 mb-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative", isDraggingOver && "ring-2 ring-primary opacity-50")}
+    >
+      <div className="flex items-start gap-3">
+        <ToolIcon className="h-5 w-5 text-muted-foreground mt-1 flex-shrink-0" />
+        <div className="flex-1">
+          <p className="font-semibold">{step.title || "Etapa Sem Título"}</p>
+          <p className="text-xs text-muted-foreground">Tipo: {toolPalette.find(t => t.type === step.type)?.label || step.type}</p>
+          {step.type === 'information_text' && <p className="text-sm mt-1 truncate">{step.config.text}</p>}
+          {(step.type === 'multiple_choice' || step.type === 'single_choice') && (
+            <div className="text-xs mt-1">
+              <p className="truncate">{step.config.text}</p>
+              <p className="text-muted-foreground">Opções: {step.config.options?.join(', ') || 'N/A'}</p>
+            </div>
+          )}
+           {(step.type.startsWith('display_') || step.type.endsWith('_upload') || step.type.endsWith('_record')) && step.config.text && (
+            <p className="text-sm mt-1 truncate">{step.config.text}</p>
+          )}
+        </div>
+        <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={(e) => { e.stopPropagation(); onRemove(step.id); }}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </div>
+    </Card>
+  );
+};
+
+const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onOptionChange }: {
+  step: FlowStep;
+  onUpdateStep: (updatedStep: FlowStep) => void;
+  onRemoveOption: (stepId: string, optionIndex: number) => void;
+  onAddOption: (stepId: string, newOption: string) => void;
+  onOptionChange: (stepId: string, optionIndex: number, newValue: string) => void;
+}) => {
+  const [newOptionText, setNewOptionText] = useState('');
+
+  const handleConfigChange = (field: keyof FlowStep['config'], value: any) => {
+    onUpdateStep({ ...step, config: { ...step.config, [field]: value } });
+  };
+  
+  const handleTitleChange = (newTitle: string) => {
+     onUpdateStep({ ...step, title: newTitle });
+  }
+
+  const addOption = () => {
+    if (newOptionText.trim()) {
+      onAddOption(step.id, newOptionText.trim());
+      setNewOptionText('');
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor={`step-title-${step.id}`}>Título da Etapa</Label>
+        <Input
+          id={`step-title-${step.id}`}
+          value={step.title}
+          onChange={(e) => handleTitleChange(e.target.value)}
+          placeholder="Título da etapa no fluxo"
+        />
+      </div>
+
+      { (step.type.startsWith('display_') || step.type.endsWith('_input') || step.type.endsWith('_upload') || step.type.endsWith('_record') || step.type.endsWith('_choice') || step.type === 'information_text' || step.type === 'emoji_rating') && (
+        <div>
+          <Label htmlFor={`step-text-${step.id}`}>
+            {step.type.includes('choice') || step.type.endsWith('_input') ? 'Texto da Pergunta/Instrução' : 
+             step.type.startsWith('display_') ? 'Descrição/Título do Conteúdo' : 
+             step.type === 'information_text' ? 'Conteúdo do Texto' :
+             'Instrução'}
+          </Label>
+          <Textarea
+            id={`step-text-${step.id}`}
+            value={step.config.text || ''}
+            onChange={(e) => handleConfigChange('text', e.target.value)}
+            placeholder={
+                step.type.includes('choice') || step.type.endsWith('_input') ? 'Digite a pergunta ou instrução...' :
+                step.type.startsWith('display_') ? 'Ex: Vídeo sobre hidratação' :
+                step.type === 'information_text' ? 'Digite o texto informativo...' :
+                'Instruções para esta etapa...'
+            }
+          />
+        </div>
+      )}
+
+      {step.type === 'text_input' && (
+        <div>
+          <Label htmlFor={`step-placeholder-${step.id}`}>Texto de Exemplo (Placeholder)</Label>
+          <Input
+            id={`step-placeholder-${step.id}`}
+            value={step.config.placeholder || ''}
+            onChange={(e) => handleConfigChange('placeholder', e.target.value)}
+            placeholder="Ex: Como você se sentiu hoje?"
+          />
+        </div>
+      )}
+
+      {(step.type.startsWith('display_') && (step.type !== 'display_pdf')) && (
+        <div>
+          <Label htmlFor={`step-url-${step.id}`}>URL do Conteúdo ({step.type.replace('display_','')})</Label>
+          <Input
+            id={`step-url-${step.id}`}
+            value={step.config.url || ''}
+            onChange={(e) => handleConfigChange('url', e.target.value)}
+            placeholder="https://exemplo.com/recurso"
+          />
+        </div>
+      )}
+      {step.type === 'display_pdf' && (
+        <div>
+          <Label htmlFor={`step-url-${step.id}`}>Arquivo PDF/eBook</Label>
+          <Input
+            id={`step-url-${step.id}`}
+            type="file"
+            accept=".pdf"
+            onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                    const file = e.target.files[0];
+                    // In a real app, upload file and set URL. For now, use object URL for preview.
+                    handleConfigChange('url', URL.createObjectURL(file)); 
+                    if (!step.config.text) handleConfigChange('text', file.name);
+                }
+            }}
+          />
+          {step.config.url && <p className="text-xs text-muted-foreground mt-1">Arquivo selecionado: {step.config.text || step.config.url}</p>}
+        </div>
+      )}
+
+
+      {(step.type === 'multiple_choice' || step.type === 'single_choice') && (
+        <div className="space-y-2 border p-3 rounded-md">
+          <Label>Opções de Resposta</Label>
+          {step.config.options?.map((option, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <Input
+                value={option}
+                onChange={(e) => onOptionChange(step.id, index, e.target.value)}
+                placeholder={`Opção ${index + 1}`}
+              />
+              <Button variant="ghost" size="icon" onClick={() => onRemoveOption(step.id, index)}>
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          ))}
+          <div className="flex items-center gap-2 pt-1">
+            <Input
+              value={newOptionText}
+              onChange={(e) => setNewOptionText(e.target.value)}
+              placeholder="Nova opção"
+            />
+            <Button variant="outline" size="sm" onClick={addOption}>Adicionar</Button>
+          </div>
+        </div>
+      )}
+      {step.type === 'emoji_rating' && (
+         <div>
+          <Label htmlFor={`step-max-emojis-${step.id}`}>Número de Emojis (1-5)</Label>
+          <Input
+            id={`step-max-emojis-${step.id}`}
+            type="number"
+            min="1" max="5"
+            value={step.config.maxEmojis || 5}
+            onChange={(e) => handleConfigChange('maxEmojis', parseInt(e.target.value,10))}
+          />
+        </div>
+      )}
+
+    </div>
+  );
+};
 
 
 export default function FlowBuilderPage() {
   const [flowName, setFlowName] = useState('');
-  const [questions, setQuestions] = useState<FormQuestion[]>([]);
+  const [flowSteps, setFlowSteps] = useState<FlowStep[]>([]);
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  const dragItem = useRef<string | null>(null); // Stores ID of step being dragged for reordering
+  const dragOverItem = useRef<string | null>(null); // Stores ID of step being dragged over
 
-  // State for the question currently being built
-  const [currentQuestionText, setCurrentQuestionText] = useState('');
-  const [currentQuestionType, setCurrentQuestionType] = useState<FormQuestion['type']>('text');
-  const [currentQuestionOptions, setCurrentQuestionOptions] = useState<string[]>([]);
-  const [newOptionText, setNewOptionText] = useState('');
-
-  const handleSelectQuestionType = (type: FormQuestion['type']) => {
-    setCurrentQuestionType(type);
-    setCurrentQuestionText(''); // Reset text for new type
-    setCurrentQuestionOptions([]); // Reset options for new type
-    setNewOptionText('');
-    const selectedType = questionTypePalette.find(p => p.type === type);
-    toast({ title: "Tipo de Campo Selecionado", description: `Editor pronto para configurar o campo: ${selectedType?.label}`});
+  const handleToolDragStart = (e: React.DragEvent<HTMLDivElement>, toolType: FlowStepType) => {
+    e.dataTransfer.setData('application/flow-tool-type', toolType);
+    e.dataTransfer.effectAllowed = 'copy';
   };
 
-  const addOptionToCurrentQuestion = () => {
-    if (newOptionText.trim() === '') {
-      toast({ title: "Erro", description: "O texto da opção não pode estar vazio.", variant: "destructive" });
-      return;
+  const handleStepDragStart = (e: React.DragEvent<HTMLDivElement>, stepId: string) => {
+    dragItem.current = stepId;
+    e.dataTransfer.setData('application/flow-step-id', stepId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOverCanvas = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); // Allow drop
+    const draggedStepId = e.dataTransfer.types.includes('application/flow-step-id') ? dragItem.current : null;
+    if (draggedStepId) { // If reordering an existing step
+        // Find the card element being dragged over
+        const targetCard = (e.target as HTMLElement).closest('[draggable="true"]');
+        if (targetCard && targetCard.id !== draggedStepId) {
+            dragOverItem.current = targetCard.id.replace('step-card-','');
+        } else {
+            dragOverItem.current = null;
+        }
     }
-    setCurrentQuestionOptions([...currentQuestionOptions, newOptionText.trim()]);
-    setNewOptionText('');
+    // Visual feedback for drag over (can be done with CSS state or dynamically adding classes)
   };
 
-  const removeOptionFromCurrentQuestion = (indexToRemove: number) => {
-    setCurrentQuestionOptions(currentQuestionOptions.filter((_, index) => index !== indexToRemove));
-  };
+  const handleDropOnCanvas = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const toolType = e.dataTransfer.getData('application/flow-tool-type') as FlowStepType;
+    const draggedStepId = e.dataTransfer.getData('application/flow-step-id');
 
-  const addCurrentQuestionToFlow = () => {
-    if (currentQuestionText.trim() === '') {
-      toast({ title: "Erro", description: "O texto da pergunta não pode estar vazio.", variant: "destructive" });
-      return;
+    if (toolType) { // Dropping a new tool
+      const tool = toolPalette.find(t => t.type === toolType);
+      if (!tool) return;
+
+      const newStep: FlowStep = {
+        id: Date.now().toString(),
+        type: tool.type,
+        title: tool.defaultTitle,
+        config: { ...tool.defaultConfig },
+      };
+      // Add to end or specific position if drop target is identified
+      setFlowSteps(prev => [...prev, newStep]);
+      toast({ title: "Elemento Adicionado", description: `${tool.label} foi adicionado ao fluxo.` });
+
+    } else if (draggedStepId && dragItem.current && dragOverItem.current && dragItem.current !== dragOverItem.current) { // Reordering existing steps
+      const activeStepIndex = flowSteps.findIndex(step => step.id === dragItem.current);
+      const overStepIndex = flowSteps.findIndex(step => step.id === dragOverItem.current);
+
+      if (activeStepIndex !== -1 && overStepIndex !== -1) {
+        const newSteps = [...flowSteps];
+        const [draggedItem] = newSteps.splice(activeStepIndex, 1);
+        newSteps.splice(overStepIndex, 0, draggedItem);
+        setFlowSteps(newSteps);
+      }
     }
-    if ((currentQuestionType === 'multiple_choice' || currentQuestionType === 'single_choice') && currentQuestionOptions.length < 2) {
-      toast({ title: "Erro", description: "Perguntas de múltipla escolha ou escolha única devem ter pelo menos duas opções.", variant: "destructive" });
-      return;
-    }
-
-    const newQuestion: FormQuestion = {
-      id: Date.now().toString(),
-      text: currentQuestionText.trim(),
-      type: currentQuestionType,
-      options: (currentQuestionType === 'multiple_choice' || currentQuestionType === 'single_choice') ? currentQuestionOptions : undefined,
-    };
-
-    setQuestions([...questions, newQuestion]);
-
-    // Reset form for new question, keep current type selected or revert to 'text'
-    setCurrentQuestionText('');
-    setCurrentQuestionOptions([]);
-    setNewOptionText('');
-    toast({ title: "Sucesso", description: "Pergunta adicionada ao fluxo." });
+    dragItem.current = null;
+    dragOverItem.current = null;
   };
 
-  const removeQuestionFromFlow = (id: string) => {
-    setQuestions(questions.filter(q => q.id !== id));
-    toast({ title: "Sucesso", description: "Pergunta removida do fluxo." });
+  const handleUpdateStep = (updatedStep: FlowStep) => {
+    setFlowSteps(prev => prev.map(s => s.id === updatedStep.id ? updatedStep : s));
   };
+
+  const removeStep = (idToRemove: string) => {
+    setFlowSteps(prev => prev.filter(s => s.id !== idToRemove));
+    if (selectedStepId === idToRemove) setSelectedStepId(null);
+    toast({ title: "Elemento Removido", description: "A etapa foi removida do fluxo." });
+  };
+  
+  const handleAddOptionToStep = (stepId: string, newOption: string) => {
+    setFlowSteps(prevSteps =>
+      prevSteps.map(step => {
+        if (step.id === stepId && (step.type === 'multiple_choice' || step.type === 'single_choice')) {
+          const options = step.config.options ? [...step.config.options, newOption] : [newOption];
+          return { ...step, config: { ...step.config, options } };
+        }
+        return step;
+      })
+    );
+  };
+
+  const handleRemoveOptionFromStep = (stepId: string, optionIndex: number) => {
+    setFlowSteps(prevSteps =>
+      prevSteps.map(step => {
+        if (step.id === stepId && (step.type === 'multiple_choice' || step.type === 'single_choice')) {
+          const options = step.config.options?.filter((_, idx) => idx !== optionIndex);
+          return { ...step, config: { ...step.config, options } };
+        }
+        return step;
+      })
+    );
+  };
+  
+  const handleOptionChange = (stepId: string, optionIndex: number, newValue: string) => {
+    setFlowSteps(prevSteps =>
+      prevSteps.map(step => {
+        if (step.id === stepId && step.config.options) {
+          const newOptions = [...step.config.options];
+          newOptions[optionIndex] = newValue;
+          return { ...step, config: { ...step.config, options: newOptions } };
+        }
+        return step;
+      })
+    );
+  };
+
 
   const handleSaveFlow = async () => {
     if (flowName.trim() === '') {
       toast({ title: "Erro", description: "O nome do fluxo é obrigatório.", variant: "destructive" });
       return;
     }
-    if (questions.length === 0) {
-      toast({ title: "Erro", description: "Adicione pelo menos uma pergunta ao fluxo.", variant: "destructive" });
+    if (flowSteps.length === 0) {
+      toast({ title: "Erro", description: "Adicione pelo menos uma etapa ao fluxo.", variant: "destructive" });
       return;
     }
-
-    console.log('Saving flow:', { flowName, questions });
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast({
-      title: "Fluxo Salvo!",
-      description: `O fluxo "${flowName}" foi salvo com sucesso.`,
-    });
+    console.log('Saving flow:', { flowName, steps: flowSteps });
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API
+    toast({ title: "Fluxo Salvo!", description: `O fluxo "${flowName}" foi salvo com sucesso.` });
   };
 
-  const getQuestionTypeIcon = (type: FormQuestion['type']) => {
-    const qType = questionTypePalette.find(item => item.type === type);
-    if (qType) {
-        const IconComponent = qType.icon;
-        return <IconComponent className="h-4 w-4 text-muted-foreground mr-2" />;
-    }
-    return <TextCursorInput className="h-4 w-4 text-muted-foreground mr-2" />; // Default icon
-  }
+  const currentStepToEdit = flowSteps.find(s => s.id === selectedStepId);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="flex flex-col h-full">
+      <div className="flex justify-between items-center mb-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Criador de Fluxos</h1>
           <p className="text-muted-foreground">Crie formulários e fluxos personalizados para seus pacientes.</p>
         </div>
-        <Link href="/flowbuilder" passHref>
-            <Button variant="outline"><PlusCircle className="mr-2 h-4 w-4" /> Novo Fluxo</Button>
+         <Link href="/flowbuilder" passHref> {/* TODO: This should likely go to a list of flows, not create new */}
+            <Button variant="outline"><PlusCircle className="mr-2 h-4 w-4" /> Meus Fluxos</Button>
         </Link>
       </div>
       
-      <Card className="shadow-md">
+      <Card className="mb-4 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Workflow className="mr-2 h-6 w-6 text-primary" />
-            Definir Nome do Fluxo
+            <Workflow className="mr-2 h-5 w-5 text-primary" />
+            Nome do Fluxo
           </CardTitle>
         </CardHeader>
         <CardContent>
-            <Label htmlFor="flowName" className="text-base font-medium">Nome do Fluxo</Label>
             <Input
               id="flowName"
               placeholder="Ex: Questionário Inicial de Hábitos"
               value={flowName}
               onChange={(e) => setFlowName(e.target.value)}
-              className="mt-1"
             />
         </CardContent>
       </Card>
 
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle>Adicionar Novo Campo ao Fluxo</CardTitle>
-          <CardDescription>Clique em um tipo de campo abaixo para selecioná-lo e configurá-lo no editor.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {questionTypePalette.map((item) => (
-            <Button
-              key={item.type}
-              variant={currentQuestionType === item.type ? "default" : "outline"}
-              className="flex flex-col h-28 items-center justify-center p-3 space-y-1.5 text-center hover:shadow-md transition-shadow"
-              onClick={() => handleSelectQuestionType(item.type)}
-            >
-              <item.icon className="h-7 w-7 mb-1" />
-              <span className="text-xs leading-tight">{item.label}</span>
-            </Button>
-          ))}
-        </CardContent>
-      </Card>
-
-
-      <Card className="shadow-md">
-        <CardHeader>
-            <CardTitle>Editor de Pergunta ({questionTypePalette.find(p=>p.type === currentQuestionType)?.label || 'N/A'})</CardTitle>
-            <CardDescription>Configure os detalhes da pergunta selecionada.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-            <div>
-                <Label htmlFor="currentQuestionText">Texto da Pergunta</Label>
-                <Textarea
-                    id="currentQuestionText"
-                    placeholder="Digite o texto da sua pergunta aqui..."
-                    value={currentQuestionText}
-                    onChange={(e) => setCurrentQuestionText(e.target.value)}
-                    className="mt-1 min-h-[60px]"
-                />
+      <div className="flex flex-1 overflow-hidden gap-4">
+        {/* Canvas Area (Center) */}
+        <div
+          className="flex-1 p-4 bg-slate-100 rounded-lg shadow-inner overflow-y-auto border border-dashed border-gray-300"
+          onDrop={handleDropOnCanvas}
+          onDragOver={handleDragOverCanvas}
+        >
+          {flowSteps.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                <Workflow className="h-16 w-16 mb-4 opacity-50" />
+                <p className="text-lg">Arraste elementos da barra lateral direita para começar a construir seu fluxo.</p>
+                <p className="text-sm">Você pode adicionar perguntas, conteúdos e outras interações.</p>
             </div>
+          ) : (
+            flowSteps.map(step => (
+              <FlowStepCardComponent
+                key={step.id}
+                step={step}
+                onDragStart={handleStepDragStart}
+                onClick={() => setSelectedStepId(step.id)}
+                isDraggingOver={dragOverItem.current === step.id && !!dragItem.current && dragItem.current !== step.id}
+                onRemove={removeStep}
+              />
+            ))
+          )}
+        </div>
 
-            {(currentQuestionType === 'multiple_choice' || currentQuestionType === 'single_choice') && (
-                <div className="space-y-3 rounded-md border p-4">
-                    <Label className="text-base font-medium">Opções da Pergunta</Label>
-                    {currentQuestionOptions.length > 0 && (
-                        <ul className="space-y-1">
-                            {currentQuestionOptions.map((opt, index) => (
-                                <li key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm">
-                                    <span>{opt}</span>
-                                    <Button variant="ghost" size="icon" onClick={() => removeOptionFromCurrentQuestion(index)} aria-label="Remover opção">
-                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                     {(currentQuestionOptions.length < 2) && (
-                         <p className="text-xs text-muted-foreground">Adicione pelo menos duas opções para este tipo de pergunta.</p>
-                     )}
-                    <div className="flex items-center gap-2">
-                        <Input
-                            id="newOptionText"
-                            placeholder="Texto da nova opção"
-                            value={newOptionText}
-                            onChange={(e) => setNewOptionText(e.target.value)}
-                        />
-                        <Button type="button" variant="outline" onClick={addOptionToCurrentQuestion}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Opção
-                        </Button>
-                    </div>
-                </div>
-            )}
-            {/* Future: Add specific configuration UI for other types like emoji, image, etc. */}
-        </CardContent>
-        <CardFooter className="border-t pt-6">
-            <Button onClick={addCurrentQuestionToFlow}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Pergunta ao Fluxo
-            </Button>
-        </CardFooter>
-      </Card>
-
-      <Card className="shadow-md">
-        <CardHeader>
-            <CardTitle>Perguntas do Fluxo</CardTitle>
-            <CardDescription>Visualize e gerencie as perguntas adicionadas ao fluxo.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-            {questions.length > 0 ? (
-              <ul className="space-y-2 rounded-md border p-4">
-                {questions.map((q, index) => (
-                  <li key={q.id} className="p-3 bg-muted/50 rounded-md">
-                    <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                            <div className="flex items-center text-sm font-medium">
-                                {getQuestionTypeIcon(q.type)}
-                                <span>{index + 1}. {q.text}</span>
-                            </div>
-                            {(q.type === 'multiple_choice' || q.type === 'single_choice') && q.options && (
-                                <ul className="list-disc list-inside pl-5 mt-1 text-xs text-muted-foreground">
-                                    {q.options.map((opt, optIndex) => <li key={optIndex}>{opt}</li>)}
-                                </ul>
-                            )}
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={() => removeQuestionFromFlow(q.id)} aria-label="Remover pergunta do fluxo">
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                    </div>
-                  </li>
+        {/* Tools & Properties Sidebar (Right) */}
+        <aside className="w-96 bg-card border rounded-lg shadow-sm flex flex-col">
+            <div className="p-4 border-b">
+                 <h3 className="text-xl font-semibold">Ferramentas</h3>
+                 <p className="text-sm text-muted-foreground">Arraste para o fluxo</p>
+            </div>
+            <div className="p-4 space-y-2 overflow-y-auto flex-grow-[1]">
+                {toolPalette.map(tool => (
+                    <DraggableToolItem key={tool.type} tool={tool}/>
                 ))}
-              </ul>
-            ) : (
-                <p className="text-sm text-muted-foreground p-4 border rounded-md text-center">Nenhuma pergunta adicionada ao fluxo ainda.</p>
+            </div>
+            {currentStepToEdit && (
+                <>
+                    <Separator />
+                    <div className="p-4 border-t">
+                        <h3 className="text-xl font-semibold">Propriedades da Etapa</h3>
+                        <p className="text-sm text-muted-foreground">Edite "{currentStepToEdit.title}"</p>
+                    </div>
+                    <div className="p-4 space-y-3 overflow-y-auto flex-grow-[2]">
+                        <PropertiesEditor
+                            step={currentStepToEdit}
+                            onUpdateStep={handleUpdateStep}
+                            onAddOption={handleAddOptionToStep}
+                            onRemoveOption={handleRemoveOptionFromStep}
+                            onOptionChange={handleOptionChange}
+                        />
+                    </div>
+                </>
             )}
-        </CardContent>
-        <CardFooter className="border-t pt-6 flex justify-end gap-2">
-          <Button variant="outline"><Eye className="mr-2 h-4 w-4" /> Simular</Button>
-          <Button variant="outline"><PlayCircle className="mr-2 h-4 w-4" /> Ativar Fluxo</Button>
-          <Button onClick={handleSaveFlow}>
-            <Save className="mr-2 h-4 w-4" /> Salvar Fluxo
-          </Button>
-        </CardFooter>
-      </Card>
+        </aside>
+      </div>
+
+      <CardFooter className="border-t pt-6 mt-4 flex justify-end gap-2 bg-background shadow-sm rounded-b-lg">
+        <Button variant="outline" onClick={() => alert("Simulação de fluxo ainda não implementada.")}><Eye className="mr-2 h-4 w-4" /> Simular</Button>
+        <Button variant="outline" onClick={() => alert("Ativação de fluxo ainda não implementada.")}><PlayCircle className="mr-2 h-4 w-4" /> Ativar Fluxo</Button>
+        <Button onClick={handleSaveFlow}>
+          <Save className="mr-2 h-4 w-4" /> Salvar Fluxo
+        </Button>
+      </CardFooter>
     </div>
   );
 }

@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle, Edit3, FileText, Clock } from 'lucide-react';
-import type { FormResponse, Flow } from '@/types'; // Assuming Flow is the structure for form templates
+import type { FormResponse, Flow, FlowStep } from '@/types'; // Assuming Flow is the structure for form templates
 
 // Mock Data
-const mockPendingForms: (Flow & { assignedAt: string })[] = [
-  { id: 'flow1', name: 'Check-in Semanal - Semana 4', questions: [{id: 'q1', type: 'text', text:'Como se sentiu esta semana?'}, {id: 'q2', type: 'text', text:'Alguma dificuldade?'}], nutritionistId: 'n1', assignedAt: '2024-05-20T09:00:00Z' },
-  { id: 'flow2', name: 'Avaliação de Sono', questions: [{id: 'q1', type: 'text', text:'Quantas horas dormiu em média?'}], nutritionistId: 'n1', assignedAt: '2024-05-22T15:00:00Z' },
+const mockPendingForms: (Omit<Flow, 'steps'> & { steps: FlowStep[], assignedAt: string })[] = [
+  { id: 'flow1', name: 'Check-in Semanal - Semana 4', steps: [{id: 'q1', type: 'text_input', title: 'Como se sentiu?', config: {text:'Como se sentiu esta semana?'}}, {id: 'q2', type: 'text_input', title: 'Dificuldades?', config:{ text:'Alguma dificuldade?'}}], nutritionistId: 'n1', assignedAt: '2024-05-20T09:00:00Z' },
+  { id: 'flow2', name: 'Avaliação de Sono', steps: [{id: 'q1', type: 'text_input', title: 'Horas de Sono', config: {text:'Quantas horas dormiu em média?'}}], nutritionistId: 'n1', assignedAt: '2024-05-22T15:00:00Z' },
 ];
 
 const mockCompletedForms: (FormResponse & { flowName: string })[] = [
@@ -60,7 +60,7 @@ export default function FormularioPacientePage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      Este formulário contém {form.questions.length} pergunta(s). Reserve um momento para respondê-lo.
+                      Este formulário contém {form.steps.length} etapa(s). Reserve um momento para respondê-lo.
                     </p>
                   </CardContent>
                   <CardFooter className="border-t pt-4">
@@ -122,3 +122,4 @@ export default function FormularioPacientePage() {
     </div>
   );
 }
+

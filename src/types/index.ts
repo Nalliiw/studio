@@ -29,17 +29,41 @@ export interface Patient {
   nutritionistId: string;
 }
 
-export interface FormQuestion {
+// Renamed FormQuestion to FlowStepConfig and made it more generic for flow steps
+export type FlowStepType =
+  | 'information_text'
+  | 'text_input'
+  | 'multiple_choice'
+  | 'single_choice'
+  | 'image_upload'
+  | 'emoji_rating'
+  | 'audio_record'
+  | 'video_record'
+  | 'display_pdf'
+  | 'display_image'
+  | 'display_audio'
+  | 'display_video';
+
+export interface FlowStep {
   id: string;
-  type: 'text' | 'multiple_choice' | 'single_choice' | 'emoji' | 'audio' | 'video' | 'image_upload';
-  text: string;
-  options?: string[]; // For multiple_choice and single_choice
+  type: FlowStepType;
+  // User-defined title for this step in the builder, displayed on the card
+  title: string; 
+  // Type-specific configuration
+  config: {
+    text?: string; // For text_input, information_text, choice questions prompt
+    options?: string[]; // For multiple_choice, single_choice
+    url?: string; // For display_pdf, display_image, display_audio, display_video
+    placeholder?: string; // For text_input
+    maxEmojis?: number; // For emoji_rating
+    // Add other specific config fields as needed per type
+  };
 }
 
 export interface Flow {
   id: string;
   name: string;
-  questions: FormQuestion[];
+  steps: FlowStep[]; // Changed from questions to steps
   nutritionistId: string;
 }
 
@@ -62,10 +86,9 @@ export interface Praise {
 
 export interface FormResponse {
   id: string;
-  formId: string;
+  formId: string; // Corresponds to Flow id
   patientId: string;
-  answers: { questionId: string; answer: any }[];
+  answers: { stepId: string; answer: any }[]; // Corresponds to FlowStep id
   status: 'pending' | 'completed';
   submittedAt?: string; // ISO date string
 }
-
