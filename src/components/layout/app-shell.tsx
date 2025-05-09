@@ -14,6 +14,7 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarTrigger,
+  sidebarMenuButtonVariants, // Import variants for styling the div
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
@@ -38,6 +39,7 @@ import {
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
+import { cn } from '@/lib/utils'; // Import cn for class merging
 
 interface NavItem {
   href: string;
@@ -149,22 +151,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </SidebarMenuItem>
 
             <SidebarMenuItem>
-                <SidebarMenuButton
-                    onClick={handleThemeToggle}
-                    tooltip={theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
-                    asChild={false}
-                    className="justify-start w-full"
+              {/* Use asChild={true} and a wrapper div to prevent button-inside-button */}
+              <SidebarMenuButton
+                tooltip={theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
+                asChild={true}
+              >
+                <div
+                  onClick={handleThemeToggle}
+                  // Apply necessary classes to make the div look and behave like the button
+                  className={cn(
+                    sidebarMenuButtonVariants({ variant: 'default', size: 'default' }), // Apply base styles
+                    "justify-start w-full cursor-pointer" // Specific styles for this item
+                  )}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleThemeToggle(); }}}
+                  aria-label={theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
                 >
-                    {theme === 'dark' ? <Sun /> : <Moon />}
-                    <span className="flex-grow">{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
-                    <Switch
-                        checked={theme === 'dark'}
-                        onCheckedChange={handleThemeToggle}
-                        aria-label="Alternar tema"
-                        className="ml-auto group-data-[collapsible=icon]:hidden"
-                        onClick={(e) => e.stopPropagation()} 
-                    />
-                </SidebarMenuButton>
+                  {theme === 'dark' ? <Sun /> : <Moon />}
+                  <span className="flex-grow">{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
+                  <Switch
+                    checked={theme === 'dark'}
+                    onCheckedChange={handleThemeToggle} // Switch itself can toggle theme
+                    aria-label="Alternar tema"
+                    className="ml-auto group-data-[collapsible=icon]:hidden"
+                    onClick={(e) => e.stopPropagation()} // Prevent event bubbling to the parent div
+                  />
+                </div>
+              </SidebarMenuButton>
             </SidebarMenuItem>
 
             <SidebarMenuItem>
@@ -193,3 +207,4 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
