@@ -42,6 +42,8 @@ const toolPalette: Tool[] = [
   { type: 'display_video', label: 'Exibir Vídeo', icon: Film, defaultConfig: { url: '', text: 'Título do Vídeo' }, defaultTitle: 'Assistir Vídeo' },
 ];
 
+const NO_NEXT_STEP_VALUE = "__NO_NEXT_STEP__";
+
 const FlowStepCardComponent = ({ step, onDragStart, onClick, isDraggingOver, onRemove, allSteps }: {
   step: FlowStep;
   onDragStart: (e: React.DragEvent<HTMLDivElement>, id: string) => void;
@@ -242,13 +244,13 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
                 </div>
                 <Select
                   value={option.nextStepId || ''}
-                  onValueChange={(newNextStepId) => onOptionChange(step.id, option.value, option.label, newNextStepId === '' ? undefined : newNextStepId)}
+                  onValueChange={(newNextStepId) => onOptionChange(step.id, option.value, option.label, newNextStepId === NO_NEXT_STEP_VALUE ? undefined : newNextStepId)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Próxima etapa para esta opção..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma (Fim do fluxo ou padrão)</SelectItem>
+                    <SelectItem value={NO_NEXT_STEP_VALUE}>Nenhuma (Fim do fluxo ou padrão)</SelectItem>
                     {availableNextSteps.map(nextStep => (
                       <SelectItem key={nextStep.id} value={nextStep.id}>{nextStep.title}</SelectItem>
                     ))}
@@ -285,13 +287,13 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
                 <Label htmlFor={`step-defaultnextstep-${step.id}`}>Próxima Etapa Padrão</Label>
                  <Select
                     value={step.config.defaultNextStepId || ''}
-                    onValueChange={(newDefaultNextStepId) => handleConfigChange('defaultNextStepId', newDefaultNextStepId === '' ? undefined : newDefaultNextStepId)}
+                    onValueChange={(newDefaultNextStepId) => handleConfigChange('defaultNextStepId', newDefaultNextStepId === NO_NEXT_STEP_VALUE ? undefined : newDefaultNextStepId)}
                 >
                   <SelectTrigger id={`step-defaultnextstep-${step.id}`}>
                     <SelectValue placeholder="Selecione a próxima etapa padrão..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma (Fim do fluxo)</SelectItem>
+                    <SelectItem value={NO_NEXT_STEP_VALUE}>Nenhuma (Fim do fluxo)</SelectItem>
                     {availableNextSteps.map(nextStep => (
                       <SelectItem key={nextStep.id} value={nextStep.id}>{nextStep.title}</SelectItem>
                     ))}
