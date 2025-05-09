@@ -151,9 +151,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
+                    {/* Perfil link removed based on user request */}
+                    {/* <DropdownMenuItem asChild>
                       <Link href="/perfil"><UserCircle className="mr-2 h-4 w-4" /> Perfil</Link>
-                    </DropdownMenuItem>
+                    </DropdownMenuItem> */}
                     <DropdownMenuItem asChild>
                       <Link href="/configuracoes"><Settings className="mr-2 h-4 w-4" /> Configurações</Link>
                     </DropdownMenuItem>
