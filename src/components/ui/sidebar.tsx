@@ -3,8 +3,8 @@
 
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
-import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, PanelRightOpen, PanelLeftOpen } from "lucide-react" // Added PanelRightOpen, PanelLeftOpen
+import { cva, type VariantProps } from "class-variance-authority"
+import { PanelLeft, PanelRight, PanelLeftOpen, PanelRightOpen } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -355,41 +355,62 @@ const SidebarHeader = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div">
 >(({ className, children, ...props }, ref) => {
-  const { toggleSidebar, isMobile } = useSidebar();
+  const { toggleSidebar, isMobile, state } = useSidebar();
 
   return (
     <div
       ref={ref}
       data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn(
+        "flex flex-col gap-2 p-2",
+        // If SidebarHeader is a direct child of a .group.peer, its children can use peer-data-*
+        // The structure is SidebarProvider -> Sidebar (group peer) -> SidebarHeader
+        // So, peer-data-* should work.
+        className
+      )}
       {...props}
     >
-      {/* Expansion Toggle Button for Desktop Icon Mode when collapsed */}
+      {/* Unified Toggle Button for Desktop */}
       {!isMobile && (
         <div className={cn(
-          "items-center justify-center",
-          // Show if parent Sidebar (peer) is collapsed AND in icon mode. Otherwise, hidden.
-          "hidden peer-data-[state=collapsed]:peer-data-[collapsible=icon]:flex"
+          "flex items-center",
+          // Align button based on sidebar side (inner edge of the header)
+          "justify-end peer-data-[side=left]:justify-end peer-data-[side=right]:justify-start",
+          // Hide button container if sidebar is collapsed and not in icon mode (e.g., offcanvas or none)
+          // data-collapsible is only set when state is 'collapsed'.
+          "peer-data-[state=collapsed]:peer-data-[collapsible=offcanvas]:hidden",
+          "peer-data-[state=collapsed]:peer-data-[collapsible=none]:hidden" // 'none' implies always expanded, so this state is unlikely unless forced.
         )}>
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="h-8 w-8" 
-            aria-label="Expand sidebar"
-            title="Expand sidebar"
+            className="h-8 w-8"
+            aria-label={state === 'expanded' ? "Collapse sidebar" : "Expand sidebar"}
+            title={state === 'expanded' ? "Collapse sidebar" : "Expand sidebar"}
           >
-            {/* Icon depends on peer's side prop. Default (side=left): PanelRightOpen. If side=right: PanelLeftOpen. */}
-            <PanelRightOpen className="h-5 w-5 peer-data-[side=right]:hidden" />
-            <PanelLeftOpen className="h-5 w-5 hidden peer-data-[side=right]:inline" />
+            {state === 'expanded' && ( // Icons to COLLAPSE
+              <>
+                <PanelLeft className="h-5 w-5 peer-data-[side=right]:hidden" /> {/* For left sidebar */}
+                <PanelRight className="h-5 w-5 hidden peer-data-[side=right]:inline" /> {/* For right sidebar */}
+              </>
+            )}
+            {state === 'collapsed' && ( // Icons to EXPAND (shown only if icon mode is active)
+              // data-collapsible is set on the Sidebar (peer) when state is 'collapsed'
+              <div className="hidden peer-data-[collapsible=icon]:block"> 
+                <PanelRightOpen className="h-5 w-5 peer-data-[side=right]:hidden" /> {/* For left sidebar */}
+                <PanelLeftOpen className="h-5 w-5 hidden peer-data-[side=right]:inline" /> {/* For right sidebar */}
+              </div>
+            )}
           </Button>
         </div>
       )}
 
       {/* Original children passed to SidebarHeader */}
-      {/* These children are hidden if parent Sidebar (peer) is collapsed AND in icon mode. */}
       <div className={cn(
-        "contents peer-data-[state=collapsed]:peer-data-[collapsible=icon]:hidden"
+        "contents",
+        // Hide content if (state is collapsed AND collapsible is icon mode)
+        "peer-data-[state=collapsed]:peer-data-[collapsible=icon]:hidden"
       )}>
         {children}
       </div>
