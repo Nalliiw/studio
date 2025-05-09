@@ -101,7 +101,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     >
       <Sidebar collapsible={sidebarCollapsibleType} variant="sidebar" side={sidebarSidePlacement}>
         <SidebarHeader className="p-4 justify-center items-center flex flex-col">
-           <div className="p-2 rounded-md bg-primary/10 text-primary w-fit">
+           <div className="p-2 rounded-md bg-sidebar-primary/10 text-sidebar-primary w-fit">
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M15.5 7.5c0-1.105-.895-2-2-2s-2 .895-2 2c0 1.105.895 2 2 2 .653 0 1.231-.316 1.601-.809l.007-.013c.055-.09.105-.184.149-.282.139-.31.243-.645.243-.996z"/><path d="M8.5 15c0-1.105.895-2 2-2s2 .895 2 2c0 1.105-.895 2-2 2s-2-.895-2-2z"/><path d="M12 12.5c-1.5 0-2.5 1-2.5 2.5S10.5 17.5 12 17.5s2.5-1 2.5-2.5S13.5 12.5 12 12.5zM12 9.5c-1.5 0-2.5-1-2.5-2.5S10.5 4.5 12 4.5s2.5 1 2.5 2.5S13.5 9.5 12 9.5z"/></svg>
            </div>
           <h1 className="text-xl font-semibold text-sidebar-foreground mt-2">NutriTrack Lite</h1>
@@ -192,7 +192,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 px-6 bg-background border-b">
           <SidebarTrigger className="md:hidden">
             <Menu />
           </SidebarTrigger>
@@ -207,4 +207,3 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-

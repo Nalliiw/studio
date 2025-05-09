@@ -397,8 +397,8 @@ const SidebarHeader = React.forwardRef<
             onClick={toggleSidebar}
             className={cn(
               "h-8 w-8 rounded-md", // Specific size and shape
-              "bg-accent text-accent-foreground", // Green background, white icon
-              "hover:bg-accent/90" // Hover state
+              "bg-sidebar-accent text-sidebar-accent-foreground", // Use sidebar theme variables
+              "hover:bg-sidebar-accent/90" // Hover state
             )}
             aria-label={state === 'expanded' ? "Recolher menu lateral" : "Expandir menu lateral"}
             title={state === 'expanded' ? "Recolher menu lateral" : "Expandir menu lateral"}
@@ -806,6 +806,7 @@ export {
   SidebarMenuAction,
   SidebarMenuBadge,
   SidebarMenuButton,
+  sidebarMenuButtonVariants,
   SidebarMenuItem,
   SidebarMenuSkeleton,
   SidebarMenuSub,
@@ -817,4 +818,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
