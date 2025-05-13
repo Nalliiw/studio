@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -13,20 +14,48 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Search, Eye, Users } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Search, Eye, Users, AlertTriangle, Loader2 } from 'lucide-react';
 import type { Company } from '@/types';
 import Link from 'next/link';
-
-const mockCompanies: Company[] = [
-  { id: '1', name: 'Empresa Alpha Saúde', cnpj: '11.222.333/0001-44', nutritionistCount: 5, status: 'active' },
-  { id: '2', name: 'Bem-Estar Corp', cnpj: '44.555.666/0001-77', nutritionistCount: 12, status: 'active' },
-  { id: '3', name: 'NutriVida Soluções', cnpj: '77.888.999/0001-00', nutritionistCount: 3, status: 'inactive' },
-  { id: '4', name: 'Vitalidade Global', cnpj: '12.345.678/0001-99', nutritionistCount: 8, status: 'active' },
-];
+import { Card, CardContent } from '@/components/ui/card';
+import { toast } from '@/hooks/use-toast';
 
 export default function EmpresasPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const filteredCompanies = mockCompanies.filter(company =>
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/companies');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.details || 'Falha ao buscar empresas');
+        }
+        const data: Company[] = await response.json();
+        setCompanies(data);
+      } catch (err) {
+        console.error("Error fetching companies:", err);
+        const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro inesperado.';
+        setError(errorMessage);
+        toast({
+          title: "Erro ao Carregar Empresas",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCompanies();
+  }, []);
+
+  const filteredCompanies = companies.filter(company =>
     company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     company.cnpj.includes(searchTerm)
   );
@@ -51,65 +80,78 @@ export default function EmpresasPage() {
           className="pl-10 w-full md:w-1/3"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          aria-label="Buscar empresas"
         />
       </div>
 
       <Card className="shadow-md">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome da Empresa</TableHead>
-                <TableHead>CNPJ</TableHead>
-                <TableHead className="text-center">Nutricionistas</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCompanies.length > 0 ? filteredCompanies.map((company) => (
-                <TableRow key={company.id}>
-                  <TableCell className="font-medium">{company.name}</TableCell>
-                  <TableCell>{company.cnpj}</TableCell>
-                  <TableCell className="text-center">{company.nutritionistCount}</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant={company.status === 'active' ? 'default' : 'destructive'} className={company.status === 'active' ? 'bg-green-500 hover:bg-green-600' : ''}>
-                      {company.status === 'active' ? 'Ativa' : 'Inativa'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-5 w-5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => alert(`Ver detalhes ${company.name}`)}>
-                          <Eye className="mr-2 h-4 w-4" /> Ver Detalhes
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => alert(`Gerenciar usuários ${company.name}`)}>
-                          <Users className="mr-2 h-4 w-4" /> Gerenciar Usuários
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              )) : (
+          {isLoading ? (
+            <div className="h-64 flex items-center justify-center text-muted-foreground">
+              <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+              Carregando empresas...
+            </div>
+          ) : error ? (
+            <div className="h-64 flex flex-col items-center justify-center text-destructive">
+              <AlertTriangle className="mr-2 h-8 w-8" />
+              <p className="mt-2 text-lg">Erro ao carregar empresas:</p>
+              <p className="text-sm">{error}</p>
+              <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">
+                Tentar Novamente
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center h-24">
-                    Nenhuma empresa encontrada.
-                  </TableCell>
+                  <TableHead>Nome da Empresa</TableHead>
+                  <TableHead>CNPJ</TableHead>
+                  <TableHead className="text-center">Nutricionistas</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredCompanies.length > 0 ? filteredCompanies.map((company) => (
+                  <TableRow key={company.id}>
+                    <TableCell className="font-medium">{company.name}</TableCell>
+                    <TableCell>{company.cnpj}</TableCell>
+                    <TableCell className="text-center">{company.nutritionistCount}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={company.status === 'active' ? 'default' : 'destructive'} className={company.status === 'active' ? 'bg-green-500 hover:bg-green-600' : ''}>
+                        {company.status === 'active' ? 'Ativa' : 'Inativa'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" aria-label={`Ações para ${company.name}`}>
+                            <MoreHorizontal className="h-5 w-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => alert(`Ver detalhes ${company.name}`)}>
+                            <Eye className="mr-2 h-4 w-4" /> Ver Detalhes
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => alert(`Gerenciar usuários ${company.name}`)}>
+                            <Users className="mr-2 h-4 w-4" /> Gerenciar Usuários
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                )) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center h-24">
+                      Nenhuma empresa encontrada.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
   );
 }
-
-// Added Card and CardContent wrapper for table consistency with other pages.
-// This file existed, so using a placeholder component name to make the description pass.
-import { Card, CardContent } from '@/components/ui/card'; 

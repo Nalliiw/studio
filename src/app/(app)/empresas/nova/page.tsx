@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -32,22 +33,44 @@ export default function NovaEmpresaPage() {
   });
 
   const onSubmit: SubmitHandler<NewCompanyFormValues> = async (data) => {
-    console.log('Nova Empresa Data:', data);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast({
-      title: "Empresa Criada!",
-      description: `A empresa ${data.name} foi criada com sucesso.`,
-      variant: "default", // Using default, accent green is for achievements.
-    });
-    router.push('/empresas');
+    form.formState.isSubmitting = true; // Manually set submitting state
+    try {
+      const response = await fetch('/api/companies', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || 'Falha ao criar empresa.');
+      }
+
+      const newCompany = await response.json();
+      toast({
+        title: "Empresa Criada!",
+        description: `A empresa ${newCompany.name} foi criada com sucesso.`,
+      });
+      router.push('/empresas');
+    } catch (error) {
+      console.error('Error submitting new company:', error);
+      toast({
+        title: "Erro ao Criar Empresa",
+        description: error instanceof Error ? error.message : 'Ocorreu um erro inesperado.',
+        variant: "destructive",
+      });
+    } finally {
+      form.formState.isSubmitting = false; // Manually reset submitting state
+    }
   };
   
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/empresas" passHref>
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" aria-label="Voltar para empresas">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
