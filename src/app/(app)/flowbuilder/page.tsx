@@ -440,6 +440,11 @@ export default function FlowBuilderPage() {
   const [isEditPropertiesPopupOpen, setIsEditPropertiesPopupOpen] = useState(false);
   
   const [zoomLevel, setZoomLevel] = useState(1);
+  const MIN_ZOOM = 0.2;
+  const MAX_ZOOM = 2.5;
+  const ZOOM_SENSITIVITY = 0.001;
+
+
   const [connectingState, setConnectingState] = useState<ConnectingState | null>(null);
   const [hoveredConnectionId, setHoveredConnectionId] = useState<string | null>(null);
 
@@ -828,9 +833,116 @@ export default function FlowBuilderPage() {
     toast({ title: "Fluxo Salvo!", description: `O fluxo "${flowName}" foi salvo com sucesso.` });
   };
   
-  const handleZoom = (direction: 'in' | 'out') => {
-    setZoomLevel(prevZoom => direction === 'in' ? Math.min(prevZoom * 1.2, 2) : Math.max(prevZoom / 1.2, 0.5));
+  const handleManualZoom = (direction: 'in' | 'out') => {
+    const factor = direction === 'in' ? 1.2 : 1 / 1.2;
+    const newZoom = Math.max(MIN_ZOOM, Math.min(zoomLevel * factor, MAX_ZOOM));
+    
+    if (canvasRef.current) {
+        const canvas = canvasRef.current;
+        const canvasRect = canvas.getBoundingClientRect();
+
+        // Zoom around center of the current viewport
+        const viewportCenterX = canvas.scrollLeft + canvas.offsetWidth / 2;
+        const viewportCenterY = canvas.scrollTop + canvas.offsetHeight / 2;
+
+        const worldX = viewportCenterX / zoomLevel;
+        const worldY = viewportCenterY / zoomLevel;
+
+        setZoomLevel(newZoom);
+
+        // Adjust scroll to keep the world point at the center of the viewport
+        const newScrollLeft = (worldX * newZoom) - (canvas.offsetWidth / 2);
+        const newScrollTop = (worldY * newZoom) - (canvas.offsetHeight / 2);
+        
+        canvas.scrollLeft = newScrollLeft;
+        canvas.scrollTop = newScrollTop;
+    } else {
+        setZoomLevel(newZoom);
+    }
   };
+
+  const handleWheelZoom = useCallback((event: WheelEvent) => {
+    if (!canvasRef.current || draggingStepId) return;
+    event.preventDefault();
+
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Mouse position relative to canvas
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    // Calculate new zoom level
+    const delta = event.deltaY * -ZOOM_SENSITIVITY;
+    const newZoomUnbounded = zoomLevel * (1 + delta);
+    const newZoom = Math.max(MIN_ZOOM, Math.min(newZoomUnbounded, MAX_ZOOM));
+
+    if (newZoom === zoomLevel) return; // No change in zoom
+
+    // World coordinates of the point under the mouse before zoom
+    const worldX = (mouseX + canvas.scrollLeft) / zoomLevel;
+    const worldY = (mouseY + canvas.scrollTop) / zoomLevel;
+    
+    setZoomLevel(newZoom);
+
+    // Calculate new scroll position to keep the world point under the mouse
+    const newScrollLeft = (worldX * newZoom) - mouseX;
+    const newScrollTop = (worldY * newZoom) - mouseY;
+
+    // Defer scroll update to after zoom level has been applied and re-render completed
+    requestAnimationFrame(() => {
+        canvas.scrollLeft = newScrollLeft;
+        canvas.scrollTop = newScrollTop;
+    });
+
+  }, [zoomLevel, draggingStepId]);
+
+  useEffect(() => {
+    const canvasElement = canvasRef.current;
+    if (canvasElement && !isMobile) { // Only apply wheel zoom for web
+      canvasElement.addEventListener('wheel', handleWheelZoom, { passive: false });
+      return () => {
+        canvasElement.removeEventListener('wheel', handleWheelZoom);
+      };
+    }
+  }, [handleWheelZoom, isMobile]);
+
+  // TODO: Implement pinch-to-zoom for mobile
+  // useEffect(() => {
+  //   const canvasElement = canvasRef.current;
+  //   if (canvasElement && isMobile) {
+  //     let initialPinchDistance = 0;
+  //     const handleTouchStart = (event: TouchEvent) => {
+  //       if (event.touches.length === 2) {
+  //         event.preventDefault();
+  //         initialPinchDistance = Math.hypot(
+  //           event.touches[0].clientX - event.touches[1].clientX,
+  //           event.touches[0].clientY - event.touches[1].clientY
+  //         );
+  //       }
+  //     };
+  //     const handleTouchMove = (event: TouchEvent) => {
+  //       if (event.touches.length === 2) {
+  //         event.preventDefault();
+  //         const currentPinchDistance = Math.hypot(
+  //           event.touches[0].clientX - event.touches[1].clientX,
+  //           event.touches[0].clientY - event.touches[1].clientY
+  //         );
+  //         const zoomFactor = currentPinchDistance / initialPinchDistance;
+           // Calculate newZoom and center point, then apply similar logic to handleWheelZoom for origin
+  //         // setZoomLevel(prev => Math.max(MIN_ZOOM, Math.min(prev * zoomFactor, MAX_ZOOM)));
+  //         // initialPinchDistance = currentPinchDistance; // Update for continuous zoom
+  //       }
+  //     };
+  //     canvasElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+  //     canvasElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+  //     return () => {
+  //       canvasElement.removeEventListener('touchstart', handleTouchStart);
+  //       canvasElement.removeEventListener('touchmove', handleTouchMove);
+  //     };
+  //   }
+  // }, [isMobile, zoomLevel]);
+
 
   const findFirstStepId = (steps: FlowStep[]): string | null => {
     if (steps.length === 0) return null;
@@ -909,18 +1021,16 @@ export default function FlowBuilderPage() {
             const targetCardRect = { x: targetStep.position.x, y: targetStep.position.y, width: targetCardEl.offsetWidth, height: targetCardEl.offsetHeight };
             
             // Estimate Y position of the option's connection point
-            // This is an approximation and might need refinement for pixel perfection
-            const headerHeight = 40; // Approx height of card header
+            const headerHeight = 40; 
             const variableDisplayHeight = (stepHasTextOrOutput(sourceStep) && sourceStep.config.setOutputVariable) ? 25 : 0;
-            const textDisplayHeight = (stepHasTextOrOutput(sourceStep) && sourceStep.config.text) ? 30 : 0; // Approximate height for text
-            const optionsSectionPaddingTop = 10; // Padding above options list
-            const optionItemHeight = 38; // Approximate height of one option item (label + button container)
+            const textDisplayHeight = (stepHasTextOrOutput(sourceStep) && sourceStep.config.text) ? 30 : 0; 
+            const optionsSectionPaddingTop = 10; 
+            const optionItemHeight = 38; 
             
             const optionsSectionTopY = sourceCardRect.y + headerHeight + variableDisplayHeight + textDisplayHeight + optionsSectionPaddingTop;
             const optionCenterYInList = (index * optionItemHeight) + (optionItemHeight / 2);
             let calculatedStartY = optionsSectionTopY + optionCenterYInList;
             
-            // Ensure startY is within the card bounds, slightly offset from edges
             calculatedStartY = Math.max(sourceCardRect.y + 10, Math.min(calculatedStartY, sourceCardRect.y + sourceCardRect.height - 10));
 
 
@@ -940,7 +1050,7 @@ export default function FlowBuilderPage() {
       });
     });
     return lines;
-  }, [flowSteps, zoomLevel]); // Ensure zoomLevel dependency if positions are affected by it
+  }, [flowSteps]); 
 
 
   const getPathDefinition = (startX: number, startY: number, endX: number, endY: number) => {
@@ -983,8 +1093,8 @@ export default function FlowBuilderPage() {
           />
         </div>
          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => handleZoom('in')} title="Aumentar Zoom"><ZoomIn className="h-4 w-4" /></Button>
-            <Button variant="outline" size="icon" onClick={() => handleZoom('out')} title="Diminuir Zoom"><ZoomOut className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" onClick={() => handleManualZoom('in')} title="Aumentar Zoom"><ZoomIn className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" onClick={() => handleManualZoom('out')} title="Diminuir Zoom"><ZoomOut className="h-4 w-4" /></Button>
             <Link href="/flowbuilder/meus-fluxos" passHref>
                 <Button variant="outline"><List className="mr-2 h-4 w-4" /> Meus Fluxos</Button>
             </Link>
@@ -1031,7 +1141,7 @@ export default function FlowBuilderPage() {
             }
           }}
         >
-          <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left', width: `${100/zoomLevel}%`, height: `${100/zoomLevel}%`}} className="relative h-full w-full">
+          <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left', width: `calc(100% / ${zoomLevel})`, height: `calc(100% / ${zoomLevel})`}} className="relative h-full w-full">
             <svg
               className="absolute top-0 left-0 w-full h-full pointer-events-none z-0" 
               style={{ overflow: 'visible' }} 
@@ -1176,4 +1286,3 @@ export default function FlowBuilderPage() {
     </div>
   );
 }
-
