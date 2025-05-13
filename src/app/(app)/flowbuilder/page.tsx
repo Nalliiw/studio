@@ -75,12 +75,12 @@ const stepHasTextOrOutput = (step: FlowStep): boolean => {
 };
 
 
-const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownCard, isConnectingSource, isPotentialTarget, onInitiateConnection, onDisconnect, onHoverConnectionLine, onLeaveConnectionLine, hoveredConnectionId }: {
+const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onStartInteraction, isConnectingSource, isPotentialTarget, onInitiateConnection, onDisconnect, onHoverConnectionLine, onLeaveConnectionLine, hoveredConnectionId }: {
   step: FlowStep;
-  onClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onClick: (e: React.MouseEvent<HTMLDivElement>) => void; // Keep for selection
   onRemove: (id: string) => void;
   allSteps: FlowStep[];
-  onMouseDownCard: (e: React.MouseEvent<HTMLDivElement>, stepId: string) => void;
+  onStartInteraction: (clientX: number, clientY: number, stepId: string) => void; // For initiating drag
   isConnectingSource: boolean;
   isPotentialTarget: boolean;
   onInitiateConnection: (sourceStepId: string, sourceType: 'default' | 'option', sourceOptionValue?: string) => void;
@@ -105,8 +105,19 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownC
 
   return (
     <Card
-      onMouseDown={(e) => onMouseDownCard(e, step.id)}
-      onClick={onClick}
+      onMouseDown={(e) => {
+        if ((e.target as HTMLElement).closest('button, a, select, input, textarea')) return;
+        if (e.button === 0) { // Only primary mouse button
+          onStartInteraction(e.clientX, e.clientY, step.id);
+        }
+      }}
+      onTouchStart={(e) => {
+         if ((e.target as HTMLElement).closest('button, a, select, input, textarea')) return;
+         if (e.touches.length === 1) { // Only single touch
+           onStartInteraction(e.touches[0].clientX, e.touches[0].clientY, step.id);
+         }
+      }}
+      onClick={onClick} // This is for selecting the card to edit its properties
       className={cn(
         "p-3 shadow-lg rounded-lg hover:shadow-xl transition-shadow duration-150 ease-in-out cursor-grab absolute w-60 bg-card flex flex-col space-y-2 border-2",
         isConnectingSource && "ring-2 ring-primary ring-offset-2 shadow-primary/50 border-primary",
@@ -462,7 +473,6 @@ export default function FlowBuilderPage() {
 
 
   const handleDragStartTool = (event: React.DragEvent<HTMLButtonElement>, toolType: FlowStepType) => {
-    // This handler is now only for desktop (non-mobile)
     event.dataTransfer.setData("application/nutritrack-flow-tool", toolType);
     event.dataTransfer.effectAllowed = "copy";
   };
@@ -485,32 +495,12 @@ export default function FlowBuilderPage() {
   };
 
 
-  const handleStepMouseDown = (e: React.MouseEvent<HTMLDivElement>, stepId: string) => {
-    if (connectingState) return; 
-    const step = flowSteps.find(s => s.id === stepId);
-    if (!step || !canvasRef.current) return;
-
-    if ((e.target as HTMLElement).closest('button')) {
-        if (!(e.target as HTMLElement).closest('button[title^="Conectar"], button[title^="Remover"], button[title^="Desconectar"]')) {
-             return; 
-        }
-    }
-
-    setDraggingStepId(stepId);
-    const canvasRect = canvasRef.current.getBoundingClientRect(); 
-    dragOffset.current = {
-      x: (e.clientX / zoomLevel) - step.position.x - (canvasRect.left / zoomLevel) + (canvasRef.current.scrollLeft / zoomLevel) ,
-      y: (e.clientY / zoomLevel) - step.position.y - (canvasRect.top / zoomLevel) + (canvasRef.current.scrollTop / zoomLevel),
-    };
-  };
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+ const handleInteractionMove = useCallback((clientX: number, clientY: number) => {
     if (!draggingStepId || !canvasRef.current) return;
-    e.preventDefault(); 
     const canvasRect = canvasRef.current.getBoundingClientRect();
     
-    let newX = (e.clientX / zoomLevel) - dragOffset.current.x - (canvasRect.left / zoomLevel) + (canvasRef.current.scrollLeft / zoomLevel);
-    let newY = (e.clientY / zoomLevel) - dragOffset.current.y - (canvasRect.top / zoomLevel) + (canvasRef.current.scrollTop / zoomLevel);
+    let newX = (clientX / zoomLevel) - dragOffset.current.x - (canvasRect.left / zoomLevel) + (canvasRef.current.scrollLeft / zoomLevel);
+    let newY = (clientY / zoomLevel) - dragOffset.current.y - (canvasRect.top / zoomLevel) + (canvasRef.current.scrollTop / zoomLevel);
 
     newX = Math.max(0, newX); 
     newY = Math.max(0, newY);
@@ -522,29 +512,58 @@ export default function FlowBuilderPage() {
     );
   }, [draggingStepId, zoomLevel]);
 
-  const handleMouseUp = useCallback(() => {
+  const handleInteractionEnd = useCallback(() => {
     setDraggingStepId(null);
   }, []);
 
   useEffect(() => {
+    const MOUSE_MOVE_EVENT = 'mousemove';
+    const MOUSE_UP_EVENT = 'mouseup';
+    const TOUCH_MOVE_EVENT = 'touchmove';
+    const TOUCH_END_EVENT = 'touchend';
+
+    const onMouseMove = (e: MouseEvent) => handleInteractionMove(e.clientX, e.clientY);
+    const onTouchMove = (e: TouchEvent) => {
+        if (draggingStepId && e.touches[0]) { 
+            e.preventDefault(); 
+            handleInteractionMove(e.touches[0].clientX, e.touches[0].clientY);
+        }
+    };
+    
+    const onMouseUpOrTouchEnd = () => handleInteractionEnd();
+
     if (draggingStepId) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    } else {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
+      document.addEventListener(MOUSE_MOVE_EVENT, onMouseMove);
+      document.addEventListener(TOUCH_MOVE_EVENT, onTouchMove, { passive: false });
+      document.addEventListener(MOUSE_UP_EVENT, onMouseUpOrTouchEnd);
+      document.addEventListener(TOUCH_END_EVENT, onMouseUpOrTouchEnd);
+    }
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener(MOUSE_MOVE_EVENT, onMouseMove);
+      document.removeEventListener(TOUCH_MOVE_EVENT, onTouchMove);
+      document.removeEventListener(MOUSE_UP_EVENT, onMouseUpOrTouchEnd);
+      document.removeEventListener(TOUCH_END_EVENT, onMouseUpOrTouchEnd);
     };
-  }, [draggingStepId, handleMouseMove, handleMouseUp]);
+  }, [draggingStepId, handleInteractionMove, handleInteractionEnd]);
+
+  const handleStepInteractionStart = useCallback((clientX: number, clientY: number, stepId: string) => {
+    if (connectingState) return;
+    const step = flowSteps.find(s => s.id === stepId);
+    if (!step || !canvasRef.current) return;
+
+    setDraggingStepId(stepId);
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    dragOffset.current = {
+      x: (clientX / zoomLevel) - step.position.x - (canvasRect.left / zoomLevel) + (canvasRef.current.scrollLeft / zoomLevel),
+      y: (clientY / zoomLevel) - step.position.y - (canvasRect.top / zoomLevel) + (canvasRef.current.scrollTop / zoomLevel),
+    };
+  }, [connectingState, flowSteps, zoomLevel]);
 
 
-  // Mobile Drag Handlers
+  // Mobile Drag Handlers for Tools from Palette
   const handleDocumentTouchMove = useCallback((event: TouchEvent) => {
     if (!isDraggingToolMobile) return;
-    event.preventDefault(); // Crucial for preventing scroll
+    event.preventDefault(); 
     const touch = event.touches[0];
     setMobileDragGhostPosition({ x: touch.clientX, y: touch.clientY });
   }, [isDraggingToolMobile]);
@@ -555,7 +574,6 @@ export default function FlowBuilderPage() {
     const touch = event.changedTouches[0];
     const canvasRect = canvasRef.current.getBoundingClientRect();
     
-    // Check if drop is within canvas bounds
     if (touch.clientX >= canvasRect.left && touch.clientX <= canvasRect.right &&
         touch.clientY >= canvasRect.top && touch.clientY <= canvasRect.bottom) {
             
@@ -582,9 +600,8 @@ export default function FlowBuilderPage() {
       tapTimeoutRef.current = null;
     }
     
-    // Prevent context menu on long press if it's a primary touch
     if (event.touches.length === 1) {
-        // event.preventDefault(); // This might interfere with scrolling the palette itself, test carefully.
+      // event.preventDefault(); // This can interfere with scrolling the palette
     }
 
     longPressTimeoutRef.current = setTimeout(() => {
@@ -602,18 +619,16 @@ export default function FlowBuilderPage() {
   };
   
   const handleToolTouchMoveOnButton = (event: React.TouchEvent<HTMLButtonElement>) => {
-    if (!isMobile || isDraggingToolMobile) return; // If dragging, document handler takes over
+    if (!isMobile || isDraggingToolMobile) return; 
 
     if (longPressTimeoutRef.current) {
-      // Basic movement detection: if touch moves, cancel long press.
-      // A more sophisticated version would check a threshold.
       clearTimeout(longPressTimeoutRef.current);
       longPressTimeoutRef.current = null;
     }
   };
   
   const handleToolTouchEndOnButton = (event: React.TouchEvent<HTMLButtonElement>, tool: Tool) => {
-    if (!isMobile || isDraggingToolMobile) return; // If drag was active, document touchend handles it.
+    if (!isMobile || isDraggingToolMobile) return;
   
     if (longPressTimeoutRef.current) { 
       clearTimeout(longPressTimeoutRef.current);
@@ -644,7 +659,6 @@ export default function FlowBuilderPage() {
   };
 
   useEffect(() => {
-    // Cleanup document event listeners if component unmounts while dragging
     return () => {
       if (isDraggingToolMobile) {
         document.removeEventListener('touchmove', handleDocumentTouchMove);
@@ -876,7 +890,7 @@ export default function FlowBuilderPage() {
           lines.push({
             id: `${sourceStep.id}-default-${targetStep.id}`,
             startX: sourceCardRect.x + sourceCardRect.width, 
-            startY: sourceCardRect.y + sourceCardRect.height - 20, 
+            startY: sourceCardRect.y + sourceCardRect.height - 20, // Approx vertical center of the "default next" area
             endX: targetCardRect.x, 
             endY: targetCardRect.y + targetCardRect.height / 2, 
             type: 'default',
@@ -893,17 +907,27 @@ export default function FlowBuilderPage() {
 
           if (targetStep && targetCardEl) {
             const targetCardRect = { x: targetStep.position.x, y: targetStep.position.y, width: targetCardEl.offsetWidth, height: targetCardEl.offsetHeight };
-            const headerHeight = 40; 
-            const variableHeight = stepHasTextOrOutput(sourceStep) && sourceStep.config.setOutputVariable ? 25 : 0;
-            const textHeight = stepHasTextOrOutput(sourceStep) && sourceStep.config.text ? 30 : 0;
-            const optionsSectionStartOffset = headerHeight + variableHeight + textHeight + 10; 
-            const optionItemApproxHeight = 30; 
-            const optionVerticalPosition = optionsSectionStartOffset + (index * optionItemApproxHeight) + (optionItemApproxHeight / 2);
+            
+            // Estimate Y position of the option's connection point
+            // This is an approximation and might need refinement for pixel perfection
+            const headerHeight = 40; // Approx height of card header
+            const variableDisplayHeight = (stepHasTextOrOutput(sourceStep) && sourceStep.config.setOutputVariable) ? 25 : 0;
+            const textDisplayHeight = (stepHasTextOrOutput(sourceStep) && sourceStep.config.text) ? 30 : 0; // Approximate height for text
+            const optionsSectionPaddingTop = 10; // Padding above options list
+            const optionItemHeight = 38; // Approximate height of one option item (label + button container)
+            
+            const optionsSectionTopY = sourceCardRect.y + headerHeight + variableDisplayHeight + textDisplayHeight + optionsSectionPaddingTop;
+            const optionCenterYInList = (index * optionItemHeight) + (optionItemHeight / 2);
+            let calculatedStartY = optionsSectionTopY + optionCenterYInList;
+            
+            // Ensure startY is within the card bounds, slightly offset from edges
+            calculatedStartY = Math.max(sourceCardRect.y + 10, Math.min(calculatedStartY, sourceCardRect.y + sourceCardRect.height - 10));
+
 
             lines.push({
               id: `${sourceStep.id}-option-${option.value}-${targetStep.id}`,
               startX: sourceCardRect.x + sourceCardRect.width, 
-              startY: sourceCardRect.y + Math.min(optionVerticalPosition, sourceCardRect.height - 20), 
+              startY: calculatedStartY, 
               endX: targetCardRect.x, 
               endY: targetCardRect.y + targetCardRect.height / 2, 
               type: 'option',
@@ -916,7 +940,7 @@ export default function FlowBuilderPage() {
       });
     });
     return lines;
-  }, [flowSteps, zoomLevel]); 
+  }, [flowSteps, zoomLevel]); // Ensure zoomLevel dependency if positions are affected by it
 
 
   const getPathDefinition = (startX: number, startY: number, endX: number, endY: number) => {
@@ -943,7 +967,7 @@ export default function FlowBuilderPage() {
       {isMobile && isDraggingToolMobile && mobileDragGhostPosition && draggedToolType && (
         <div style={{ position: 'fixed', left: mobileDragGhostPosition.x, top: mobileDragGhostPosition.y, transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 10000 }}>
           <Button variant="outline" size="icon" className="opacity-75 shadow-xl bg-card pointer-events-none">
-            {React.createElement(toolPalette.find(t => t.type === draggedToolType)!.icon, {className: "h-6 w-6"}) /* Ensure icon is valid React element */}
+            {React.createElement(toolPalette.find(t => t.type === draggedToolType)!.icon, {className: "h-6 w-6"})}
           </Button>
         </div>
       )}
@@ -983,7 +1007,7 @@ export default function FlowBuilderPage() {
             }}
             variant="outline"
             size="icon"
-            className="flex-shrink-0 cursor-grab touch-manipulation" // touch-manipulation to help with touch actions
+            className="flex-shrink-0 cursor-grab touch-manipulation" 
             title={tool.label}
           >
             <tool.icon className="h-5 w-5" />
@@ -1085,7 +1109,7 @@ export default function FlowBuilderPage() {
                 onClick={(e) => handleStepCardClick(e, step.id)}
                 onRemove={removeStep}
                 allSteps={flowSteps}
-                onMouseDownCard={handleStepMouseDown}
+                onStartInteraction={handleStepInteractionStart}
                 isConnectingSource={connectingState?.sourceStepId === step.id}
                 isPotentialTarget={!!connectingState && connectingState.sourceStepId !== step.id}
                 onInitiateConnection={handleInitiateConnection}
@@ -1152,3 +1176,4 @@ export default function FlowBuilderPage() {
     </div>
   );
 }
+
