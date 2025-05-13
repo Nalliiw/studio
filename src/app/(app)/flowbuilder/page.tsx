@@ -10,9 +10,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import {
   Workflow, Save, PlusCircle, Trash2, Eye, PlayCircle, ListChecks, TextCursorInput,
-  CircleDot, ImageUp, Smile, Mic, Video as VideoIcon, FileText, Image as ImageIcon, FileAudio, Film, AlignLeft, HelpCircle, Link2, Variable, ZoomIn, ZoomOut, Move
+  CircleDot, ImageUp, Smile, Mic, Video as VideoIcon, FileText, Image as ImageIcon, FileAudio, Film, AlignLeft, HelpCircle, Link2, Variable, ZoomIn, ZoomOut, Move, Unlink
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -43,8 +44,8 @@ const toolPalette: Tool[] = [
 ];
 
 const NO_NEXT_STEP_VALUE = "__NO_NEXT_STEP__";
-const CARD_WIDTH = 256; // 16rem, w-64
-const CARD_HEIGHT_ESTIMATE = 160; // Estimate, real height varies. Increased from 120
+const CARD_WIDTH = 240; // 15rem, w-60
+const CARD_HEIGHT_ESTIMATE = 180; // Estimate, real height varies. Increased slightly for more content.
 
 interface ConnectingState {
   sourceStepId: string;
@@ -66,94 +67,113 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownC
   const getStepTitleById = (id?: string) => allSteps.find(s => s.id === id)?.title || 'Próxima Etapa';
 
   const handleConnectClick = (e: React.MouseEvent, sourceType: 'default' | 'option', optionValue?: string) => {
-    e.stopPropagation(); // Prevent card click (opening editor)
+    e.stopPropagation(); 
     onInitiateConnection(step.id, sourceType, optionValue);
   };
+
+  const handleDisconnectClick = (e: React.MouseEvent, disconnectType: 'default' | 'option', optionValue?: string) => {
+    e.stopPropagation();
+    // This function needs to be passed down or implemented here to update the flowSteps state
+    // For now, it's a placeholder until the parent component implements it.
+    // Example: onDisconnect(step.id, disconnectType, optionValue);
+    toast({ title: "Desconectar", description: `Ação de desconectar para ${disconnectType} (opção: ${optionValue}) não implementada.`});
+  };
+
 
   return (
     <Card
       onMouseDown={(e) => onMouseDownCard(e, step.id)}
       onClick={onClick}
       className={cn(
-        "p-4 mb-3 shadow-lg rounded-lg hover:shadow-xl transition-all duration-150 ease-in-out cursor-grab absolute w-64 bg-card", // Increased padding, shadow, rounded-lg
-        isConnectingSource && "ring-2 ring-primary ring-offset-2",
-        isPotentialTarget && "ring-2 ring-accent ring-offset-1 animate-pulse",
+        "p-3 shadow-lg rounded-lg hover:shadow-xl transition-shadow duration-150 ease-in-out cursor-grab absolute w-60 bg-card flex flex-col space-y-2 border",
+        isConnectingSource && "ring-2 ring-primary ring-offset-2 shadow-primary/50",
+        isPotentialTarget && "ring-2 ring-accent ring-offset-1 animate-pulse shadow-accent/50",
       )}
       id={`step-card-${step.id}`}
       style={{ left: step.position.x, top: step.position.y }}
     >
-      <div className="flex items-start gap-3"> {/* Increased gap */}
-        <ToolIcon className="h-6 w-6 text-muted-foreground mt-0.5 flex-shrink-0" /> {/* Slightly larger icon */}
-        <div className="flex-1 min-w-0 space-y-1"> {/* Added space-y-1 for vertical spacing */}
-          <p className="font-semibold text-base truncate">{step.title || "Etapa Sem Título"}</p> {/* Larger title */}
-          <p className="text-xs text-muted-foreground">Tipo: {toolPalette.find(t => t.type === step.type)?.label || step.type}</p>
-          
-          {step.config.setOutputVariable && (
-            <p className="text-xs text-primary mt-0.5 flex items-center truncate"> {/* Changed text-blue-600 to text-primary */}
-              <Variable className="inline h-3 w-3 mr-1 flex-shrink-0" /> Salva em: <span className="font-mono ml-1 truncate">{step.config.setOutputVariable}</span>
-            </p>
-          )}
+      {/* Header: Icon, Title, Remove Button */}
+      <div className="flex justify-between items-center pb-2 border-b border-border/50">
+        <div className="flex items-center gap-2 truncate">
+          <ToolIcon className="h-5 w-5 text-primary flex-shrink-0" />
+          <p className="font-semibold text-sm truncate text-card-foreground" title={step.title}>{step.title || "Etapa Sem Título"}</p>
+        </div>
+        <Button variant="ghost" size="icon" className="h-6 w-6 p-0 flex-shrink-0 group/trash" onClick={(e) => { e.stopPropagation(); onRemove(step.id); }}>
+          <Trash2 className="h-3.5 w-3.5 text-muted-foreground group-hover/trash:text-destructive transition-colors" />
+        </Button>
+      </div>
 
-          {step.type === 'information_text' && step.config.text && (
-             <p className="text-sm mt-1 text-card-foreground/80 truncate">{step.config.text}</p> // Slightly larger text
-          )}
-          
-          {(step.type === 'multiple_choice' || step.type === 'single_choice') && step.config.options && (
-            <div className="text-sm mt-1 space-y-1"> {/* Increased text size and spacing */}
-              <p className="truncate font-medium text-muted-foreground">{step.config.text}</p>
-              {step.config.options.slice(0, 2).map(opt => (
-                <div key={opt.value} className="flex items-center justify-between truncate py-0.5"> {/* Added py-0.5 */}
-                  <span className="text-muted-foreground mr-1">- {opt.label}</span>
-                  <div className="flex items-center">
-                    {opt.nextStepId && (
-                      <span className="text-primary text-xs flex items-center mr-1">
-                        <Link2 className="inline h-3 w-3 mr-0.5 flex-shrink-0" /> {getStepTitleById(opt.nextStepId)}
-                      </span>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 p-0" // Standardized button size
-                      onClick={(e) => handleConnectClick(e, 'option', opt.value)}
-                      title={`Conectar opção "${opt.label}"`}
-                    >
-                      <Link2 className="h-4 w-4" /> {/* Standardized icon size */}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              {step.config.options.length > 2 && <p className="text-muted-foreground text-xs">...</p>}
-            </div>
-          )}
+      {/* Output Variable (if any) */}
+      {step.config.setOutputVariable && (
+        <div className="flex items-center text-xs text-primary truncate pt-1">
+          <Variable className="inline h-3 w-3 mr-1 flex-shrink-0" />
+          <span className="truncate">Salva em: <span className="font-mono ml-0.5 bg-primary/10 px-1 py-0.5 rounded-sm">{step.config.setOutputVariable}</span></span>
+        </div>
+      )}
 
-           {(step.type.startsWith('display_') || step.type.endsWith('_upload') || step.type.endsWith('_record')) && step.config.text && (
-            <p className="text-sm mt-1 text-card-foreground/80 truncate">{step.config.text}</p> // Slightly larger text
-          )}
+      {/* Question/Instruction Text (if relevant) */}
+      {(step.type === 'information_text' || step.type.includes('input') || step.type.includes('choice') || step.type.startsWith('display_') || step.type.endsWith('_upload') || step.type.endsWith('_record') || step.type === 'emoji_rating') && step.config.text && (
+         <p className="text-xs text-muted-foreground truncate pt-1" title={step.config.text}>{step.config.text}</p>
+      )}
 
-          {(!step.type.includes('choice') || (step.config.options && step.config.options.some(opt => !opt.nextStepId))) && (
-             <div className="text-sm text-primary mt-1 flex items-center justify-between truncate">
-                <div className="flex items-center">
-                  <Link2 className="inline h-4 w-4 mr-1 flex-shrink-0" /> {/* Standardized icon size */}
-                   Próximo: {step.config.defaultNextStepId ? getStepTitleById(step.config.defaultNextStepId) : (
-                    <span className="text-muted-foreground italic ml-1">
-                        {step.type.includes('choice') ? "(padrão: fim)" : "(fim do fluxo)"}
-                    </span>
-                    )}
-                </div>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 p-0" // Standardized button size
-                    onClick={(e) => handleConnectClick(e, 'default')}
-                    title="Conectar etapa padrão"
+      {/* Options (for choice types) */}
+      {(step.type === 'multiple_choice' || step.type === 'single_choice') && step.config.options && step.config.options.length > 0 && (
+        <div className="space-y-1.5 pt-2 mt-1 border-t border-border/30">
+          <p className="text-xxs font-medium text-muted-foreground mb-1">RAMIFICAÇÕES:</p>
+          {step.config.options.map(opt => (
+            <div key={opt.value} className="flex items-center justify-between text-xs group/option bg-muted/50 p-1.5 rounded-md">
+              <span className="truncate text-card-foreground mr-1 flex-grow" title={opt.label}>{opt.label}</span>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {opt.nextStepId && (
+                  <span 
+                    className="text-primary/80 text-xxs truncate max-w-[60px] italic cursor-pointer hover:underline" 
+                    title={`Próximo: ${getStepTitleById(opt.nextStepId)}. Clique para desconectar.`}
+                    onClick={(e) => handleDisconnectClick(e, 'option', opt.value)}
                   >
-                    <Link2 className="h-4 w-4" /> {/* Standardized icon size */}
+                    &rarr; {getStepTitleById(opt.nextStepId)}
+                  </span>
+                )}
+                 <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 p-0.5 opacity-60 group-hover/option:opacity-100 hover:bg-primary/10"
+                  onClick={(e) => handleConnectClick(e, 'option', opt.value)}
+                  title={`Conectar "${opt.label}"`}
+                >
+                  <Link2 className="h-3.5 w-3.5 text-primary" />
                 </Button>
+              </div>
             </div>
+          ))}
+        </div>
+      )}
+      
+      {/* Default Next Step (always visible) */}
+      <div className="text-xs flex items-center justify-between pt-2 mt-auto border-t border-border/30 group/default-next">
+        <div className="flex items-center truncate">
+          <span className="text-muted-foreground mr-1">SAÍDA PADRÃO:</span>
+          {step.config.defaultNextStepId ? (
+            <span 
+              className="text-primary truncate max-w-[80px] italic cursor-pointer hover:underline" 
+              title={`Próximo: ${getStepTitleById(step.config.defaultNextStepId)}. Clique para desconectar.`}
+              onClick={(e) => handleDisconnectClick(e, 'default')}
+            >
+              {getStepTitleById(step.config.defaultNextStepId)}
+            </span>
+          ) : (
+            <span className="text-muted-foreground italic">
+              {step.type.includes('choice') ? "(Fim do Fluxo)" : "(Fim do Fluxo)"}
+            </span>
           )}
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={(e) => { e.stopPropagation(); onRemove(step.id); }}>
-          <Trash2 className="h-4 w-4 text-destructive" /> {/* Standardized icon size */}
+        <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 p-0.5 opacity-60 group-hover/default-next:opacity-100 hover:bg-primary/10"
+            onClick={(e) => handleConnectClick(e, 'default')}
+            title="Conectar saída padrão / Alterar conexão"
+          >
+            <Link2 className="h-3.5 w-3.5 text-primary" />
         </Button>
       </div>
     </Card>
@@ -269,7 +289,11 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
               onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {
                       const file = e.target.files[0];
-                      handleConfigChange('url', URL.createObjectURL(file)); 
+                      // For simplicity in this example, we'll store the file name.
+                      // In a real app, you'd upload this file and store its URL.
+                      // For display purposes, if it's an object URL, it might work temporarily
+                      // but it's better to handle file uploads properly.
+                      handleConfigChange('url', URL.createObjectURL(file)); // TEMPORARY, NOT FOR PRODUCTION STORAGE
                       if (!step.config.text) handleConfigChange('text', file.name);
                   }
               }}
@@ -303,12 +327,15 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
                       <SelectValue placeholder="Próxima etapa para esta opção..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NO_NEXT_STEP_VALUE}>Nenhuma (Fim do fluxo ou padrão)</SelectItem>
+                      <SelectItem value={NO_NEXT_STEP_VALUE}>Nenhuma (Usar padrão/Fim)</SelectItem>
                       {availableNextSteps.map(nextStep => (
                         <SelectItem key={nextStep.id} value={nextStep.id}>{nextStep.title}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                   <Button variant="ghost" size="icon" onClick={() => onOptionChange(step.id, option.value, option.label, undefined)} title="Desconectar esta ramificação">
+                      <Unlink className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                   </Button>
                 </div>
               </div>
             ))}
@@ -335,32 +362,33 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
           </div>
         )}
 
-        {(!step.type.includes('choice') || (step.type.includes('choice') && step.config.options && step.config.options.some(opt => !opt.nextStepId))) && (
-            <div>
-                <Label htmlFor={`step-defaultnextstep-${step.id}`}>Próxima Etapa Padrão</Label>
-                <div className="flex items-center gap-1">
-                  <Select
-                      value={safeSelectValue(step.config.defaultNextStepId)}
-                      onValueChange={(newDefaultNextStepId) => handleConfigChange('defaultNextStepId', newDefaultNextStepId === NO_NEXT_STEP_VALUE ? undefined : newDefaultNextStepId)}
-                  >
-                    <SelectTrigger id={`step-defaultnextstep-${step.id}`}>
-                      <SelectValue placeholder="Selecione a próxima etapa padrão..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NO_NEXT_STEP_VALUE}>Nenhuma (Fim do fluxo)</SelectItem>
-                      {availableNextSteps.map(nextStep => (
-                        <SelectItem key={nextStep.id} value={nextStep.id}>{nextStep.title}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                    {step.type.includes('choice') 
-                    ? "Usado se uma opção não tiver ramificação específica."
-                    : "Próxima etapa após esta."}
-                </p>
+        <div> {/* Default Next Step configuration is always available */}
+            <Label htmlFor={`step-defaultnextstep-${step.id}`}>Próxima Etapa Padrão</Label>
+            <div className="flex items-center gap-1">
+              <Select
+                  value={safeSelectValue(step.config.defaultNextStepId)}
+                  onValueChange={(newDefaultNextStepId) => handleConfigChange('defaultNextStepId', newDefaultNextStepId === NO_NEXT_STEP_VALUE ? undefined : newDefaultNextStepId)}
+              >
+                <SelectTrigger id={`step-defaultnextstep-${step.id}`}>
+                  <SelectValue placeholder="Selecione a próxima etapa padrão..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_NEXT_STEP_VALUE}>Nenhuma (Fim do fluxo)</SelectItem>
+                  {availableNextSteps.map(nextStep => (
+                    <SelectItem key={nextStep.id} value={nextStep.id}>{nextStep.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" size="icon" onClick={() => handleConfigChange('defaultNextStepId', undefined)} title="Desconectar etapa padrão">
+                <Unlink className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+              </Button>
             </div>
-        )}
+            <p className="text-xs text-muted-foreground mt-1">
+                {step.type.includes('choice') 
+                ? "Usado se uma opção não tiver ramificação específica ou como fallback."
+                : "Próxima etapa após esta."}
+            </p>
+        </div>
 
       </div>
     </ScrollArea>
@@ -392,21 +420,23 @@ export default function FlowBuilderPage() {
       id: Date.now().toString(),
       type: tool.type,
       title: tool.defaultTitle,
-      config: JSON.parse(JSON.stringify(tool.defaultConfig)),
-      position: { x: 50 + Math.random() * 50, y: 80 + flowSteps.length * 20 },
+      config: JSON.parse(JSON.stringify(tool.defaultConfig)), // Deep copy default config
+      position: { x: 50 + Math.random() * 50, y: 80 + flowSteps.length * 20 }, // Basic positioning
     };
     setFlowSteps(prev => [...prev, newStep]);
     toast({ title: "Elemento Adicionado", description: `${tool.label} foi adicionado ao fluxo.` });
     setIsAddToolPopupOpen(false);
-  }, [flowSteps.length, setFlowSteps, setIsAddToolPopupOpen]);
+  }, [flowSteps.length]);
 
 
   const handleStepMouseDown = (e: React.MouseEvent<HTMLDivElement>, stepId: string) => {
-    if (connectingState) return; 
+    if (connectingState) return; // Don't drag if in connecting mode
     const step = flowSteps.find(s => s.id === stepId);
     if (!step || !canvasRef.current) return;
 
+    // Prevent dragging if clicking on a button within the card (like connect or delete)
     if ((e.target as HTMLElement).closest('button')) {
+        // console.log("Clicked a button inside card, not dragging.");
         return;
     }
 
@@ -426,7 +456,8 @@ export default function FlowBuilderPage() {
     let newX = (e.clientX / zoomLevel) - dragOffset.current.x - (canvasRect.left / zoomLevel);
     let newY = (e.clientY / zoomLevel) - dragOffset.current.y - (canvasRect.top / zoomLevel);
 
-    newX = Math.max(0, newX);
+    // Basic boundary checks (can be improved)
+    newX = Math.max(0, newX); // Prevent dragging off top-left
     newY = Math.max(0, newY);
 
     setFlowSteps(prevSteps =>
@@ -456,7 +487,7 @@ export default function FlowBuilderPage() {
 
   const handleInitiateConnection = (sourceStepId: string, sourceType: 'default' | 'option', sourceOptionValue?: string) => {
     setConnectingState({ sourceStepId, sourceType, sourceOptionValue });
-    setIsEditPropertiesPopupOpen(false); 
+    setIsEditPropertiesPopupOpen(false); // Close properties editor if open
     toast({ title: "Conectando Etapa", description: "Clique na etapa de destino para criar a ligação." });
   };
 
@@ -489,17 +520,19 @@ export default function FlowBuilderPage() {
 
 
   const handleStepCardClick = (e: React.MouseEvent<HTMLDivElement>, stepId: string) => {
-    if (draggingStepId) return;
+    if (draggingStepId) return; // Don't do anything if we just finished dragging this card
 
-    if (connectingState) {
-      if (connectingState.sourceStepId === stepId) {
+    if (connectingState) { // If in connecting mode
+      if (connectingState.sourceStepId === stepId) { // Trying to connect to self
         toast({ title: "Ação Inválida", description: "Não é possível conectar uma etapa a ela mesma desta forma.", variant: "destructive" });
-        setConnectingState(null); 
+        // Optionally, cancel connecting state: setConnectingState(null); 
         return;
       }
       completeConnection(stepId);
     } else {
-      if (!(e.target as HTMLElement).closest('button[title^="Conectar"]')) {
+      // Only open properties editor if not clicking a button (like connect or delete)
+      // This check might need to be more robust depending on card structure
+      if (!(e.target as HTMLElement).closest('button[title^="Conectar"], button[title^="Remover"]')) {
         setSelectedStepId(stepId);
         setIsEditPropertiesPopupOpen(true);
       }
@@ -517,6 +550,7 @@ export default function FlowBuilderPage() {
       setSelectedStepId(null);
       setIsEditPropertiesPopupOpen(false);
     }
+    // Also remove connections pointing to this step
     setFlowSteps(prev => prev.map(s => {
         const newConfig = {...s.config};
         if (newConfig.defaultNextStepId === idToRemove) {
@@ -582,7 +616,8 @@ export default function FlowBuilderPage() {
       return;
     }
     console.log('Saving flow:', { flowName, steps: flowSteps });
-    await new Promise(resolve => setTimeout(resolve, 1000)); 
+    // Here you would typically make an API call to save the flow
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
     toast({ title: "Fluxo Salvo!", description: `O fluxo "${flowName}" foi salvo com sucesso.` });
   };
   
@@ -608,37 +643,41 @@ export default function FlowBuilderPage() {
          <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => handleZoom('in')} title="Aumentar Zoom"><ZoomIn className="h-4 w-4" /></Button>
             <Button variant="outline" size="icon" onClick={() => handleZoom('out')} title="Diminuir Zoom"><ZoomOut className="h-4 w-4" /></Button>
-            <Link href="/flowbuilder" passHref> 
+            <Link href="/flowbuilder" passHref> {/* Assuming this links to a list of flows */}
                 <Button variant="outline"><ListChecks className="mr-2 h-4 w-4" /> Meus Fluxos</Button>
             </Link>
          </div>
       </div>
       
       <div className="flex-1 flex overflow-hidden relative">
+        {/* Canvas for Flow Steps */}
         <div
           ref={canvasRef}
           className={cn(
-            "flex-1 relative overflow-auto dot-grid-background",
+            "flex-1 relative overflow-auto dot-grid-background", // Added dot-grid pattern
             connectingState ? "cursor-crosshair" : (draggingStepId ? "cursor-grabbing" : "cursor-grab")
           )}
            onClick={(e) => {
+            // If in connecting state and click on canvas (not a step card), cancel connection
             if (connectingState && e.target === canvasRef.current) {
               setConnectingState(null);
               toast({ title: "Conexão Cancelada", description: "A tentativa de conexão foi cancelada." });
             }
           }}
         >
+          {/* Scalable container for zoom */}
           <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left', width: `${100/zoomLevel}%`, height: `${100/zoomLevel}%`}} className="relative h-full w-full">
+            {/* SVG Layer for Connections */}
             <svg
-              className="absolute top-0 left-0 w-full h-full pointer-events-none z-0"
-              style={{ overflow: 'visible' }}
+              className="absolute top-0 left-0 w-full h-full pointer-events-none z-0" // Ensure SVG is behind cards
+              style={{ overflow: 'visible' }} // Allow paths to draw outside SVG initial bounds if needed
             >
               <defs>
                 <marker
                   id="arrowhead-default"
-                  markerWidth="10"
+                  markerWidth="10" // Arrowhead size
                   markerHeight="7"
-                  refX="8" 
+                  refX="8" // Offset to not overlap line end
                   refY="3.5"
                   orient="auto"
                 >
@@ -646,7 +685,7 @@ export default function FlowBuilderPage() {
                 </marker>
                  <marker
                   id="arrowhead-option"
-                  markerWidth="8" 
+                  markerWidth="8" // Slightly smaller for option lines
                   markerHeight="5.6" 
                   refX="6.4" 
                   refY="2.8" 
@@ -656,18 +695,20 @@ export default function FlowBuilderPage() {
                 </marker>
               </defs>
               {flowSteps.map(sourceStep => {
+                // Get position and dimensions of source card
+                // For simplicity, using fixed width/height. Real scenarios might get dynamic rects.
                 const sourceCardRect = {
                     x: sourceStep.position.x,
                     y: sourceStep.position.y,
-                    width: CARD_WIDTH,
-                    height: CARD_HEIGHT_ESTIMATE, 
+                    width: CARD_WIDTH, // Defined constant
+                    height: CARD_HEIGHT_ESTIMATE, // Defined constant (estimate)
                 };
                 const paths: JSX.Element[] = [];
 
                 const getPathDefinition = (startX: number, startY: number, endX: number, endY: number) => {
                     const dx = endX - startX;
                     // const dy = endY - startY; // Not used in this curve type
-                    const controlOffset = Math.max(20, Math.min(Math.abs(dx) * 0.3, 75));
+                    const controlOffset = Math.max(20, Math.min(Math.abs(dx) * 0.3, 75)); // Adjusted controlOffset
                     const c1x = startX + controlOffset;
                     const c1y = startY;
                     const c2x = endX - controlOffset;
@@ -675,13 +716,14 @@ export default function FlowBuilderPage() {
                     return `M ${startX} ${startY} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${endX} ${endY}`;
                 };
 
+                // Draw default next step connection
                 if (sourceStep.config.defaultNextStepId) {
                   const targetStep = flowSteps.find(s => s.id === sourceStep.config.defaultNextStepId);
                   if (targetStep) {
                     const targetCardRect = { x: targetStep.position.x, y: targetStep.position.y, width: CARD_WIDTH, height: CARD_HEIGHT_ESTIMATE };
-                    const startX = sourceCardRect.x + sourceCardRect.width;
-                    const startY = sourceCardRect.y + sourceCardRect.height / 2;
-                    const endX = targetCardRect.x;
+                    const startX = sourceCardRect.x + sourceCardRect.width; // Exit from right-middle
+                    const startY = sourceCardRect.y + sourceCardRect.height - 20; // Adjusted Y for default to be lower part of card
+                    const endX = targetCardRect.x; // Enter from left-middle
                     const endY = targetCardRect.y + targetCardRect.height / 2;
                     paths.push(
                       <path
@@ -689,26 +731,30 @@ export default function FlowBuilderPage() {
                         d={getPathDefinition(startX, startY, endX, endY)}
                         stroke="hsl(var(--primary))" strokeWidth="2" fill="none"
                         markerEnd="url(#arrowhead-default)"
+                        style={{ animation: 'flow 1s linear infinite alternate' }}
                       />);
                   }
                 }
+                // Draw option next step connections
                 sourceStep.config.options?.forEach((option, index) => {
                   if (option.nextStepId) {
                     const targetStep = flowSteps.find(s => s.id === option.nextStepId);
                     if (targetStep) {
                       const targetCardRect = { x: targetStep.position.x, y: targetStep.position.y, width: CARD_WIDTH, height: CARD_HEIGHT_ESTIMATE };
                       const numOptions = sourceStep.config.options?.length || 1;
+                      const optionBaseY = sourceStep.config.setOutputVariable || sourceStep.config.text ? 90 : 60; // Estimate Y based on card content
                       const verticalOffsetFactor = (index - (numOptions -1) / 2); 
                       const startX = sourceCardRect.x + sourceCardRect.width;
-                      const startY = sourceCardRect.y + (sourceCardRect.height / 2) + (verticalOffsetFactor * 15); // Increased spread for option lines
+                      const startY = sourceCardRect.y + optionBaseY + (index * 30) + 10; // Stagger option lines
                       const endX = targetCardRect.x;
-                      const endY = targetCardRect.y + targetCardRect.height / 2;
+                      const endY = targetCardRect.y + targetCardRect.height / 2; 
                        paths.push(
                         <path
                           key={`${sourceStep.id}-option-${option.value}-${targetStep.id}`}
                           d={getPathDefinition(startX, startY, endX, endY)}
-                          stroke="hsl(var(--muted-foreground))" strokeWidth="1.5" fill="none" strokeDasharray="4 3" // Adjusted dasharray
+                          stroke="hsl(var(--muted-foreground))" strokeWidth="1.5" fill="none" strokeDasharray="4 3" // Dashed for options
                           markerEnd="url(#arrowhead-option)"
+                          style={{ animation: 'flow 1s linear infinite alternate-reverse' }}
                         />);
                     }
                   }
@@ -716,33 +762,40 @@ export default function FlowBuilderPage() {
                 return paths;
               })}
             </svg>
+            <style jsx global>{`
+                @keyframes flow {
+                    from { stroke-dashoffset: 8; }
+                    to { stroke-dashoffset: 0; }
+                }
+            `}</style>
             
+            {/* Add Tool Button and Popup */}
             <Dialog open={isAddToolPopupOpen} onOpenChange={setIsAddToolPopupOpen}>
                 <DialogTrigger asChild>
                 <Button
-                    variant="default" 
+                    variant="default" // Changed to default for better visibility
                     size="icon"
-                    className="absolute top-4 left-4 z-20 rounded-full shadow-lg h-12 w-12"
+                    className="absolute top-4 left-4 z-20 rounded-full shadow-lg h-12 w-12 bg-primary hover:bg-primary/90 text-primary-foreground" // z-20 to be above SVG but below dialog
                     aria-label="Adicionar Etapa ao Fluxo"
                     title="Adicionar Etapa ao Fluxo"
                 >
                     <PlusCircle className="h-6 w-6" />
                 </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-2xl max-h-[85vh]">
+                <DialogContent className="sm:max-w-2xl max-h-[85vh]"> {/* z-50 is default for DialogContent */}
                 <DialogHeader>
                     <DialogTitle>Adicionar Nova Etapa ao Fluxo</DialogTitle>
                     <DialogDescription>
                     Selecione um tipo de etapa para adicionar ao seu fluxo.
                     </DialogDescription>
                 </DialogHeader>
-                <ScrollArea className="max-h-[65vh] p-1 -m-1">
+                <ScrollArea className="max-h-[65vh] p-1 -m-1"> {/* Adjust max height as needed */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 py-4">
                     {toolPalette.map(tool => (
                         <Card
                         key={tool.type}
                         onClick={() => handleAddToolFromPopup(tool.type)}
-                        className="p-4 flex flex-col items-center justify-center text-center gap-2 cursor-pointer hover:shadow-xl hover:border-primary transition-all duration-150 ease-in-out transform hover:scale-105"
+                        className="p-4 flex flex-col items-center justify-center text-center gap-2 cursor-pointer hover:shadow-xl hover:border-primary transition-all duration-150 ease-in-out transform hover:scale-105 border-2 border-transparent"
                         >
                         <tool.icon className="h-10 w-10 text-primary mb-2" />
                         <span className="text-sm font-medium">{tool.label}</span>
@@ -756,14 +809,16 @@ export default function FlowBuilderPage() {
                 </DialogContent>
             </Dialog>
 
-            {flowSteps.length === 0 && !isAddToolPopupOpen && (
+            {/* Placeholder text if no steps */}
+            {flowSteps.length === 0 && !isAddToolPopupOpen && ( // Hide if add tool popup is open
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-muted-foreground z-10 pointer-events-none">
                     <Move className="h-16 w-16 mb-4 opacity-50" />
-                    <p className="text-lg">Clique em <PlusCircle className="inline h-5 w-5 align-text-bottom" /> para adicionar a primeira etapa.</p>
+                    <p className="text-lg">Clique em <PlusCircle className="inline h-5 w-5 align-text-bottom text-primary" /> para adicionar a primeira etapa.</p>
                     <p className="text-sm">Arraste as etapas para organizar seu fluxo.</p>
                 </div>
             )}
 
+            {/* Render Flow Step Cards */}
             {flowSteps.map(step => (
             <FlowStepCardComponent
                 key={step.id}
@@ -781,9 +836,10 @@ export default function FlowBuilderPage() {
         </div>
       </div>
 
+      {/* Properties Editor Dialog */}
       {currentStepToEdit && (
         <Dialog open={isEditPropertiesPopupOpen} onOpenChange={setIsEditPropertiesPopupOpen}>
-          <DialogContent className="sm:max-w-xl max-h-[85vh]">
+          <DialogContent className="sm:max-w-xl max-h-[85vh]"> {/* Ensure this dialog is also above canvas items, z-50 by default */}
             <DialogHeader>
               <DialogTitle>Editar Etapa: <span className="font-semibold">{currentStepToEdit.title}</span></DialogTitle>
               <DialogDescription>
