@@ -66,6 +66,9 @@ interface ConnectionLine {
   sourceOptionValue?: string;
 }
 
+const stepHasTextOrOutput = (step: FlowStep) => {
+  return !!step.config.text || !!step.config.setOutputVariable;
+};
 
 const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownCard, isConnectingSource, isPotentialTarget, onInitiateConnection, onDisconnect, onHoverConnectionLine, onLeaveConnectionLine, hoveredConnectionId }: {
   step: FlowStep;
@@ -730,6 +733,7 @@ export default function FlowBuilderPage() {
 
   const currentStepToEdit = flowSteps.find(s => s.id === selectedStepId);
 
+
   const connectionLines = React.useMemo(() => {
     const lines: ConnectionLine[] = [];
     flowSteps.forEach(sourceStep => {
@@ -781,9 +785,6 @@ export default function FlowBuilderPage() {
     return lines;
   }, [flowSteps]);
 
-  const stepHasTextOrOutput = (step: FlowStep) => {
-      return !!step.config.text || !!step.config.setOutputVariable;
-  }
 
   const getPathDefinition = (startX: number, startY: number, endX: number, endY: number) => {
       const dx = endX - startX;
