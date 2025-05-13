@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -14,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarTrigger,
-  sidebarMenuButtonVariants, // Import variants for styling the div
+  sidebarMenuButtonVariants,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
@@ -36,16 +35,19 @@ import {
   Menu,
   Sun,
   Moon,
+  CalendarDays, // For Agenda
+  Sparkles, // For NutriTrack logo icon
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
-import { cn } from '@/lib/utils'; // Import cn for class merging
+import { cn } from '@/lib/utils';
 
 interface NavItem {
   href: string;
   label: string;
   icon: React.ElementType;
   roles: UserRole[];
+  subItems?: NavItem[]; // For nested items like Agenda under Pacientes
 }
 
 const navItems: NavItem[] = [
@@ -55,7 +57,18 @@ const navItems: NavItem[] = [
   { href: '/relatorios-gerais', label: 'Relatórios Gerais', icon: BarChart3, roles: [UserRole.ADMIN_SUPREMO] },
   // Nutricionista
   { href: '/dashboard-nutricionista', label: 'Dashboard Nutri', icon: LayoutDashboard, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] },
-  { href: '/pacientes', label: 'Pacientes', icon: Users, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] },
+  { 
+    href: '/pacientes', 
+    label: 'Pacientes', 
+    icon: Users, 
+    roles: [UserRole.NUTRITIONIST_WHITE_LABEL],
+    // Example of how Agenda could be linked from here, actual navigation to specific patient agenda would be from patient list
+    // subItems: [
+    //   { href: '/pacientes', label: 'Ver Pacientes', icon: Users, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] },
+    //   // Dynamic link, would need logic to go to a specific patient's agenda or a general agenda management page
+    //   // { href: '/agenda-geral', label: 'Agendas', icon: CalendarDays, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] }
+    // ]
+  },
   { href: '/flowbuilder', label: 'Criador de Fluxos', icon: Workflow, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] },
   { href: '/biblioteca', label: 'Biblioteca', icon: Library, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] },
   // Paciente
@@ -65,11 +78,17 @@ const navItems: NavItem[] = [
   { href: '/elogios', label: 'Elogios', icon: Award, roles: [UserRole.PATIENT] },
 ];
 
+// Simple NutriTrack Icon for collapsed sidebar
+const NutriTrackIcon = ({ className }: { className?: string }) => (
+    <Sparkles className={cn("h-7 w-7 text-sidebar-primary", className)} />
+);
+
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const [theme, toggleTheme] = useTheme('light');
+  const { theme, toggleTheme } = useTheme(); // Changed to get theme and toggleTheme directly
 
   if (loading) {
     return (
@@ -100,12 +119,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         side={sidebarSidePlacement}
     >
       <Sidebar collapsible={sidebarCollapsibleType} variant="sidebar" side={sidebarSidePlacement}>
-        <SidebarHeader className="p-4 justify-center items-center flex flex-col">
-           <div className="p-2 rounded-md bg-sidebar-primary/10 text-sidebar-primary w-fit">
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M15.5 7.5c0-1.105-.895-2-2-2s-2 .895-2 2c0 1.105.895 2 2 2 .653 0 1.231-.316 1.601-.809l.007-.013c.055-.09.105-.184.149-.282.139-.31.243-.645.243-.996z"/><path d="M8.5 15c0-1.105.895-2 2-2s2 .895 2 2c0 1.105-.895 2-2 2s-2-.895-2-2z"/><path d="M12 12.5c-1.5 0-2.5 1-2.5 2.5S10.5 17.5 12 17.5s2.5-1 2.5-2.5S13.5 12.5 12 12.5zM12 9.5c-1.5 0-2.5-1-2.5-2.5S10.5 4.5 12 4.5s2.5 1 2.5 2.5S13.5 9.5 12 9.5z"/></svg>
-           </div>
-          <h1 className="text-xl font-semibold text-sidebar-foreground mt-2">NutriTrack Lite</h1>
+        <SidebarHeader className="p-4 flex flex-col items-center">
+            {/* Logo/Title for expanded sidebar */}
+            <div className="group-data-[state=expanded]:flex group-data-[state=collapsed]:group-data-[collapsible=icon]:hidden flex-col items-center">
+                <div className="p-2 rounded-md bg-sidebar-primary/10 text-sidebar-primary w-fit">
+                    <NutriTrackIcon className="h-8 w-8" />
+                </div>
+                <h1 className="text-xl font-semibold text-sidebar-foreground mt-2">NutriTrack Lite</h1>
+            </div>
+            {/* Icon for collapsed sidebar (icon mode) */}
+            <div className="group-data-[state=collapsed]:group-data-[collapsible=icon]:flex hidden justify-center w-full my-2">
+                 <NutriTrackIcon className="h-8 w-8" />
+            </div>
         </SidebarHeader>
+
         <SidebarContent className="p-2">
           <SidebarMenu>
             {userNavItems.map((item) => (
@@ -129,7 +156,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <SidebarMenuButton
                   tooltip={user.name}
                   className="h-auto py-2 group-data-[collapsible=icon]:justify-center cursor-default"
-                  asChild={false} // Ensures it's a button, but won't navigate
+                  asChild={false} 
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={`https://picsum.photos/seed/${user.id}/40/40`} alt={user.name} data-ai-hint="profile avatar" />
@@ -151,33 +178,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </SidebarMenuItem>
 
             <SidebarMenuItem>
-              {/* Use asChild={true} and a wrapper div to prevent button-inside-button */}
               <SidebarMenuButton
                 tooltip={theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
-                asChild={true}
+                onClick={handleThemeToggle}
               >
-                <div
-                  onClick={handleThemeToggle}
-                  // Apply necessary classes to make the div look and behave like the button
-                  className={cn(
-                    sidebarMenuButtonVariants({ variant: 'default', size: 'default' }), // Apply base styles
-                    "justify-start w-full cursor-pointer" // Specific styles for this item
-                  )}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleThemeToggle(); }}}
-                  aria-label={theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
-                >
                   {theme === 'dark' ? <Sun /> : <Moon />}
                   <span className="flex-grow">{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
                   <Switch
                     checked={theme === 'dark'}
-                    onCheckedChange={handleThemeToggle} // Switch itself can toggle theme
+                    onCheckedChange={handleThemeToggle} 
                     aria-label="Alternar tema"
-                    className="ml-auto group-data-[collapsible=icon]:hidden"
-                    onClick={(e) => e.stopPropagation()} // Prevent event bubbling to the parent div
+                    className="ml-auto group-data-[collapsible=icon]:hidden shrink-0"
+                    onClick={(e) => e.stopPropagation()} 
                   />
-                </div>
               </SidebarMenuButton>
             </SidebarMenuItem>
 
@@ -192,15 +205,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 px-6 bg-background border-b">
-          <SidebarTrigger className="md:hidden">
-            <Menu />
-          </SidebarTrigger>
-          <div className="flex-1">
-            {/* Can add breadcrumbs or page title here */}
-          </div>
-        </header>
-        <main className="flex-1 p-6">
+        {/* Removed the fixed header from here */}
+        <main className="flex-1 p-6 overflow-auto"> {/* Added overflow-auto for content scroll */}
+           <div className="md:hidden fixed top-2 left-2 z-50"> {/* Mobile sidebar trigger */}
+             <SidebarTrigger>
+                <Menu />
+             </SidebarTrigger>
+           </div>
           {children}
         </main>
       </SidebarInset>

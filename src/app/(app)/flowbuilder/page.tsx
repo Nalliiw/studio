@@ -7,12 +7,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Workflow, Save, PlusCircle, Trash2, Eye, PlayCircle, ListChecks, TextCursorInput,
-  CircleDot, ImageUp, Smile, Mic, Video as VideoIcon, FileText, Image as ImageIcon, FileAudio, Film, AlignLeft, HelpCircle, Link2, Variable, ZoomIn, ZoomOut, Move, Unlink
+  CircleDot, ImageUp, Smile, Mic, Video as VideoIcon, FileText, Image as ImageIcon, FileAudio, Film, AlignLeft, HelpCircle, Link2, Variable, ZoomIn, ZoomOut, Move, Unlink, List
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -46,7 +46,7 @@ const toolPalette: Tool[] = [
 
 const NO_NEXT_STEP_VALUE = "__NO_NEXT_STEP__";
 const CARD_WIDTH = 240; 
-const CARD_HEIGHT_ESTIMATE = 220; // Increased slightly for more content, includes potential variable display
+const CARD_HEIGHT_ESTIMATE = 240; 
 
 interface ConnectingState {
   sourceStepId: string;
@@ -66,9 +66,10 @@ interface ConnectionLine {
   sourceOptionValue?: string;
 }
 
-const stepHasTextOrOutput = (step: FlowStep) => {
+const stepHasTextOrOutput = (step: FlowStep): boolean => {
   return !!step.config.text || !!step.config.setOutputVariable;
 };
+
 
 const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onMouseDownCard, isConnectingSource, isPotentialTarget, onInitiateConnection, onDisconnect, onHoverConnectionLine, onLeaveConnectionLine, hoveredConnectionId }: {
   step: FlowStep;
@@ -810,7 +811,8 @@ export default function FlowBuilderPage() {
       });
     });
     return lines;
-  }, [flowSteps, zoomLevel]); // Re-calculate if steps or zoom changes; zoom can affect element sizes if not careful with CSS
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flowSteps, zoomLevel]); 
 
 
   const getPathDefinition = (startX: number, startY: number, endX: number, endY: number) => {
@@ -835,9 +837,9 @@ export default function FlowBuilderPage() {
 
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] bg-muted/30">
+    <div className="flex flex-col h-full bg-muted/30"> {/* Changed to h-full */}
       {/* Top Bar: Flow Name and Controls */}
-      <div className="flex justify-between items-center p-4 border-b bg-card">
+      <div className="flex justify-between items-center p-3 border-b bg-card shadow-sm sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <Workflow className="h-6 w-6 text-primary" />
           <Input
@@ -851,14 +853,14 @@ export default function FlowBuilderPage() {
          <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => handleZoom('in')} title="Aumentar Zoom"><ZoomIn className="h-4 w-4" /></Button>
             <Button variant="outline" size="icon" onClick={() => handleZoom('out')} title="Diminuir Zoom"><ZoomOut className="h-4 w-4" /></Button>
-            <Link href="/flowbuilder" passHref> {/* Assuming a page listing all flows exists */}
-                <Button variant="outline"><ListChecks className="mr-2 h-4 w-4" /> Meus Fluxos</Button>
+            <Link href="/flowbuilder/meus-fluxos" passHref>
+                <Button variant="outline"><List className="mr-2 h-4 w-4" /> Meus Fluxos</Button>
             </Link>
          </div>
       </div>
 
       {/* Draggable Tools Toolbar */}
-      <div className="p-2 border-b bg-card shadow-sm flex space-x-2 overflow-x-auto">
+      <div className="p-2 border-b bg-card shadow-sm flex space-x-2 overflow-x-auto sticky top-[61px] z-30"> {/* Adjusted sticky position */}
         {toolPalette.map(tool => (
           <Button
             key={tool.type}
@@ -875,7 +877,7 @@ export default function FlowBuilderPage() {
       </div>
       
       {/* Main Canvas Area */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative"> {/* This will take remaining height */}
         {/* Canvas for dropping tools and displaying steps */}
         <div
           ref={canvasRef}
@@ -1036,7 +1038,7 @@ export default function FlowBuilderPage() {
       )}
 
       {/* Bottom Bar: Save, Preview, Activate */}
-      <CardFooter className="border-t pt-4 pb-4 flex justify-end gap-2 bg-card shadow-inner">
+      <CardFooter className="border-t p-3 flex justify-end gap-2 bg-card shadow-inner sticky bottom-0 z-40">
         <Button variant="outline" onClick={handleOpenPreview}><Eye className="mr-2 h-4 w-4" /> Visualizar</Button>
         <Button variant="outline" onClick={() => alert("Ativação de fluxo ainda não implementada.")}><PlayCircle className="mr-2 h-4 w-4" /> Ativar Fluxo</Button>
         <Button onClick={handleSaveFlow}>
