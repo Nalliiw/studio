@@ -762,11 +762,11 @@ export default function FlowBuilderPage() {
           const targetStep = flowSteps.find(s => s.id === option.nextStepId);
           if (targetStep) {
             const targetCardRect = { x: targetStep.position.x, y: targetStep.position.y, width: CARD_WIDTH, height: CARD_HEIGHT_ESTIMATE };
-            const optionBaseY = sourceStep.config.setOutputVariable || sourceStep.config.text ? 90 : 60;
+            const optionBaseY = stepHasTextOrOutput(sourceStep) ? 90 : 60; // Adjust based on content
             lines.push({
               id: `${sourceStep.id}-option-${option.value}-${targetStep.id}`,
               startX: sourceCardRect.x + sourceCardRect.width,
-              startY: sourceCardRect.y + optionBaseY + (index * 30) + 10,
+              startY: sourceCardRect.y + optionBaseY + (index * 30) + 10, // Dynamic Y based on options
               endX: targetCardRect.x,
               endY: targetCardRect.y + targetCardRect.height / 2,
               type: 'option',
@@ -780,6 +780,10 @@ export default function FlowBuilderPage() {
     });
     return lines;
   }, [flowSteps]);
+
+  const stepHasTextOrOutput = (step: FlowStep) => {
+      return !!step.config.text || !!step.config.setOutputVariable;
+  }
 
   const getPathDefinition = (startX: number, startY: number, endX: number, endY: number) => {
       const dx = endX - startX;
@@ -830,12 +834,11 @@ export default function FlowBuilderPage() {
             draggable
             onDragStart={(e) => handleDragStartTool(e, tool.type)}
             variant="outline"
-            size="sm"
+            size="icon"
             className="flex-shrink-0 cursor-grab"
-            title={`Arraste para adicionar ${tool.label}`}
+            title={tool.label}
           >
-            <tool.icon className="mr-2 h-4 w-4" />
-            {tool.label}
+            <tool.icon className="h-5 w-5" />
           </Button>
         ))}
       </div>
