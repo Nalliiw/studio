@@ -4,7 +4,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-import { PanelLeft, PanelRight, PanelLeftOpen, PanelRightOpen } from "lucide-react"
+import { PanelLeft, PanelRight, PanelLeftOpen, PanelRightOpen, ChevronLeft, ChevronRight } from "lucide-react" // Added Chevron icons
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -35,8 +35,8 @@ type SidebarContext = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
-  collapsible: "offcanvas" | "icon" | "none" // Added to context
-  side: "left" | "right" // Added to context
+  collapsible: "offcanvas" | "icon" | "none" 
+  side: "left" | "right" 
 }
 
 const SidebarContext = React.createContext<SidebarContext | null>(null)
@@ -56,7 +56,6 @@ const SidebarProvider = React.forwardRef<
     defaultOpen?: boolean
     open?: boolean
     onOpenChange?: (open: boolean) => void
-    // Add collapsible and side props here to pass to context
     collapsible?: "offcanvas" | "icon" | "none"
     side?: "left" | "right"
   }
@@ -69,8 +68,8 @@ const SidebarProvider = React.forwardRef<
       className,
       style,
       children,
-      collapsible = "offcanvas", // Default from Sidebar component
-      side = "left", // Default from Sidebar component
+      collapsible = "offcanvas", 
+      side = "left", 
       ...props
     },
     ref
@@ -88,7 +87,9 @@ const SidebarProvider = React.forwardRef<
         } else {
           _setOpen(openState)
         }
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+        if (typeof document !== 'undefined') {
+          document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+        }
       },
       [setOpenProp, open]
     )
@@ -109,8 +110,10 @@ const SidebarProvider = React.forwardRef<
           toggleSidebar()
         }
       }
-      window.addEventListener("keydown", handleKeyDown)
-      return () => window.removeEventListener("keydown", handleKeyDown)
+      if (typeof window !== 'undefined') {
+        window.addEventListener("keydown", handleKeyDown)
+        return () => window.removeEventListener("keydown", handleKeyDown)
+      }
     }, [toggleSidebar])
 
     const state = open ? "expanded" : "collapsed"
@@ -124,8 +127,8 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
-        collapsible, // Pass to context
-        side, // Pass to context
+        collapsible, 
+        side, 
       }),
       [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, collapsible, side]
     )
@@ -176,13 +179,11 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile, setOpen: setContextOpen, collapsible: contextCollapsible, side: contextSide } = useSidebar()
+    const { isMobile, state, openMobile, setOpenMobile, collapsible: contextCollapsible, side: contextSide } = useSidebar()
 
-    // Update context if these props are directly on Sidebar
     React.useEffect(() => {
         if(contextCollapsible !== collapsible || contextSide !== side) {
             // This is tricky, ideally provider gets these.
-            // For now, assume provider is setup with these.
         }
     }, [collapsible, side, contextCollapsible, contextSide]);
 
@@ -216,6 +217,7 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
+            <SheetPrimitive.Title className="sr-only">Menu Lateral</SheetPrimitive.Title> {/* Added for accessibility */}
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>
@@ -297,28 +299,48 @@ const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button">
 >(({ className, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar, state, side, isMobile, collapsible } = useSidebar();
+
+  if (isMobile || collapsible === 'none' || (collapsible === 'offcanvas' && state === 'collapsed')) {
+    return null;
+  }
+
+  let IconComponent;
+  if (side === 'left') {
+    IconComponent = state === "expanded" ? ChevronLeft : ChevronRight;
+  } else { // side === 'right'
+    IconComponent = state === "expanded" ? ChevronRight : ChevronLeft;
+  }
+  
+  const railPositionClasses = side === 'left' ? 'left-full -translate-x-1/2' : 'right-full translate-x-1/2';
 
   return (
-    <button
+    <Button
       ref={ref}
-      data-sidebar="rail"
-      aria-label="Toggle Sidebar"
-      tabIndex={-1}
+      variant="ghost"
+      size="icon"
       onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      title={state === "expanded" ? "Recolher menu" : "Expandir menu"}
+      aria-label={state === "expanded" ? "Recolher menu" : "Expandir menu"}
       className={cn(
-        "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
-        "[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize",
-        "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
-        "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full group-data-[collapsible=offcanvas]:hover:bg-sidebar",
-        "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
-        "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
+        "absolute z-20 top-1/2 -translate-y-1/2",
+        "h-6 w-6 p-1 rounded-full", // Smaller, circular
+        "bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        "border border-sidebar-border shadow-sm",
+        // Dynamically adjust based on sidebar's actual position/state
+        "hidden md:flex items-center justify-center",
+        // Position slightly outside the main sidebar div when collapsed (icon mode)
+        // and on the edge when expanded.
+        collapsible === 'icon' && state === 'collapsed' 
+          ? (side === 'left' ? 'left-[calc(var(--sidebar-width-icon)_-_0.75rem)]' : 'right-[calc(var(--sidebar-width-icon)_-_0.75rem)]')
+          : (side === 'left' ? 'left-[calc(var(--sidebar-width)_-_0.75rem)]' : 'right-[calc(var(--sidebar-width)_-_0.75rem)]'),
         className
       )}
       {...props}
-    />
-  )
+    >
+      <IconComponent className="h-4 w-4" />
+    </Button>
+  );
 })
 SidebarRail.displayName = "SidebarRail"
 
@@ -364,57 +386,48 @@ const SidebarHeader = React.forwardRef<
 >(({ className, children, ...props }, ref) => {
   const { toggleSidebar, isMobile, state, collapsible, side } = useSidebar();
 
+  let IconComponent;
+  if (side === 'left') {
+    IconComponent = state === 'expanded' ? ChevronLeft : ChevronRight;
+  } else { // side === 'right'
+    IconComponent = state === 'expanded' ? ChevronRight : ChevronLeft;
+  }
+
   return (
     <div
       ref={ref}
       data-sidebar="header"
       className={cn(
-        "flex flex-col gap-2 p-2", // Base styles
+        "flex flex-col gap-2 p-4", 
         className
       )}
       {...props}
     >
-      {/* Children (e.g., logo) rendered first */}
       <div className={cn(
-        "contents", // Let children flow naturally within the flex-col parent
-        // Hide children content if sidebar is collapsed AND in icon mode
+        "contents", 
         state === "collapsed" && collapsible === "icon" && "hidden"
       )}>
         {children}
       </div>
 
-      {/* Toggle Button Area - only on desktop */}
-      {!isMobile && (
+      {!isMobile && collapsible !== 'none' && (
         <div className={cn(
-          "flex items-center mt-2 justify-center", // Center button, add margin top
-          // Visibility logic for the button container:
-          // Show if expanded OR (collapsed AND icon mode)
-          // Otherwise, hide (e.g., for offcanvas-collapsed, or collapsible='none')
-          state === 'expanded' || (state === 'collapsed' && collapsible === 'icon') ? 'flex' : 'hidden'
+          "flex items-center w-full", 
+          (state === 'expanded' || (state === 'collapsed' && collapsible === 'icon')) ? 'flex' : 'hidden',
+          side === 'left' ? 'justify-end' : 'justify-start' 
         )}>
           <Button
             size="icon"
+            variant="ghost"
             onClick={toggleSidebar}
             className={cn(
-              "h-8 w-8 rounded-md", // Specific size and shape
-              "bg-sidebar-accent text-sidebar-accent-foreground", // Use sidebar theme variables
-              "hover:bg-sidebar-accent/90" // Hover state
+              "h-7 w-7 rounded-full p-0", 
+              "text-sidebar-foreground hover:bg-sidebar-accent/20", 
             )}
             aria-label={state === 'expanded' ? "Recolher menu lateral" : "Expandir menu lateral"}
             title={state === 'expanded' ? "Recolher menu lateral" : "Expandir menu lateral"}
           >
-            {state === 'expanded' && (
-              <>
-                <PanelLeft className={cn("h-5 w-5", side === 'right' && 'hidden')} />
-                <PanelRight className={cn("h-5 w-5", side === 'left' && 'hidden')} />
-              </>
-            )}
-            {state === 'collapsed' && collapsible === 'icon' && (
-              <>
-                <PanelRightOpen className={cn("h-5 w-5", side === 'right' && 'hidden')} />
-                <PanelLeftOpen className={cn("h-5 w-5", side === 'left' && 'hidden')} />
-              </>
-            )}
+            <IconComponent className="h-5 w-5" />
           </Button>
         </div>
       )}
@@ -620,7 +633,7 @@ const SidebarMenuButton = React.forwardRef<
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
-        className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+        className={cn(sidebarMenuButtonVariants({ variant, size, className }))}
         {...props}
       />
     )
@@ -791,6 +804,9 @@ const SidebarMenuSubButton = React.forwardRef<
 })
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 
+// Add SheetPrimitive import for SheetContent accessibility fix
+import * as SheetPrimitive from "@radix-ui/react-dialog";
+
 export {
   Sidebar,
   SidebarContent,
@@ -806,7 +822,7 @@ export {
   SidebarMenuAction,
   SidebarMenuBadge,
   SidebarMenuButton,
-  sidebarMenuButtonVariants,
+  sidebarMenuButtonVariants, // Keep this export if it's used elsewhere
   SidebarMenuItem,
   SidebarMenuSkeleton,
   SidebarMenuSub,
