@@ -439,7 +439,10 @@ export default function FlowBuilderPage() {
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTapRef = useRef(0);
+  
   const [isDraggingToolMobile, setIsDraggingToolMobile] = useState(false);
+  const [draggedToolType, setDraggedToolType] = useState<FlowStepType | null>(null);
+  const [mobileDragGhostPosition, setMobileDragGhostPosition] = useState<{x: number, y: number} | null>(null);
 
 
   const addStep = useCallback((toolType: FlowStepType, position: { x: number; y: number }) => {
@@ -459,26 +462,11 @@ export default function FlowBuilderPage() {
 
 
   const handleDragStartTool = (event: React.DragEvent<HTMLButtonElement>, toolType: FlowStepType) => {
+    // This handler is now only for desktop (non-mobile)
     event.dataTransfer.setData("application/nutritrack-flow-tool", toolType);
     event.dataTransfer.effectAllowed = "copy";
-    if (isMobile) {
-        if (longPressTimeoutRef.current) {
-            clearTimeout(longPressTimeoutRef.current);
-            longPressTimeoutRef.current = null;
-        }
-        if (tapTimeoutRef.current) {
-            clearTimeout(tapTimeoutRef.current);
-            tapTimeoutRef.current = null;
-        }
-        setIsDraggingToolMobile(true);
-    }
   };
 
-  const handleDragEndToolMobile = () => {
-    if (isMobile) {
-        setIsDraggingToolMobile(false);
-    }
-  };
 
   const handleDragOverCanvas = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -494,7 +482,6 @@ export default function FlowBuilderPage() {
       const y = (event.clientY - canvasRect.top + canvasRef.current.scrollTop) / zoomLevel;
       addStep(toolType, { x: x - CARD_WIDTH / 2, y: y - CARD_HEIGHT_ESTIMATE / 2 }); 
     }
-    if(isMobile) setIsDraggingToolMobile(false);
   };
 
 
@@ -504,7 +491,7 @@ export default function FlowBuilderPage() {
     if (!step || !canvasRef.current) return;
 
     if ((e.target as HTMLElement).closest('button')) {
-        if (!(e.target as HTMLElement).closest('button[title^="Conectar"], button[title^="Desconectar"]')) {
+        if (!(e.target as HTMLElement).closest('button[title^="Conectar"], button[title^="Remover"], button[title^="Desconectar"]')) {
              return; 
         }
     }
@@ -552,6 +539,120 @@ export default function FlowBuilderPage() {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [draggingStepId, handleMouseMove, handleMouseUp]);
+
+
+  // Mobile Drag Handlers
+  const handleDocumentTouchMove = useCallback((event: TouchEvent) => {
+    if (!isDraggingToolMobile) return;
+    event.preventDefault(); // Crucial for preventing scroll
+    const touch = event.touches[0];
+    setMobileDragGhostPosition({ x: touch.clientX, y: touch.clientY });
+  }, [isDraggingToolMobile]);
+
+  const handleDocumentTouchEnd = useCallback((event: TouchEvent) => {
+    if (!isDraggingToolMobile || !draggedToolType || !canvasRef.current) return;
+
+    const touch = event.changedTouches[0];
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    
+    // Check if drop is within canvas bounds
+    if (touch.clientX >= canvasRect.left && touch.clientX <= canvasRect.right &&
+        touch.clientY >= canvasRect.top && touch.clientY <= canvasRect.bottom) {
+            
+      const x = (touch.clientX - canvasRect.left + canvasRef.current.scrollLeft) / zoomLevel;
+      const y = (touch.clientY - canvasRect.top + canvasRef.current.scrollTop) / zoomLevel;
+      addStep(draggedToolType, { x: Math.max(0, x - CARD_WIDTH / 2), y: Math.max(0, y - CARD_HEIGHT_ESTIMATE / 2) });
+      const tool = toolPalette.find(t => t.type === draggedToolType);
+      toast({ title: "Ferramenta Adicionada", description: `${tool?.label || 'Ferramenta'} foi adicionada ao fluxo.` });
+    }
+
+    setIsDraggingToolMobile(false);
+    setDraggedToolType(null);
+    setMobileDragGhostPosition(null);
+    document.removeEventListener('touchmove', handleDocumentTouchMove);
+    document.removeEventListener('touchend', handleDocumentTouchEnd);
+  }, [isDraggingToolMobile, draggedToolType, zoomLevel, addStep]);
+
+
+  const handleToolTouchStart = (event: React.TouchEvent<HTMLButtonElement>, tool: Tool) => {
+    if (!isMobile) return;
+  
+    if (tapTimeoutRef.current) {
+      clearTimeout(tapTimeoutRef.current);
+      tapTimeoutRef.current = null;
+    }
+    
+    // Prevent context menu on long press if it's a primary touch
+    if (event.touches.length === 1) {
+        // event.preventDefault(); // This might interfere with scrolling the palette itself, test carefully.
+    }
+
+    longPressTimeoutRef.current = setTimeout(() => {
+      setIsDraggingToolMobile(true); 
+      setDraggedToolType(tool.type);
+      const touch = event.touches[0];
+      setMobileDragGhostPosition({ x: touch.clientX, y: touch.clientY });
+
+      document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
+      document.addEventListener('touchend', handleDocumentTouchEnd, { once: true });
+      
+      longPressTimeoutRef.current = null;
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 700); 
+  };
+  
+  const handleToolTouchMoveOnButton = (event: React.TouchEvent<HTMLButtonElement>) => {
+    if (!isMobile || isDraggingToolMobile) return; // If dragging, document handler takes over
+
+    if (longPressTimeoutRef.current) {
+      // Basic movement detection: if touch moves, cancel long press.
+      // A more sophisticated version would check a threshold.
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  };
+  
+  const handleToolTouchEndOnButton = (event: React.TouchEvent<HTMLButtonElement>, tool: Tool) => {
+    if (!isMobile || isDraggingToolMobile) return; // If drag was active, document touchend handles it.
+  
+    if (longPressTimeoutRef.current) { 
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+      
+      const currentTime = new Date().getTime();
+      const tapLength = currentTime - lastTapRef.current;
+  
+      if (tapLength < 300 && tapLength > 0) { 
+        if(tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current); 
+        tapTimeoutRef.current = null;
+        lastTapRef.current = 0;
+  
+        if (canvasRef.current) {
+          const canvasRect = canvasRef.current.getBoundingClientRect();
+          const x = (canvasRef.current.scrollLeft + canvasRect.width / 2) / zoomLevel - (CARD_WIDTH / 2);
+          const y = (canvasRef.current.scrollTop + canvasRect.height / 2) / zoomLevel - (CARD_HEIGHT_ESTIMATE / 2);
+          addStep(tool.type, { x: Math.max(0,x), y: Math.max(0,y) });
+        }
+      } else { 
+        lastTapRef.current = currentTime;
+        tapTimeoutRef.current = setTimeout(() => {
+           toast({ title: tool.label, description: "Toque duas vezes para adicionar ou segure e arraste."});
+          tapTimeoutRef.current = null;
+        }, 300);
+      }
+    }
+  };
+
+  useEffect(() => {
+    // Cleanup document event listeners if component unmounts while dragging
+    return () => {
+      if (isDraggingToolMobile) {
+        document.removeEventListener('touchmove', handleDocumentTouchMove);
+        document.removeEventListener('touchend', handleDocumentTouchEnd);
+      }
+    };
+  }, [isDraggingToolMobile, handleDocumentTouchMove, handleDocumentTouchEnd]);
+
 
   const handleInitiateConnection = (sourceStepId: string, sourceType: 'default' | 'option', sourceOptionValue?: string) => {
     setConnectingState({ sourceStepId, sourceType, sourceOptionValue });
@@ -815,8 +916,7 @@ export default function FlowBuilderPage() {
       });
     });
     return lines;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flowSteps, zoomLevel, stepHasTextOrOutput]); 
+  }, [flowSteps, zoomLevel]); 
 
 
   const getPathDefinition = (startX: number, startY: number, endX: number, endY: number) => {
@@ -837,69 +937,16 @@ export default function FlowBuilderPage() {
     }
   };
 
-  const handleToolTouchStart = (event: React.TouchEvent<HTMLButtonElement>, tool: Tool) => {
-    if (!isMobile) return;
-  
-    if (tapTimeoutRef.current) {
-      clearTimeout(tapTimeoutRef.current);
-      tapTimeoutRef.current = null;
-    }
-  
-    longPressTimeoutRef.current = setTimeout(() => {
-      setIsDraggingToolMobile(true); 
-      longPressTimeoutRef.current = null;
-    }, 700); 
-  };
-  
-  const handleToolTouchMove = () => {
-    if (!isMobile) return;
-    if (longPressTimeoutRef.current && !isDraggingToolMobile) {
-      clearTimeout(longPressTimeoutRef.current);
-      longPressTimeoutRef.current = null;
-    }
-  };
-  
-  const handleToolTouchEnd = (event: React.TouchEvent<HTMLButtonElement>, tool: Tool) => {
-    if (!isMobile) return;
-  
-    if (longPressTimeoutRef.current) { 
-      clearTimeout(longPressTimeoutRef.current);
-      longPressTimeoutRef.current = null;
-      
-      const currentTime = new Date().getTime();
-      const tapLength = currentTime - lastTapRef.current;
-  
-      if (tapLength < 300 && tapLength > 0) { 
-        if(tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current); 
-        tapTimeoutRef.current = null;
-        lastTapRef.current = 0;
-  
-        if (canvasRef.current) {
-          const canvasRect = canvasRef.current.getBoundingClientRect();
-          const x = (canvasRef.current.scrollLeft + canvasRect.width / 2) / zoomLevel - (CARD_WIDTH / 2);
-          const y = (canvasRef.current.scrollTop + canvasRect.height / 2) / zoomLevel - (CARD_HEIGHT_ESTIMATE / 2);
-          addStep(tool.type, { x: Math.max(0,x), y: Math.max(0,y) });
-          toast({ title: "Ferramenta Adicionada", description: `${tool.label} foi adicionado(a) ao fluxo.` });
-        }
-      } else { 
-        lastTapRef.current = currentTime;
-        tapTimeoutRef.current = setTimeout(() => {
-          if (!isDraggingToolMobile) { 
-             toast({ title: tool.label, description: "Toque duas vezes para adicionar ou segure e arraste."});
-          }
-          tapTimeoutRef.current = null;
-        }, 300);
-      }
-    }
-  
-    if (isDraggingToolMobile) {
-        setTimeout(() => setIsDraggingToolMobile(false), 100);
-    }
-  };
-
 
   return (
     <div className="flex flex-col h-full bg-muted/30"> 
+      {isMobile && isDraggingToolMobile && mobileDragGhostPosition && draggedToolType && (
+        <div style={{ position: 'fixed', left: mobileDragGhostPosition.x, top: mobileDragGhostPosition.y, transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 10000 }}>
+          <Button variant="outline" size="icon" className="opacity-75 shadow-xl bg-card pointer-events-none">
+            {React.createElement(toolPalette.find(t => t.type === draggedToolType)!.icon, {className: "h-6 w-6"}) /* Ensure icon is valid React element */}
+          </Button>
+        </div>
+      )}
       <div className="flex justify-between items-center p-3 border-b bg-card shadow-sm sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <Workflow className="h-6 w-6 text-primary" />
@@ -924,20 +971,19 @@ export default function FlowBuilderPage() {
         {toolPalette.map(tool => (
           <Button
             key={tool.type}
-            draggable={true} 
-            onDragStart={(e) => handleDragStartTool(e, tool.type)}
-            onDragEnd={handleDragEndToolMobile}
+            draggable={!isMobile} 
+            onDragStart={!isMobile ? (e) => handleDragStartTool(e, tool.type) : undefined}
             onTouchStart={(e) => handleToolTouchStart(e, tool)}
-            onTouchMove={handleToolTouchMove}
-            onTouchEnd={(e) => handleToolTouchEnd(e, tool)}
-            onClick={(e) => { // Primarily for desktop, mobile handled by touch events
-                if (!isMobile && e.detail > 0) { // Simple click on desktop does nothing for palette items
+            onTouchMove={handleToolTouchMoveOnButton}
+            onTouchEnd={(e) => handleToolTouchEndOnButton(e, tool)}
+            onClick={(e) => { 
+                if (!isMobile && e.detail > 0) { 
                     e.preventDefault();
                 }
             }}
             variant="outline"
             size="icon"
-            className="flex-shrink-0 cursor-grab touch-action-none"
+            className="flex-shrink-0 cursor-grab touch-manipulation" // touch-manipulation to help with touch actions
             title={tool.label}
           >
             <tool.icon className="h-5 w-5" />
@@ -998,7 +1044,7 @@ export default function FlowBuilderPage() {
                         markerEnd={line.type === 'default' ? "url(#arrowhead-default)" : "url(#arrowhead-option)"}
                         style={{ transition: 'stroke-width 0.2s' }}
                     />
-                    <path
+                    <path // Invisible wider path for easier clicking
                         d={getPathDefinition(line.startX, line.startY, line.endX, line.endY)}
                         stroke="transparent"
                         strokeWidth="15" 
@@ -1054,7 +1100,7 @@ export default function FlowBuilderPage() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-muted-foreground z-10 pointer-events-none">
                     <Move className="h-16 w-16 mb-4 opacity-50" />
                     <p className="text-lg">Arraste uma ferramenta da barra superior para adicionar a primeira etapa.</p>
-                    <p className="text-sm">Arraste as etapas para organizar seu fluxo.</p>
+                    <p className="text-sm">No mobile: toque duas vezes ou segure e arraste.</p>
                 </div>
             )}
           </div>
