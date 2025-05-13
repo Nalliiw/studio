@@ -67,6 +67,10 @@ interface ConnectionLine {
 }
 
 const stepHasTextOrOutput = (step: FlowStep): boolean => {
+  // Check if the step is defined and has a config object
+  if (!step || !step.config) {
+    return false;
+  }
   return !!step.config.text || !!step.config.setOutputVariable;
 };
 
@@ -240,7 +244,7 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
           />
         </div>
 
-        { (step.type.startsWith('display_') || step.type.endsWith('_input') || step.type.endsWith('_upload') || step.type.endsWith('_record') || step.type.endsWith('_choice') || step.type === 'information_text' || step.type === 'emoji_rating') && (
+        { (step.type.startsWith('display_') || step.type.endsWith('_input') || step.type.endsWith('_upload') || step.type.endsWith('_record') || step.type === 'information_text' || step.type === 'emoji_rating') && (
           <div>
             <Label htmlFor={`step-text-${step.id}`}>
               {step.type.includes('choice') || step.type.endsWith('_input') ? 'Texto da Pergunta/Instrução' : 
@@ -868,7 +872,7 @@ export default function FlowBuilderPage() {
             onDragStart={(e) => handleDragStartTool(e, tool.type)}
             variant="outline"
             size="icon"
-            className="flex-shrink-0 cursor-grab"
+            className="flex-shrink-0 cursor-grab touch-action-none"
             title={tool.label}
           >
             <tool.icon className="h-5 w-5" />
@@ -1058,3 +1062,4 @@ export default function FlowBuilderPage() {
     </div>
   );
 }
+
