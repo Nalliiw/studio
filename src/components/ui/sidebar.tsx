@@ -217,7 +217,7 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            <SheetPrimitive.Title className="sr-only">Menu Lateral</SheetPrimitive.Title> {/* Added for accessibility */}
+            <SheetPrimitive.Title className="sr-only">Menu Lateral</SheetPrimitive.Title>
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>
@@ -327,10 +327,7 @@ const SidebarRail = React.forwardRef<
         "h-6 w-6 p-1 rounded-full", // Smaller, circular
         "bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         "border border-sidebar-border shadow-sm",
-        // Dynamically adjust based on sidebar's actual position/state
         "hidden md:flex items-center justify-center",
-        // Position slightly outside the main sidebar div when collapsed (icon mode)
-        // and on the edge when expanded.
         collapsible === 'icon' && state === 'collapsed' 
           ? (side === 'left' ? 'left-[calc(var(--sidebar-width-icon)_-_0.75rem)]' : 'right-[calc(var(--sidebar-width-icon)_-_0.75rem)]')
           : (side === 'left' ? 'left-[calc(var(--sidebar-width)_-_0.75rem)]' : 'right-[calc(var(--sidebar-width)_-_0.75rem)]'),
@@ -388,9 +385,9 @@ const SidebarHeader = React.forwardRef<
 
   let IconComponent;
   if (side === 'left') {
-    IconComponent = state === 'expanded' ? ChevronLeft : ChevronRight;
+    IconComponent = ChevronLeft; // Icon to collapse when expanded
   } else { // side === 'right'
-    IconComponent = state === 'expanded' ? ChevronRight : ChevronLeft;
+    IconComponent = ChevronRight; // Icon to collapse when expanded
   }
 
   return (
@@ -403,18 +400,11 @@ const SidebarHeader = React.forwardRef<
       )}
       {...props}
     >
-      <div className={cn(
-        "contents", 
-        state === "collapsed" && collapsible === "icon" && "hidden"
-      )}>
-        {children}
-      </div>
-
-      {!isMobile && collapsible !== 'none' && (
+      {/* Toggle Button: Only shown when expanded, not on mobile, and sidebar is collapsible */}
+      {!isMobile && collapsible !== 'none' && state === 'expanded' && (
         <div className={cn(
-          "flex items-center w-full", 
-          (state === 'expanded' || (state === 'collapsed' && collapsible === 'icon')) ? 'flex' : 'hidden',
-          side === 'left' ? 'justify-end' : 'justify-start' 
+          "flex items-center w-full",
+          side === 'left' ? 'justify-end' : 'justify-start'
         )}>
           <Button
             size="icon"
@@ -424,13 +414,43 @@ const SidebarHeader = React.forwardRef<
               "h-7 w-7 rounded-full p-0", 
               "text-sidebar-foreground hover:bg-sidebar-accent/20", 
             )}
-            aria-label={state === 'expanded' ? "Recolher menu lateral" : "Expandir menu lateral"}
-            title={state === 'expanded' ? "Recolher menu lateral" : "Expandir menu lateral"}
+            aria-label="Recolher menu lateral"
+            title="Recolher menu lateral"
           >
             <IconComponent className="h-5 w-5" />
           </Button>
         </div>
       )}
+
+      {/* Logo/Title for expanded sidebar */}
+      <div className={cn(
+        "flex-col items-center",
+        "group-data-[state=expanded]:flex", // Show if parent <Sidebar> has data-state="expanded"
+        "group-data-[state=collapsed]:group-data-[collapsible=icon]:hidden", // Hide if icon-collapsed
+        "hidden" // Default to hidden
+      )}>
+        <div className="p-2 rounded-md bg-sidebar-primary/10 text-sidebar-primary w-fit">
+          <NutriTrackIcon className="h-8 w-8" />
+        </div>
+        <h1 className="text-xl font-semibold text-sidebar-foreground mt-2">NutriTrack Lite</h1>
+      </div>
+
+      {/* Icon for collapsed sidebar (icon mode) */}
+      <div className={cn(
+        "justify-center w-full my-2",
+        "group-data-[state=collapsed]:group-data-[collapsible=icon]:flex", // Show if icon-collapsed
+        "hidden" // Default to hidden
+      )}>
+           <NutriTrackIcon className="h-8 w-8" />
+      </div>
+      
+      {/* Render children prop, typically hidden when icon-collapsed */}
+      <div className={cn(
+        "group-data-[state=expanded]:block", // Show if expanded
+        "hidden" // Default to hidden
+      )}>
+        {children}
+      </div>
     </div>
   );
 });
@@ -806,6 +826,13 @@ SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 
 // Add SheetPrimitive import for SheetContent accessibility fix
 import * as SheetPrimitive from "@radix-ui/react-dialog";
+import { Sparkles } from 'lucide-react'; // Assuming NutriTrackIcon uses Sparkles
+
+// Simple NutriTrack Icon for collapsed sidebar (copied from app-shell.tsx)
+const NutriTrackIcon = ({ className }: { className?: string }) => (
+    <Sparkles className={cn("h-7 w-7 text-sidebar-primary", className)} />
+);
+
 
 export {
   Sidebar,
@@ -822,7 +849,7 @@ export {
   SidebarMenuAction,
   SidebarMenuBadge,
   SidebarMenuButton,
-  sidebarMenuButtonVariants, // Keep this export if it's used elsewhere
+  sidebarMenuButtonVariants,
   SidebarMenuItem,
   SidebarMenuSkeleton,
   SidebarMenuSub,
@@ -834,3 +861,4 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
