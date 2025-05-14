@@ -1,3 +1,4 @@
+
 // src/app/(app)/flowbuilder/page.tsx
 'use client';
 
@@ -16,10 +17,11 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import type { FlowStep, FlowStepType, FlowStepOption, FlowStepConfig } from '@/types';
+import type { Flow, FlowStep, FlowStepType, FlowStepOption, FlowStepConfig } from '@/types';
 import { cn } from '@/lib/utils';
 import FlowPreviewModal from '@/components/flow/flow-preview-modal';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSearchParams } from 'next/navigation';
 
 
 interface Tool {
@@ -74,13 +76,25 @@ const stepHasTextOrOutput = (step: FlowStep): boolean => {
   return !!step.config.text || !!step.config.setOutputVariable;
 };
 
+// Mock flow for editing - in a real app, this would be fetched
+const mockFlowForEditing: Flow = { 
+    id: 'flow1', 
+    name: 'Questionário Inicial Completo (Editado)', 
+    steps: [
+      { id: 'f1_step1', type: 'information_text', title: 'Bem-vindo ao Questionário', config: { text: 'Este é o questionário inicial completo. Edite-o!' }, position: {x: 50, y: 50}},
+      { id: 'f1_step2', type: 'text_input', title: 'Seu Nome', config: { text: 'Qual o seu nome completo?', defaultNextStepId: 'f1_step3', placeholder: 'Nome Completo' }, position: {x: 350, y: 50}},
+      { id: 'f1_step3', type: 'single_choice', title: 'Seu Sexo', config: { text: 'Qual o seu sexo?', options: [{value: 'm', label: 'Masculino'}, {value: 'f', label: 'Feminino'}]}, position: {x: 50, y: 300}},
+    ], 
+    nutritionistId: 'n1', 
+  };
+
 
 const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onStartInteraction, isConnectingSource, isPotentialTarget, onInitiateConnection, onDisconnect, onHoverConnectionLine, onLeaveConnectionLine, hoveredConnectionId }: {
   step: FlowStep;
-  onClick: (e: React.MouseEvent<HTMLDivElement>) => void; // Keep for selection
+  onClick: (e: React.MouseEvent<HTMLDivElement>) => void; 
   onRemove: (id: string) => void;
   allSteps: FlowStep[];
-  onStartInteraction: (clientX: number, clientY: number, stepId: string) => void; // For initiating drag
+  onStartInteraction: (clientX: number, clientY: number, stepId: string) => void; 
   isConnectingSource: boolean;
   isPotentialTarget: boolean;
   onInitiateConnection: (sourceStepId: string, sourceType: 'default' | 'option', sourceOptionValue?: string) => void;
@@ -107,17 +121,17 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onStartInter
     <Card
       onMouseDown={(e) => {
         if ((e.target as HTMLElement).closest('button, a, select, input, textarea')) return;
-        if (e.button === 0) { // Only primary mouse button
+        if (e.button === 0) { 
           onStartInteraction(e.clientX, e.clientY, step.id);
         }
       }}
       onTouchStart={(e) => {
          if ((e.target as HTMLElement).closest('button, a, select, input, textarea')) return;
-         if (e.touches.length === 1) { // Only single touch
+         if (e.touches.length === 1) { 
            onStartInteraction(e.touches[0].clientX, e.touches[0].clientY, step.id);
          }
       }}
-      onClick={onClick} // This is for selecting the card to edit its properties
+      onClick={onClick} 
       className={cn(
         "p-3 shadow-lg rounded-lg hover:shadow-xl transition-shadow duration-150 ease-in-out cursor-grab absolute w-60 bg-card flex flex-col space-y-2 border-2",
         isConnectingSource && "ring-2 ring-primary ring-offset-2 shadow-primary/50 border-primary",
@@ -322,10 +336,7 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
               onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {
                       const file = e.target.files[0];
-                      // For preview, we might need to create a blob URL. 
-                      // For actual saving, you'd handle file upload differently.
                       handleConfigChange('url', URL.createObjectURL(file)); 
-                      // Set text to file name if not already set.
                       if (!step.config.text) handleConfigChange('text', file.name);
                   }
               }}
@@ -429,6 +440,10 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
 
 
 export default function FlowBuilderPage() {
+  const searchParams = useSearchParams();
+  const flowIdToEdit = searchParams.get('edit');
+  
+  const [isEditing, setIsEditing] = useState(false);
   const [flowName, setFlowName] = useState('');
   const [flowSteps, setFlowSteps] = useState<FlowStep[]>([]);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
@@ -460,6 +475,27 @@ export default function FlowBuilderPage() {
   const [draggedToolType, setDraggedToolType] = useState<FlowStepType | null>(null);
   const [mobileDragGhostPosition, setMobileDragGhostPosition] = useState<{x: number, y: number} | null>(null);
 
+  useEffect(() => {
+    if (flowIdToEdit) {
+      setIsEditing(true);
+      // In a real app, fetch flow data by ID
+      if (flowIdToEdit === mockFlowForEditing.id) {
+        setFlowName(mockFlowForEditing.name);
+        setFlowSteps(mockFlowForEditing.steps);
+        toast({ title: "Modo de Edição", description: `Carregando fluxo: ${mockFlowForEditing.name}` });
+      } else {
+        toast({ title: "Erro ao Carregar Fluxo", description: `Fluxo com ID "${flowIdToEdit}" não encontrado. Iniciando um novo fluxo.`, variant: "destructive" });
+        setIsEditing(false); // Fallback to new flow
+        setFlowName('');
+        setFlowSteps([]);
+      }
+    } else {
+      setIsEditing(false);
+      setFlowName('');
+      setFlowSteps([]);
+    }
+  }, [flowIdToEdit]);
+
 
   const addStep = useCallback((toolType: FlowStepType, position: { x: number; y: number }) => {
     const tool = toolPalette.find(t => t.type === toolType);
@@ -473,7 +509,7 @@ export default function FlowBuilderPage() {
       position: position,
     };
     setFlowSteps(prev => [...prev, newStep]);
-    toast({ title: "Elemento Adicionado", description: `${tool.label} foi adicionado ao fluxo.` });
+    // toast({ title: "Elemento Adicionado", description: `${tool.label} foi adicionado ao fluxo.` }); // Toast removed to avoid repetition
   }, []);
 
 
@@ -496,6 +532,8 @@ export default function FlowBuilderPage() {
       const x = (event.clientX - canvasRect.left + canvasRef.current.scrollLeft) / zoomLevel;
       const y = (event.clientY - canvasRect.top + canvasRef.current.scrollTop) / zoomLevel;
       addStep(toolType, { x: x - CARD_WIDTH / 2, y: y - CARD_HEIGHT_ESTIMATE / 2 }); 
+      const tool = toolPalette.find(t => t.type === toolType);
+      toast({ title: "Ferramenta Adicionada", description: `${tool?.label || 'Ferramenta'} foi adicionada ao fluxo.` });
     }
   };
 
@@ -552,7 +590,7 @@ export default function FlowBuilderPage() {
   }, [draggingStepId, handleInteractionMove, handleInteractionEnd]);
 
   const handleStepInteractionStart = useCallback((clientX: number, clientY: number, stepId: string) => {
-    if (connectingState) return;
+    if (connectingState) return; // Don't drag if in connecting mode
     const step = flowSteps.find(s => s.id === stepId);
     if (!step || !canvasRef.current) return;
 
@@ -565,7 +603,6 @@ export default function FlowBuilderPage() {
   }, [connectingState, flowSteps, zoomLevel]);
 
 
-  // Mobile Drag Handlers for Tools from Palette
   const handleDocumentTouchMove = useCallback((event: TouchEvent) => {
     if (!isDraggingToolMobile) return;
     event.preventDefault(); 
@@ -832,6 +869,20 @@ export default function FlowBuilderPage() {
     await new Promise(resolve => setTimeout(resolve, 1000)); 
     toast({ title: "Fluxo Salvo!", description: `O fluxo "${flowName}" foi salvo com sucesso.` });
   };
+
+  const handleUpdateFlow = async () => {
+    if (flowName.trim() === '') {
+      toast({ title: "Erro", description: "O nome do fluxo é obrigatório.", variant: "destructive" });
+      return;
+    }
+    if (flowSteps.length === 0) {
+      toast({ title: "Erro", description: "Adicione pelo menos uma etapa ao fluxo.", variant: "destructive" });
+      return;
+    }
+    console.log('Updating flow:', { flowId: flowIdToEdit, flowName, steps: flowSteps });
+    await new Promise(resolve => setTimeout(resolve, 1000)); 
+    toast({ title: "Fluxo Atualizado!", description: `O fluxo "${flowName}" foi atualizado com sucesso.` });
+  };
   
   const handleManualZoom = (direction: 'in' | 'out') => {
     const factor = direction === 'in' ? 1.2 : 1 / 1.2;
@@ -841,7 +892,6 @@ export default function FlowBuilderPage() {
         const canvas = canvasRef.current;
         const canvasRect = canvas.getBoundingClientRect();
 
-        // Zoom around center of the current viewport
         const viewportCenterX = canvas.scrollLeft + canvas.offsetWidth / 2;
         const viewportCenterY = canvas.scrollTop + canvas.offsetHeight / 2;
 
@@ -850,7 +900,6 @@ export default function FlowBuilderPage() {
 
         setZoomLevel(newZoom);
 
-        // Adjust scroll to keep the world point at the center of the viewport
         const newScrollLeft = (worldX * newZoom) - (canvas.offsetWidth / 2);
         const newScrollTop = (worldY * newZoom) - (canvas.offsetHeight / 2);
         
@@ -868,28 +917,23 @@ export default function FlowBuilderPage() {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     
-    // Mouse position relative to canvas
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
-    // Calculate new zoom level
     const delta = event.deltaY * -ZOOM_SENSITIVITY;
     const newZoomUnbounded = zoomLevel * (1 + delta);
     const newZoom = Math.max(MIN_ZOOM, Math.min(newZoomUnbounded, MAX_ZOOM));
 
-    if (newZoom === zoomLevel) return; // No change in zoom
+    if (newZoom === zoomLevel) return; 
 
-    // World coordinates of the point under the mouse before zoom
     const worldX = (mouseX + canvas.scrollLeft) / zoomLevel;
     const worldY = (mouseY + canvas.scrollTop) / zoomLevel;
     
     setZoomLevel(newZoom);
 
-    // Calculate new scroll position to keep the world point under the mouse
     const newScrollLeft = (worldX * newZoom) - mouseX;
     const newScrollTop = (worldY * newZoom) - mouseY;
 
-    // Defer scroll update to after zoom level has been applied and re-render completed
     requestAnimationFrame(() => {
         canvas.scrollLeft = newScrollLeft;
         canvas.scrollTop = newScrollTop;
@@ -899,49 +943,13 @@ export default function FlowBuilderPage() {
 
   useEffect(() => {
     const canvasElement = canvasRef.current;
-    if (canvasElement && !isMobile) { // Only apply wheel zoom for web
+    if (canvasElement && !isMobile) { 
       canvasElement.addEventListener('wheel', handleWheelZoom, { passive: false });
       return () => {
         canvasElement.removeEventListener('wheel', handleWheelZoom);
       };
     }
   }, [handleWheelZoom, isMobile]);
-
-  // TODO: Implement pinch-to-zoom for mobile
-  // useEffect(() => {
-  //   const canvasElement = canvasRef.current;
-  //   if (canvasElement && isMobile) {
-  //     let initialPinchDistance = 0;
-  //     const handleTouchStart = (event: TouchEvent) => {
-  //       if (event.touches.length === 2) {
-  //         event.preventDefault();
-  //         initialPinchDistance = Math.hypot(
-  //           event.touches[0].clientX - event.touches[1].clientX,
-  //           event.touches[0].clientY - event.touches[1].clientY
-  //         );
-  //       }
-  //     };
-  //     const handleTouchMove = (event: TouchEvent) => {
-  //       if (event.touches.length === 2) {
-  //         event.preventDefault();
-  //         const currentPinchDistance = Math.hypot(
-  //           event.touches[0].clientX - event.touches[1].clientX,
-  //           event.touches[0].clientY - event.touches[1].clientY
-  //         );
-  //         const zoomFactor = currentPinchDistance / initialPinchDistance;
-           // Calculate newZoom and center point, then apply similar logic to handleWheelZoom for origin
-  //         // setZoomLevel(prev => Math.max(MIN_ZOOM, Math.min(prev * zoomFactor, MAX_ZOOM)));
-  //         // initialPinchDistance = currentPinchDistance; // Update for continuous zoom
-  //       }
-  //     };
-  //     canvasElement.addEventListener('touchstart', handleTouchStart, { passive: false });
-  //     canvasElement.addEventListener('touchmove', handleTouchMove, { passive: false });
-  //     return () => {
-  //       canvasElement.removeEventListener('touchstart', handleTouchStart);
-  //       canvasElement.removeEventListener('touchmove', handleTouchMove);
-  //     };
-  //   }
-  // }, [isMobile, zoomLevel]);
 
 
   const findFirstStepId = (steps: FlowStep[]): string | null => {
@@ -1002,7 +1010,7 @@ export default function FlowBuilderPage() {
           lines.push({
             id: `${sourceStep.id}-default-${targetStep.id}`,
             startX: sourceCardRect.x + sourceCardRect.width, 
-            startY: sourceCardRect.y + sourceCardRect.height - 20, // Approx vertical center of the "default next" area
+            startY: sourceCardRect.y + sourceCardRect.height - 20, 
             endX: targetCardRect.x, 
             endY: targetCardRect.y + targetCardRect.height / 2, 
             type: 'default',
@@ -1020,7 +1028,6 @@ export default function FlowBuilderPage() {
           if (targetStep && targetCardEl) {
             const targetCardRect = { x: targetStep.position.x, y: targetStep.position.y, width: targetCardEl.offsetWidth, height: targetCardEl.offsetHeight };
             
-            // Estimate Y position of the option's connection point
             const headerHeight = 40; 
             const variableDisplayHeight = (stepHasTextOrOutput(sourceStep) && sourceStep.config.setOutputVariable) ? 25 : 0;
             const textDisplayHeight = (stepHasTextOrOutput(sourceStep) && sourceStep.config.text) ? 30 : 0; 
@@ -1050,7 +1057,7 @@ export default function FlowBuilderPage() {
       });
     });
     return lines;
-  }, [flowSteps]); 
+  }, [flowSteps, zoomLevel]); // Added zoomLevel as dependency if card sizes change with zoom (they don't directly but positions do)
 
 
   const getPathDefinition = (startX: number, startY: number, endX: number, endY: number) => {
@@ -1178,7 +1185,7 @@ export default function FlowBuilderPage() {
                         markerEnd={line.type === 'default' ? "url(#arrowhead-default)" : "url(#arrowhead-option)"}
                         style={{ transition: 'stroke-width 0.2s' }}
                     />
-                    <path // Invisible wider path for easier clicking
+                    <path 
                         d={getPathDefinition(line.startX, line.startY, line.endX, line.endY)}
                         stroke="transparent"
                         strokeWidth="15" 
@@ -1270,8 +1277,8 @@ export default function FlowBuilderPage() {
       <CardFooter className="border-t p-3 flex justify-end gap-2 bg-card shadow-inner sticky bottom-0 z-40">
         <Button variant="outline" onClick={handleOpenPreview}><Eye className="mr-2 h-4 w-4" /> Visualizar</Button>
         <Button variant="outline" onClick={() => alert("Ativação de fluxo ainda não implementada.")}><PlayCircle className="mr-2 h-4 w-4" /> Ativar Fluxo</Button>
-        <Button onClick={handleSaveFlow}>
-          <Save className="mr-2 h-4 w-4" /> Salvar Fluxo
+        <Button onClick={isEditing ? handleUpdateFlow : handleSaveFlow}>
+          <Save className="mr-2 h-4 w-4" /> {isEditing ? 'Atualizar Fluxo' : 'Salvar Fluxo'}
         </Button>
       </CardFooter>
 

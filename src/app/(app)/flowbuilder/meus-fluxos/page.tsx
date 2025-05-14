@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,16 +15,30 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, PlusCircle, Search, Eye, Edit, PlayCircle, Trash2, CalendarPlus, Workflow } from 'lucide-react';
-import type { Flow } from '@/types'; 
+import type { Flow, FlowStep } from '@/types'; 
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 // Mock data for flows
-const mockFlows: (Flow & { lastModified: string, status: 'draft' | 'active' | 'archived', patientAssignments: number })[] = [
-  { id: 'flow1', name: 'Questionário Inicial Completo', steps: [], nutritionistId: 'n1', lastModified: '2024-05-28T10:00:00Z', status: 'active', patientAssignments: 15 },
+const mockFlows: (Flow & { lastModified: string; status: 'draft' | 'active' | 'archived'; patientAssignments: number })[] = [
+  { 
+    id: 'flow1', 
+    name: 'Questionário Inicial Completo', 
+    steps: [
+      { id: 'f1_step1', type: 'information_text', title: 'Bem-vindo ao Questionário', config: { text: 'Este é o questionário inicial completo.' }, position: {x: 50, y: 50}},
+      { id: 'f1_step2', type: 'text_input', title: 'Seu Nome', config: { text: 'Qual o seu nome completo?', defaultNextStepId: 'f1_step3', placeholder: 'Nome Completo' }, position: {x: 350, y: 50}},
+      { id: 'f1_step3', type: 'single_choice', title: 'Seu Sexo', config: { text: 'Qual o seu sexo?', options: [{value: 'm', label: 'Masculino'}, {value: 'f', label: 'Feminino'}]}, position: {x: 50, y: 300}},
+    ], 
+    nutritionistId: 'n1', 
+    lastModified: '2024-05-28T10:00:00Z', 
+    status: 'active', 
+    patientAssignments: 15 
+  },
   { id: 'flow2', name: 'Check-in Semanal Rápido', steps: [], nutritionistId: 'n1', lastModified: '2024-05-25T14:30:00Z', status: 'draft', patientAssignments: 0 },
   { id: 'flow3', name: 'Avaliação de Hábitos Alimentares (v2)', steps: [], nutritionistId: 'n1', lastModified: '2024-05-20T09:15:00Z', status: 'active', patientAssignments: 8 },
   { id: 'flow_old', name: 'Questionário de Satisfação (Antigo)', steps: [], nutritionistId: 'n1', lastModified: '2023-12-10T11:00:00Z', status: 'archived', patientAssignments: 22 },
@@ -31,14 +46,14 @@ const mockFlows: (Flow & { lastModified: string, status: 'draft' | 'active' | 'a
 
 export default function MeusFluxosPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [flows, setFlows] = useState(mockFlows); // In a real app, fetch flows
+  const [flows, setFlows] = useState(mockFlows); 
+  const router = useRouter();
 
   const filteredFlows = flows.filter(flow =>
     flow.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleDeleteFlow = (flowId: string) => {
-    // Simulate deletion
     setFlows(prevFlows => prevFlows.filter(f => f.id !== flowId));
     toast({ title: "Fluxo Removido", description: "O fluxo foi removido com sucesso." });
   };
@@ -46,9 +61,10 @@ export default function MeusFluxosPage() {
   const handleToggleStatus = (flowId: string) => {
     setFlows(prevFlows => prevFlows.map(f => {
         if (f.id === flowId) {
-            let newStatus: Flow['status'] = f.status === 'active' ? 'draft' : 'active';
-            if (f.status === 'archived') newStatus = 'draft'; // Unarchive to draft
+            let newStatus = f.status === 'active' ? 'draft' : 'active';
+            if (f.status === 'archived') newStatus = 'draft'; 
             toast({ title: "Status Alterado", description: `Fluxo agora está ${newStatus === 'active' ? 'ativo' : (newStatus === 'draft' ? 'como rascunho' : 'arquivado')}.` });
+            // @ts-ignore
             return {...f, status: newStatus};
         }
         return f;
@@ -66,7 +82,7 @@ export default function MeusFluxosPage() {
             </h1>
             <p className="text-muted-foreground">Gerencie seus fluxos de perguntas e interações com pacientes.</p>
         </div>
-        <Link href="/flowbuilder" passHref> {/* Assuming /flowbuilder is the creation page */}
+        <Link href="/flowbuilder" passHref> 
             <Button><PlusCircle className="mr-2 h-4 w-4" /> Criar Novo Fluxo</Button>
         </Link>
       </div>
@@ -121,7 +137,7 @@ export default function MeusFluxosPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => router.push(`/flowbuilder?edit=${flow.id}`)}> {/* Assuming edit via query param */}
+                          <DropdownMenuItem onSelect={() => router.push(`/flowbuilder?edit=${flow.id}`)}> 
                             <Edit className="mr-2 h-4 w-4" /> Editar Fluxo
                           </DropdownMenuItem>
                            <DropdownMenuItem onSelect={() => alert(`Visualizar ${flow.name}`)}>
@@ -158,7 +174,3 @@ export default function MeusFluxosPage() {
     </div>
   );
 }
-
-// Need router for navigation if edit links to current page with query
-import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
