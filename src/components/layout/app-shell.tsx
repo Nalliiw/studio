@@ -1,3 +1,4 @@
+
 // src/components/layout/app-shell.tsx
 'use client';
 
@@ -69,7 +70,7 @@ const navItems: NavItem[] = [
   { href: '/inicio', label: 'Início', icon: Home, roles: [UserRole.PATIENT] },
   { href: '/formulario', label: 'Formulários', icon: ClipboardList, roles: [UserRole.PATIENT] },
   { href: '/conteudos', label: 'Conteúdos', icon: PlaySquare, roles: [UserRole.PATIENT] },
-  { href: '/elogios', label: 'Elogios', icon: Award, roles: [UserRole.PATIENT] },
+  { href: '/conquistas', label: 'Conquistas', icon: Award, roles: [UserRole.PATIENT] }, // Changed from Elogios
 ];
 
 const NutriTrackIcon = ({ className }: { className?: string }) => (
@@ -214,7 +215,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
-  // Removed pathname and router from here as redirection is handled by AuthContext
+
 
   if (authLoading) {
     return (
@@ -224,8 +225,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If not loading and no user, AuthContext's useEffect will handle redirection.
-  // Return null to prevent rendering AppShell content during this phase.
   if (!user) {
     return null;
   }
@@ -243,3 +242,4 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
