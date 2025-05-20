@@ -23,6 +23,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('API Error creating company:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    if (errorMessage.includes('Backend (Firebase) não está conectado')) {
+      return NextResponse.json({ error: 'Service Unavailable: Backend not connected', details: errorMessage }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Failed to create company', details: errorMessage }, { status: 500 });
   }
 }
@@ -30,8 +33,11 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const companies = await getCompanies();
+    // Se o backend estiver desconectado, getCompanies retornará [], o que é um comportamento aceitável para GET.
+    // Não precisamos de tratamento especial aqui, a menos que queiramos retornar um status diferente.
     return NextResponse.json(companies);
   } catch (error) {
+    // Esta parte do catch pode não ser alcançada se getCompanies já tratar seus próprios erros e retornar [].
     console.error('API Error fetching companies:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     return NextResponse.json({ error: 'Failed to fetch companies', details: errorMessage }, { status: 500 });
