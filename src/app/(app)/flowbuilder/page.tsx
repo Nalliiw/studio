@@ -73,11 +73,9 @@ const stepHasTextOrOutput = (step: FlowStep): boolean => {
   if (!step || !step.config) {
     return false;
   }
-  // Check if text exists and is not empty, or if setOutputVariable exists and is not empty
   const hasText = typeof step.config.text === 'string' && step.config.text.trim() !== '';
   const hasOutputVar = typeof step.config.setOutputVariable === 'string' && step.config.setOutputVariable.trim() !== '';
   
-  // Special handling for choice types, they always have a primary question/text
   if (step.type === 'multiple_choice' || step.type === 'single_choice' || step.type === 'emoji_rating') {
     return true; 
   }
@@ -86,7 +84,6 @@ const stepHasTextOrOutput = (step: FlowStep): boolean => {
 };
 
 
-// Mock flow for editing - in a real app, this would be fetched
 const mockFlowForEditing: Flow = { 
     id: 'flow1', 
     name: 'Questionário Inicial Completo (Editado)', 
@@ -477,27 +474,20 @@ export default function FlowBuilderPage() {
   const [initialPreviewStepId, setInitialPreviewStepId] = useState<string | null>(null);
 
   const isMobile = useIsMobile();
-  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Will no longer be used for drag initiation
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTapRef = useRef(0);
   
-  // These states are no longer used for tool palette dragging on mobile
-  // const [isDraggingToolMobile, setIsDraggingToolMobile] = useState(false);
-  // const [draggedToolType, setDraggedToolType] = useState<FlowStepType | null>(null);
-  // const [mobileDragGhostPosition, setMobileDragGhostPosition] = useState<{x: number, y: number} | null>(null);
-
 
   useEffect(() => {
     if (flowIdToEdit) {
       setIsEditing(true);
-      // In a real app, fetch flow data by ID
       if (flowIdToEdit === mockFlowForEditing.id) {
         setFlowName(mockFlowForEditing.name);
         setFlowSteps(mockFlowForEditing.steps);
         toast({ title: "Modo de Edição", description: `Carregando fluxo: ${mockFlowForEditing.name}` });
       } else {
         toast({ title: "Erro ao Carregar Fluxo", description: `Fluxo com ID "${flowIdToEdit}" não encontrado. Iniciando um novo fluxo.`, variant: "destructive" });
-        setIsEditing(false); // Fallback to new flow
+        setIsEditing(false); 
         setFlowName('');
         setFlowSteps([]);
       }
@@ -601,7 +591,7 @@ export default function FlowBuilderPage() {
   }, [draggingStepId, handleInteractionMove, handleInteractionEnd]);
 
   const handleStepInteractionStart = useCallback((clientX: number, clientY: number, stepId: string) => {
-    if (connectingState) return; // Don't drag if in connecting mode
+    if (connectingState) return; 
     const step = flowSteps.find(s => s.id === stepId);
     if (!step || !canvasRef.current) return;
 
@@ -614,7 +604,7 @@ export default function FlowBuilderPage() {
   }, [connectingState, flowSteps, zoomLevel]);
 
 
-  const handleToolTouchStart = (event: React.TouchEvent<HTMLButtonElement>, tool: Tool) => {
+  const handleToolTouchStart = (event: React.TouchEvent<HTMLButtonElement>) => {
     if (!isMobile) return;
   
     if (tapTimeoutRef.current) {
@@ -622,62 +612,37 @@ export default function FlowBuilderPage() {
       tapTimeoutRef.current = null;
     }
     
-    // Prevent default to avoid issues like page scroll during tap interactions on buttons
     if (event.touches.length === 1) {
        event.preventDefault(); 
-    }
-
-    // Long press to drag is removed for mobile.
-    // The `longPressTimeoutRef` is no longer set here.
-  };
-  
-  const handleToolTouchMoveOnButton = (event: React.TouchEvent<HTMLButtonElement>) => {
-    if (!isMobile) return; 
-    // If a long press was initiated (which it won't be anymore for dragging), this would clear it.
-    // For now, this function doesn't do much as long-press-drag is removed.
-    if (longPressTimeoutRef.current) {
-      clearTimeout(longPressTimeoutRef.current);
-      longPressTimeoutRef.current = null;
     }
   };
   
   const handleToolTouchEndOnButton = (event: React.TouchEvent<HTMLButtonElement>, tool: Tool) => {
     if (!isMobile) return;
-  
-    // Clear any potential long press timeout (though it's not set for drag anymore)
-    if (longPressTimeoutRef.current) { 
-      clearTimeout(longPressTimeoutRef.current);
-      longPressTimeoutRef.current = null;
-    }
       
     const currentTime = new Date().getTime();
     const tapLength = currentTime - lastTapRef.current;
 
-    if (tapLength < 300 && tapLength > 0) { // Double tap
+    if (tapLength < 300 && tapLength > 0) { 
       if(tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current); 
       tapTimeoutRef.current = null;
-      lastTapRef.current = 0; // Reset for next double tap detection
+      lastTapRef.current = 0; 
 
       if (canvasRef.current) {
         const canvasRect = canvasRef.current.getBoundingClientRect();
-        // Add to center of current viewport
         const x = (canvasRef.current.scrollLeft + canvasRect.width / 2) / zoomLevel - (CARD_WIDTH / 2);
         const y = (canvasRef.current.scrollTop + canvasRect.height / 2) / zoomLevel - (CARD_HEIGHT_ESTIMATE / 2);
         addStep(tool.type, { x: Math.max(0,x), y: Math.max(0,y) });
         toast({ title: "Ferramenta Adicionada", description: `${tool.label} adicionado ao fluxo.`});
       }
-    } else { // Single tap or first tap of a potential double tap
+    } else { 
       lastTapRef.current = currentTime;
       tapTimeoutRef.current = setTimeout(() => {
-         // Show simplified toast with just the tool name on single tap
-         toast({ title: tool.label, duration: 2000 });
+         toast({ title: tool.label, duration: 1500, description: "Toque duas vezes para adicionar." });
         tapTimeoutRef.current = null;
-      }, 300); // Wait for 300ms to see if it's a double tap
+      }, 300); 
     }
   };
-
-  // useEffect for handling mobile tool drag is no longer needed as isDraggingToolMobile won't be set from palette
-  // The existing useEffect for dragging steps (handleInteractionMove/End) remains.
 
 
   const handleInitiateConnection = (sourceStepId: string, sourceType: 'default' | 'option', sourceOptionValue?: string) => {
@@ -835,7 +800,7 @@ export default function FlowBuilderPage() {
       toast({ title: "Erro", description: "Adicione pelo menos uma etapa ao fluxo.", variant: "destructive" });
       return;
     }
-    console.log('Saving flow:', { flowName, steps: flowSteps });
+    console.log('Salvando fluxo:', { flowName, steps: flowSteps });
     await new Promise(resolve => setTimeout(resolve, 1000)); 
     toast({ title: "Fluxo Salvo!", description: `O fluxo "${flowName}" foi salvo com sucesso.` });
   };
@@ -849,7 +814,7 @@ export default function FlowBuilderPage() {
       toast({ title: "Erro", description: "Adicione pelo menos uma etapa ao fluxo.", variant: "destructive" });
       return;
     }
-    console.log('Updating flow:', { flowId: flowIdToEdit, flowName, steps: flowSteps });
+    console.log('Atualizando fluxo:', { flowId: flowIdToEdit, flowName, steps: flowSteps });
     await new Promise(resolve => setTimeout(resolve, 1000)); 
     toast({ title: "Fluxo Atualizado!", description: `O fluxo "${flowName}" foi atualizado com sucesso.` });
   };
@@ -1051,14 +1016,6 @@ export default function FlowBuilderPage() {
 
   return (
     <div className="flex flex-col h-full bg-muted/30"> 
-      {/* Mobile drag ghost is no longer needed for tool palette */}
-      {/* {isMobile && isDraggingToolMobile && mobileDragGhostPosition && draggedToolType && (
-        <div style={{ position: 'fixed', left: mobileDragGhostPosition.x, top: mobileDragGhostPosition.y, transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 10000 }}>
-          <Button variant="outline" size="icon" className="opacity-75 shadow-xl bg-card pointer-events-none">
-            {React.createElement(toolPalette.find(t => t.type === draggedToolType)!.icon, {className: "h-6 w-6"})}
-          </Button>
-        </div>
-      )} */}
       <div className="flex justify-between items-center p-3 border-b bg-card shadow-sm sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <Workflow className="h-6 w-6 text-primary" />
@@ -1085,9 +1042,8 @@ export default function FlowBuilderPage() {
             key={tool.type}
             draggable={!isMobile} 
             onDragStart={!isMobile ? (e) => handleDragStartTool(e, tool.type) : undefined}
-            onTouchStart={(e) => handleToolTouchStart(e, tool)}
-            onTouchMove={handleToolTouchMoveOnButton}
-            onTouchEnd={(e) => handleToolTouchEndOnButton(e, tool)}
+            onTouchStart={isMobile ? (e) => handleToolTouchStart(e) : undefined}
+            onTouchEnd={isMobile ? (e) => handleToolTouchEndOnButton(e, tool) : undefined}
             onClick={(e) => { 
                 if (!isMobile && e.detail > 0) { 
                     e.preventDefault();
@@ -1096,7 +1052,7 @@ export default function FlowBuilderPage() {
             variant="outline"
             size="icon"
             className="flex-shrink-0 cursor-grab touch-manipulation" 
-            title={tool.label} // Title attribute for desktop hover
+            title={tool.label} 
           >
             <tool.icon className="h-5 w-5" />
           </Button>
@@ -1264,4 +1220,3 @@ export default function FlowBuilderPage() {
     </div>
   );
 }
-

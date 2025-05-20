@@ -1,3 +1,4 @@
+
 // src/components/flow/flow-preview-modal.tsx
 'use client';
 
@@ -11,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, ArrowRight, ArrowLeft, CheckCircle, Smile } from 'lucide-react';
-import type { FlowStep, Flow, FlowStepOption } from '@/types'; // Ensure Flow type is exported from types/index.ts
+import type { FlowStep, Flow, FlowStepOption } from '@/types';
 import Image from 'next/image';
 
 interface FlowPreviewModalProps {
@@ -28,7 +29,7 @@ interface Answer {
 const FlowPreviewModal: React.FC<FlowPreviewModalProps> = ({ isOpen, onClose, flowSteps, initialStepId }) => {
   const [currentStepId, setCurrentStepId] = useState<string | null>(initialStepId);
   const [answers, setAnswers] = useState<Answer>({});
-  const [history, setHistory] = useState<string[]>([]); // To keep track of visited steps for back navigation
+  const [history, setHistory] = useState<string[]>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -60,8 +61,7 @@ const FlowPreviewModal: React.FC<FlowPreviewModalProps> = ({ isOpen, onClose, fl
       setHistory(prev => [...prev, nextStepId]);
       setCurrentStepId(nextStepId);
     } else {
-      // End of flow or no next step defined
-      setCurrentStepId(null); // Indicate end of flow
+      setCurrentStepId(null); 
     }
   };
 
@@ -76,9 +76,6 @@ const FlowPreviewModal: React.FC<FlowPreviewModalProps> = ({ isOpen, onClose, fl
       if (selectedOption?.nextStepId) {
         nextStepId = selectedOption.nextStepId;
       }
-    } else if (currentStep.type === 'multiple_choice') {
-      // For multiple choice, typically a default next step is used, or more complex logic not handled here.
-      // Using defaultNextStepId is the simplest approach for now.
     }
     
     navigateToNextStep(nextStepId);
@@ -87,7 +84,7 @@ const FlowPreviewModal: React.FC<FlowPreviewModalProps> = ({ isOpen, onClose, fl
   const handleBack = () => {
     if (history.length > 1) {
       const newHistory = [...history];
-      newHistory.pop(); // Remove current step
+      newHistory.pop(); 
       const previousStepId = newHistory[newHistory.length - 1];
       setHistory(newHistory);
       setCurrentStepId(previousStepId);
@@ -116,7 +113,7 @@ const FlowPreviewModal: React.FC<FlowPreviewModalProps> = ({ isOpen, onClose, fl
             <Label htmlFor={`preview-${currentStep.id}`}>{currentStep.config.text}</Label>
             <Textarea
               id={`preview-${currentStep.id}`}
-              placeholder={currentStep.config.placeholder}
+              placeholder={currentStep.config.placeholder || "Digite sua resposta aqui..."}
               value={answers[currentStep.id] || ''}
               onChange={(e) => handleAnswerChange(currentStep.id, e.target.value)}
               rows={3}
@@ -161,7 +158,7 @@ const FlowPreviewModal: React.FC<FlowPreviewModalProps> = ({ isOpen, onClose, fl
         );
 
       case 'emoji_rating':
-        const emojis = ['😞', '😕', '😐', '🙂', '😄']; // Example emojis
+        const emojis = ['😞', '😕', '😐', '🙂', '😄']; 
         const maxEmojis = currentStep.config.maxEmojis || 5;
         return (
           <div className="space-y-2">
@@ -174,6 +171,7 @@ const FlowPreviewModal: React.FC<FlowPreviewModalProps> = ({ isOpen, onClose, fl
                   size="icon"
                   className="text-2xl p-2 h-12 w-12"
                   onClick={() => handleAnswerChange(currentStep.id, `emoji_${index}`)}
+                  aria-label={`Avaliação ${index + 1} de ${maxEmojis}: ${emoji}`}
                 >
                   {emoji}
                 </Button>
@@ -198,7 +196,7 @@ const FlowPreviewModal: React.FC<FlowPreviewModalProps> = ({ isOpen, onClose, fl
       case 'display_video':
         let contentElement;
         if (currentStep.type === 'display_image' && currentStep.config.url) {
-            contentElement = <Image src={currentStep.config.url} alt={currentStep.config.text || "Imagem"} width={400} height={300} className="rounded-md object-contain mx-auto max-h-64" data-ai-hint="abstract illustration" />;
+            contentElement = <Image src={currentStep.config.url} alt={currentStep.config.text || "Imagem do fluxo"} width={400} height={300} className="rounded-md object-contain mx-auto max-h-64" data-ai-hint="abstract illustration" />;
         } else if (currentStep.type === 'display_video' && currentStep.config.url) {
             contentElement = <video src={currentStep.config.url} controls className="rounded-md w-full max-w-md mx-auto" >Seu navegador não suporta vídeos.</video>;
         } else if (currentStep.type === 'display_audio' && currentStep.config.url) {

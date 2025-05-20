@@ -16,8 +16,18 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'NutriTrack Lite',
-  description: 'A modern nutrition tracking application.',
+  description: 'Uma aplicação moderna para acompanhamento nutricional.',
   manifest: '/manifest.json',
+  icons: { // Adding basic PWA icons meta for better integration
+    icon: [
+      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+  themeColor: '#007AFF', // Matches manifest theme_color
 };
 
 export default function RootLayout({
@@ -26,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
         <Toaster />

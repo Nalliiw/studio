@@ -1,6 +1,6 @@
 
 // src/components/layout/app-shell.tsx
-'use client';
+"use client";
 
 import React from 'react';
 import Link from 'next/link';
@@ -70,7 +70,7 @@ const navItems: NavItem[] = [
   { href: '/inicio', label: 'Início', icon: Home, roles: [UserRole.PATIENT] },
   { href: '/formulario', label: 'Formulários', icon: ClipboardList, roles: [UserRole.PATIENT] },
   { href: '/conteudos', label: 'Conteúdos', icon: PlaySquare, roles: [UserRole.PATIENT] },
-  { href: '/conquistas', label: 'Conquistas', icon: Award, roles: [UserRole.PATIENT] }, // Changed from Elogios
+  { href: '/conquistas', label: 'Conquistas', icon: Award, roles: [UserRole.PATIENT] },
 ];
 
 const NutriTrackIcon = ({ className }: { className?: string }) => (
@@ -163,10 +163,11 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                     "flex w-full items-center justify-between cursor-default group-data-[collapsible=icon]:justify-center"
                   )}
                   title={sidebarState === "collapsed" && !isMobile ? (theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro') : undefined}
+                  onClick={sidebarState === "collapsed" && !isMobile ? toggleTheme : undefined} // Allow click on icon when collapsed
                 >
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center shrink-0"> {/* Ensure icon doesn't shrink */}
+                      <div className="flex items-center shrink-0">
                         {theme === 'dark' ? <Sun /> : <Moon />}
                       </div>
                     </TooltipTrigger>
@@ -198,10 +199,21 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
         </Sidebar>
       )}
 
+      {/* Mobile Top Bar Trigger */}
+      {isMobile && (
+         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+            <SidebarTrigger className="md:hidden">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Alternar Menu Lateral</span>
+            </SidebarTrigger>
+            <div className="flex-1 text-lg font-semibold">NutriTrack Lite</div> {/* Or dynamic page title */}
+         </header>
+      )}
+
       <SidebarInset>
         <main className={cn(
           "flex-1 p-4 md:p-6 overflow-y-auto h-screen", 
-          isMobile ? "pb-[70px] pt-4" : "md:pt-6" 
+          isMobile ? "pb-[70px] pt-2" : "md:pt-6" // Adjusted mobile top padding
         )}>
           {children}
         </main>
@@ -225,9 +237,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  // User check is handled by AuthContext redirect logic
+  // if (!user) {
+  //   return null;
+  // }
   
   const sidebarCollapsibleType = "icon"; 
   const sidebarSidePlacement = "left"; 
@@ -242,4 +255,3 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-

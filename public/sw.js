@@ -1,54 +1,67 @@
+// public/sw.js
 const CACHE_NAME = 'nutritrack-lite-cache-v1';
 const urlsToCache = [
-  '/',
-  '/login',
-  // Add other important static assets and routes you want to cache
-  // For example: '/manifest.json', '/icons/icon-192x192.png', etc.
-  // Be careful with caching dynamic routes or API calls unless handled properly.
+  '/', // Cache the main entry point
+  '/manifest.json'
+  // Add paths to your crucial static assets if any are not handled by Next.js cache.
+  // For Next.js, '/_next/static/' assets are versioned and generally well-cached by the browser.
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Opened cache');
+        console.log('Service Worker: Caching app shell');
         return cache.addAll(urlsToCache);
       })
+      .catch(error => {
+        console.error('Service Worker: Failed to cache app shell during install:', error);
+      })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {
-  // We only want to cache GET requests.
-  if (event.request.method !== 'GET') {
-    return;
+  // Let Next.js handle its own assets for optimal caching, especially development mode.
+  if (event.request.url.includes('/_next/')) {
+    return; // Do not intercept Next.js internal requests or HMR.
   }
 
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
+        // Cache hit - return response
         if (response) {
-          return response; // Serve from cache
+          return response;
         }
-        // Not in cache, fetch from network
+
+        // Not in cache - fetch from network
         return fetch(event.request).then(
           (networkResponse) => {
-            // Optionally, cache new requests dynamically
-            // Be careful with this for non-static assets
-            // if (networkResponse && networkResponse.status === 200 && urlsToCache.includes(event.request.url)) {
-            //   const responseToCache = networkResponse.clone();
-            //   caches.open(CACHE_NAME)
-            //     .then(cache => {
-            //       cache.put(event.request, responseToCache);
-            //     });
-            // }
+            // Check if we received a valid response to cache
+            if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+              return networkResponse;
+            }
+
+            const responseToCache = networkResponse.clone();
+
+            caches.open(CACHE_NAME)
+              .then(cache => {
+                // Only cache GET requests for specified URLs or root.
+                if (event.request.method === 'GET' && 
+                    (urlsToCache.includes(new URL(event.request.url).pathname) || new URL(event.request.url).pathname === '/')) {
+                  cache.put(event.request, responseToCache);
+                }
+              });
+
             return networkResponse;
           }
         ).catch(() => {
-          // Fallback for offline, e.g. a custom offline page
-          // if (event.request.mode === 'navigate') {
-          //   return caches.match('/offline.html');
-          // }
+          // Fallback for navigation requests if offline and root is cached.
+          if (event.request.mode === 'navigate' && new URL(event.request.url).pathname === '/') {
+            return caches.match('/');
+          }
+          // For other failed fetches, let the browser handle the error.
+          // This ensures that if an asset is not in urlsToCache and network fails, it shows a browser error.
         });
       })
   );
@@ -61,11 +74,14 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('Service Worker: Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => {
+      console.log('Service Worker: Activated and old caches cleaned.');
+      return self.clients.claim(); // Ensure new SW takes control immediately
     })
   );
-  return self.clients.claim();
 });

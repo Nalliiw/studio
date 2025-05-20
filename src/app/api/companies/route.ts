@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const parsedData = companySchema.safeParse(json);
 
     if (!parsedData.success) {
-      return NextResponse.json({ error: 'Invalid input data', details: parsedData.error.flatten() }, { status: 400 });
+      return NextResponse.json({ error: 'Dados de entrada inválidos', details: parsedData.error.flatten() }, { status: 400 });
     }
 
     const { name, cnpj } = parsedData.data;
@@ -22,11 +22,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newCompany, { status: 201 });
   } catch (error) {
     console.error('API Error creating company:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
     if (errorMessage.includes('Backend (Firebase) não está conectado')) {
-      return NextResponse.json({ error: 'Service Unavailable: Backend not connected', details: errorMessage }, { status: 503 });
+      return NextResponse.json({ error: 'Serviço Indisponível: Backend não conectado.', details: errorMessage }, { status: 503 });
     }
-    return NextResponse.json({ error: 'Failed to create company', details: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: 'Falha ao criar empresa.', details: errorMessage }, { status: 500 });
   }
 }
 
@@ -39,7 +39,7 @@ export async function GET() {
   } catch (error) {
     // Esta parte do catch pode não ser alcançada se getCompanies já tratar seus próprios erros e retornar [].
     console.error('API Error fetching companies:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-    return NextResponse.json({ error: 'Failed to fetch companies', details: errorMessage }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
+    return NextResponse.json({ error: 'Falha ao buscar empresas.', details: errorMessage }, { status: 500 });
   }
 }
