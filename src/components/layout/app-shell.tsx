@@ -13,9 +13,9 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  SidebarTrigger, // Keep for potential future use or if Sidebar needs it internally
+  SidebarTrigger, 
   SidebarRail,
-  useSidebar, // Import useSidebar
+  useSidebar, 
   sidebarMenuButtonVariants,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -35,7 +35,7 @@ import {
   Award,
   LogOut,
   Settings,
-  Menu, // Keep for SidebarTrigger if ever used
+  Menu, 
   Sun,
   Moon,
   Sparkles,
@@ -84,7 +84,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   const { theme, toggleTheme } = useTheme();
   const { isMobile, state: sidebarState, collapsible: sidebarCollapsibleSetting, side: sidebarSideSetting } = useSidebar();
 
-  if (!user) { // Should ideally be caught by AuthProvider or parent AppShell
+  if (!user) { 
     return null;
   }
 
@@ -156,15 +156,16 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <div 
-                  className={cn(sidebarMenuButtonVariants({ variant: "default", size: "default" }), "flex w-full items-center cursor-default")}
-                  // Tooltip for the whole item when collapsed
+                <div
+                  className={cn(
+                    sidebarMenuButtonVariants({ variant: "default", size: "default" }),
+                    "flex w-full items-center justify-between cursor-default group-data-[collapsible=icon]:justify-center"
+                  )}
                   title={sidebarState === "collapsed" && !isMobile ? (theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro') : undefined}
                 >
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      {/* Icon part for tooltip trigger when collapsed */}
-                      <div className="flex items-center">
+                      <div className="flex items-center shrink-0"> {/* Ensure icon doesn't shrink */}
                         {theme === 'dark' ? <Sun /> : <Moon />}
                       </div>
                     </TooltipTrigger>
@@ -172,15 +173,15 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                       {theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
                     </TooltipContent>
                   </Tooltip>
-                  
+
                   <span className="flex-grow ml-2 group-data-[collapsible=icon]:hidden">
                     {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
                   </span>
                   <Switch
-                      checked={theme === 'dark'}
-                      onCheckedChange={toggleTheme}
-                      aria-label="Alternar tema"
-                      className="ml-auto group-data-[collapsible=icon]:hidden shrink-0"
+                    checked={theme === 'dark'}
+                    onCheckedChange={toggleTheme}
+                    aria-label="Alternar tema"
+                    className="ml-auto group-data-[collapsible=icon]:hidden shrink-0"
                   />
                 </div>
               </SidebarMenuItem>
@@ -198,10 +199,9 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
       <SidebarInset>
         <main className={cn(
-          "flex-1 p-4 md:p-6 overflow-y-auto h-screen", // Changed overflow-auto to overflow-y-auto
-          isMobile ? "pb-[70px] pt-4" : "md:pt-6" // Adjusted padding for mobile
+          "flex-1 p-4 md:p-6 overflow-y-auto h-screen", 
+          isMobile ? "pb-[70px] pt-4" : "md:pt-6" 
         )}>
-          {/* Removed the md:hidden SidebarTrigger that was for mobile sheet */}
           {children}
         </main>
       </SidebarInset>
@@ -214,8 +214,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
-  const pathname = usePathname();
-  const router = useRouter();
+  // Removed pathname and router from here as redirection is handled by AuthContext
 
   if (authLoading) {
     return (
@@ -225,11 +224,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If not loading and no user, AuthContext's useEffect will handle redirection.
+  // Return null to prevent rendering AppShell content during this phase.
   if (!user) {
-    if (pathname !== '/login') {
-        router.push('/login');
-    }
-    return null; 
+    return null;
   }
   
   const sidebarCollapsibleType = "icon"; 
