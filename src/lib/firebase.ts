@@ -1,17 +1,17 @@
+// Firebase está intencionalmente desconectado para permitir o desenvolvimento do frontend.
+// Para reconectar, garanta que seu arquivo .env tenha as variáveis de ambiente corretas do Firebase
+// e então atualize este arquivo para inicializar o Firebase.
 
 import type { FirebaseApp } from 'firebase/app';
 import type { Firestore } from 'firebase/firestore';
 
-// Firebase está intencionalmente desconectado para focar no frontend.
-// Nenhuma inicialização será tentada.
+const app: FirebaseApp | null = null;
+const db: Firestore | null = null;
 
 console.warn(
   'ATENÇÃO: Firebase está intencionalmente desconectado. ' +
   'Funcionalidades de backend (Firestore, etc.) não estarão ativas. ' +
-  'Se este erro persistir, substitua manualmente o conteúdo deste arquivo e reinicie o servidor.'
+  'Ignore erros relacionados à ausência de `db` ou `app` do Firebase nos serviços, pois o foco agora é o frontend.'
 );
-
-const app: FirebaseApp | null = null;
-const db: Firestore | null = null;
 
 export { db, app };
