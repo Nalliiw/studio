@@ -2,7 +2,7 @@
 // src/components/layout/app-shell.tsx
 "use client";
 
-import React, { useState, useEffect } from 'react'; // Added useState and useEffect
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   SidebarProvider,
@@ -14,7 +14,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  SidebarTrigger, 
+  // SidebarTrigger, // No longer used as top bar is removed on mobile
   SidebarRail,
   useSidebar, 
 } from '@/components/ui/sidebar';
@@ -32,14 +32,14 @@ import {
   Home,
   ClipboardList,
   PlaySquare,
-  Award, // Changed from Elogios
+  Award,
   LogOut,
   Settings,
-  Menu, 
+  // Menu, // No longer used
   Sun,
   Moon,
   Sparkles,
-  SlidersHorizontal, 
+  // SlidersHorizontal, // Moved to BottomNavigation
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -70,7 +70,7 @@ const navItems: NavItem[] = [
   { href: '/inicio', label: 'Início', icon: Home, roles: [UserRole.PATIENT] },
   { href: '/formulario', label: 'Formulários', icon: ClipboardList, roles: [UserRole.PATIENT] },
   { href: '/conteudos', label: 'Conteúdos', icon: PlaySquare, roles: [UserRole.PATIENT] },
-  { href: '/conquistas', label: 'Conquistas', icon: Award, roles: [UserRole.PATIENT] }, // Changed from Elogios
+  { href: '/conquistas', label: 'Conquistas', icon: Award, roles: [UserRole.PATIENT] },
 ];
 
 const NutriTrackIcon = ({ className }: { className?: string }) => (
@@ -92,8 +92,6 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
 
   if (!clientHasMounted || !user) { 
-    // Return a consistent placeholder or null until client has mounted and user is determined
-    // This helps prevent hydration mismatches if SSR output differs from initial client render
     return (
         <div className="flex h-screen items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -105,7 +103,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
 
   const handleUserAvatarClick = () => {
-    if (isMobile) setOpenMobile(false); // Close mobile sheet menu if open
+    if (isMobile) setOpenMobile(false); 
     router.push('/perfil');
   };
 
@@ -127,10 +125,6 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
             <SidebarMenu>
               {userNavItems.map((item) => {
                 const isActive = pathname === item.href || (item.href !== '/' && item.href !== '/dashboard-geral' && item.href !== '/dashboard-nutricionista' && item.href !== '/inicio' && pathname.startsWith(item.href));
-                // Special case for /flowbuilder to also activate /flowbuilder/meus-fluxos
-                if (item.href === '/flowbuilder/meus-fluxos' && pathname === '/flowbuilder') {
-                   // isActive logic should handle this, but this comment can stay for clarity
-                }
                 
                 return (
                   <SidebarMenuItem key={item.href}>
@@ -223,22 +217,13 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
         </Sidebar>
       )}
 
-      {/* Mobile Top Bar */}
-      {clientHasMounted && isMobile && (
-         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 md:hidden">
-            <div className="flex items-center gap-2">
-                {/* "NutriTrack Lite" text removed as per request */}
-            </div>
-         </header>
-      )}
+      {/* Mobile Top Bar removed */}
 
-      <SidebarInset>
-        <main className={cn(
-          "flex-1 p-4 md:p-6 overflow-y-auto", 
-          isMobile ? "pt-2 pb-16 h-[calc(100svh-56px)]" : "h-screen md:pt-6" 
+      <SidebarInset className={cn(
+          "flex-1 overflow-y-auto", 
+          isMobile ? "pt-4 pb-16" : "p-6" 
         )}>
           {children}
-        </main>
       </SidebarInset>
 
       {clientHasMounted && isMobile && <BottomNavigation userNavItems={userNavItems} />}
@@ -258,9 +243,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
-  // AuthContext handles redirection if user is null and not loading.
-  // AppShellInternal will return a loading spinner if !clientHasMounted || !user.
   
   const sidebarCollapsibleType = "icon"; 
   const sidebarSidePlacement = "left"; 
