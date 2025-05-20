@@ -2,7 +2,7 @@
 // src/components/layout/app-shell.tsx
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // Added useState and useEffect
 import Link from 'next/link';
 import {
   SidebarProvider,
@@ -84,10 +84,21 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { isMobile, state: sidebarState, collapsible: sidebarCollapsibleSetting, side: sidebarSideSetting, setOpenMobile } = useSidebar();
+  const [clientHasMounted, setClientHasMounted] = useState(false);
+
+  useEffect(() => {
+    setClientHasMounted(true);
+  }, []);
 
 
-  if (!user) { 
-    return null;
+  if (!clientHasMounted || !user) { 
+    // Return a consistent placeholder or null until client has mounted and user is determined
+    // This helps prevent hydration mismatches if SSR output differs from initial client render
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+    );
   }
 
   const userNavItems = navItems.filter(item => item.roles.includes(user.role));
@@ -170,11 +181,9 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                   )}
                   title={sidebarState === "collapsed" && !isMobile ? (theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro') : undefined}
                    onClick={(e) => {
-                     // Only allow click to toggle theme if sidebar is collapsed and not on mobile
                      if (sidebarState === "collapsed" && !isMobile) {
                        toggleTheme();
                      }
-                     // Prevent button behavior if not meant to be interactive in expanded state
                      if (sidebarState === "expanded" || isMobile) {
                        e.preventDefault();
                      }
@@ -215,11 +224,10 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
       )}
 
       {/* Mobile Top Bar */}
-      {isMobile && (
+      {clientHasMounted && isMobile && (
          <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 md:hidden">
             <div className="flex items-center gap-2">
-                {/* Logo removed from here as per request */}
-                <div className="flex-1 text-lg font-semibold">NutriTrack Lite</div>
+                {/* "NutriTrack Lite" text removed as per request */}
             </div>
          </header>
       )}
@@ -233,7 +241,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
         </main>
       </SidebarInset>
 
-      {isMobile && <BottomNavigation userNavItems={userNavItems} />}
+      {clientHasMounted && isMobile && <BottomNavigation userNavItems={userNavItems} />}
     </>
   );
 };
@@ -251,10 +259,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // User not authenticated, AuthProvider will handle redirect. AppShell should not render.
-  // This check was previously causing "Cannot update a component (`Router`)" error.
-  // AuthContext now handles redirection, so if no user, AppShellInternal won't be rendered or will get null user.
-  // The AppShellInternal itself has a check for !user and returns null.
+  // AuthContext handles redirection if user is null and not loading.
+  // AppShellInternal will return a loading spinner if !clientHasMounted || !user.
   
   const sidebarCollapsibleType = "icon"; 
   const sidebarSidePlacement = "left"; 
