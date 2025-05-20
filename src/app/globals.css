@@ -39,6 +39,11 @@
     --sidebar-accent-foreground: 0 0% 100%; /* White */
     --sidebar-border: 240 5.9% 85%;
     --sidebar-ring: 207 90% 54%;
+
+    /* Scrollbar colors for light theme */
+    --scrollbar-track: hsl(var(--background));
+    --scrollbar-thumb: hsl(var(--muted-foreground) / 0.5);
+    --scrollbar-thumb-hover: hsl(var(--muted-foreground) / 0.7);
   }
 
   .dark {
@@ -75,6 +80,11 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 240 5.9% 25%;
     --sidebar-ring: 207 90% 54%;
+
+    /* Scrollbar colors for dark theme */
+    --scrollbar-track: hsl(var(--background));
+    --scrollbar-thumb: hsl(var(--border));
+    --scrollbar-thumb-hover: hsl(var(--muted-foreground));
   }
 }
 
@@ -84,7 +94,51 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* For Firefox */
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: thin;
   }
+  /* For Webkit browsers (Chrome, Safari, Edge) */
+  body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  body::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-track);
+    border-radius: 10px;
+  }
+  body::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 10px;
+    border: 2px solid var(--scrollbar-track); /* Creates padding around thumb */
+  }
+  body::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+  
+  /* Apply to all scrollable elements, not just body */
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-track);
+    border-radius: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 10px;
+    border: 2px solid var(--scrollbar-track); /* Creates padding around thumb */
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+  /* For Firefox on all elements if needed, body might be enough */
+  * {
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: thin;
+  }
+
   .dot-grid-background {
     background-image: radial-gradient(circle, hsl(var(--muted-foreground) / 0.2) 1px, transparent 1px);
     background-size: 16px 16px;
