@@ -179,7 +179,9 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                        toggleTheme();
                      }
                      if (sidebarState === "expanded" || isMobile) {
-                       e.preventDefault();
+                       // Prevent click from propagating if expanded, as Switch handles its own click
+                       // Allow click if collapsed and not mobile to trigger theme toggle
+                       if (sidebarState === "expanded") e.preventDefault();
                      }
                    }}
                 >
@@ -202,6 +204,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                     onCheckedChange={toggleTheme}
                     aria-label="Alternar tema"
                     className="ml-auto group-data-[collapsible=icon]:hidden shrink-0"
+                    onClick={(e) => e.stopPropagation()} // Prevent outer div click when switch is clicked
                   />
                 </div>
               </SidebarMenuItem>
@@ -217,11 +220,11 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
         </Sidebar>
       )}
 
-      {/* Mobile Top Bar removed */}
+      {/* No top bar for mobile */}
 
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto", 
-          isMobile ? "pt-4 pb-16" : "p-6" 
+          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" // Adjusted mobile padding: px-4 for side margins, pb-20 (80px) for bottom nav clearance
         )}>
           {children}
       </SidebarInset>

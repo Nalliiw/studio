@@ -10,7 +10,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetClose,
+  // SheetClose, // Will rely on default SheetContent close button
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -44,13 +44,11 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange }: MobileM
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-auto max-h-[70vh] flex flex-col rounded-t-lg">
-        <SheetHeader className="p-4 border-b">
+      <SheetContent side="bottom" className="h-auto max-h-[70vh] flex flex-col rounded-t-lg p-0">
+        {/* SheetContent includes a default X close button, so explicit SheetClose is not needed here unless for custom positioning */}
+        <SheetHeader className="p-4 border-b sticky top-0 bg-background z-10">
           <SheetTitle className="text-lg text-center">Mais Opções</SheetTitle>
-           <SheetClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-            <X className="h-5 w-5" />
-            <span className="sr-only">Fechar</span>
-          </SheetClose>
+          {/* The default X button from SheetContent will be used. If it's not appearing or is styled incorrectly by default, this is where we might need to add an explicit SheetClose. */}
         </SheetHeader>
         
         <div className="flex-grow overflow-y-auto p-4 space-y-3">
