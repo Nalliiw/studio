@@ -1,4 +1,3 @@
-
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 // import { getAuth } from 'firebase/auth'; // Example if you need auth
@@ -24,10 +23,10 @@ if (process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID) {
 if (process.env.NEXT_PUBLIC_FIREBASE_APP_ID) {
   firebaseConfig.appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
 }
-// Explicitly DO NOT include measurementId in this dynamic build based on your error reports
-// to avoid any parsing issues. If it's needed AND defined, it can be added carefully:
+// Explicitly DO NOT include measurementId in this dynamic build
+// to avoid any parsing issues. If it's needed AND defined, it can be added carefully later.
 // if (process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID) {
-// firebaseConfig.measurementId = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
+//   firebaseConfig.measurementId = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
 // }
 
 
@@ -38,13 +37,10 @@ let db: Firestore | null = null;
 if (firebaseConfig.apiKey && firebaseConfig.projectId) {
   if (!getApps().length) {
     try {
-      // The Firebase SDK will perform its own validation on the config object.
-      // Our check for apiKey and projectId is a preliminary guard.
       app = initializeApp(firebaseConfig as any); // Using 'as any' for pragmatic dynamic config
       db = getFirestore(app);
     } catch (error) {
       console.error("Erro ao inicializar o Firebase:", error);
-      // Keep app and db as null if initialization fails
       app = null;
       db = null;
     }
@@ -60,4 +56,4 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
 
 // const auth = app ? getAuth(app) : null; // Example if you need auth
 
-export { db, app }; // Export 'app' if other Firebase services need it
+export { db, app };
