@@ -1,4 +1,5 @@
 
+
 // src/components/layout/app-shell.tsx
 "use client";
 
@@ -17,7 +18,6 @@ import {
   SidebarTrigger, 
   SidebarRail,
   useSidebar, 
-  sidebarMenuButtonVariants,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
@@ -40,12 +40,13 @@ import {
   Sun,
   Moon,
   Sparkles,
+  SlidersHorizontal, // For mobile "More" if needed, or use UserCircle
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import BottomNavigation from './bottom-navigation';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
 
 interface NavItem {
@@ -83,7 +84,8 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
-  const { isMobile, state: sidebarState, collapsible: sidebarCollapsibleSetting, side: sidebarSideSetting } = useSidebar();
+  const { isMobile, state: sidebarState, collapsible: sidebarCollapsibleSetting, side: sidebarSideSetting, setOpenMobile } = useSidebar();
+
 
   if (!user) { 
     return null;
@@ -93,8 +95,14 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
 
   const handleUserAvatarClick = () => {
+    if (isMobile) setOpenMobile(false); // Close mobile sheet menu if open
     router.push('/perfil');
   };
+
+  const handleSettingsClick = () => {
+    if (isMobile) setOpenMobile(false);
+    router.push('/configuracoes');
+  }
   
   return (
     <>
@@ -148,22 +156,20 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                   </SidebarMenuButton>
                </SidebarMenuItem>
               <SidebarMenuItem>
-                  <Link href="/configuracoes" legacyBehavior passHref>
-                      <SidebarMenuButton isActive={pathname === '/configuracoes'} tooltip="Configurações">
-                          <Settings />
-                          <span>Configurações</span>
-                      </SidebarMenuButton>
-                  </Link>
+                  <SidebarMenuButton isActive={pathname === '/configuracoes'} tooltip="Configurações" onClick={handleSettingsClick}>
+                      <Settings />
+                      <span>Configurações</span>
+                  </SidebarMenuButton>
               </SidebarMenuItem>
 
               <SidebarMenuItem>
                 <div
                   className={cn(
-                    sidebarMenuButtonVariants({ variant: "default", size: "default" }),
-                    "flex w-full items-center justify-between cursor-default group-data-[collapsible=icon]:justify-center"
+                     "flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 h-8",
+                    "group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 justify-between group-data-[collapsible=icon]:justify-center cursor-default"
                   )}
                   title={sidebarState === "collapsed" && !isMobile ? (theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro') : undefined}
-                  onClick={sidebarState === "collapsed" && !isMobile ? toggleTheme : undefined} // Allow click on icon when collapsed
+                  onClick={sidebarState === "collapsed" && !isMobile ? toggleTheme : undefined} 
                 >
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -171,7 +177,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                         {theme === 'dark' ? <Sun /> : <Moon />}
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent side="right" align="center" hidden={sidebarState !== "collapsed" || isMobile}>
+                     <TooltipContent side="right" align="center" hidden={sidebarState !== "collapsed" || isMobile || (sidebarState === "expanded" && !isMobile)}>
                       {theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
                     </TooltipContent>
                   </Tooltip>
@@ -201,19 +207,24 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
       {/* Mobile Top Bar Trigger */}
       {isMobile && (
-         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-            <SidebarTrigger className="md:hidden">
+         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 md:hidden">
+            {/* The original SidebarTrigger for mobile sheet menu is no longer needed if bottom nav handles "More" options */}
+            {/* <SidebarTrigger className="md:hidden">
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Alternar Menu Lateral</span>
-            </SidebarTrigger>
-            <div className="flex-1 text-lg font-semibold">NutriTrack Lite</div> {/* Or dynamic page title */}
+            </SidebarTrigger> */}
+            <div className="flex items-center gap-2">
+                <NutriTrackIcon className="h-6 w-6 text-primary"/>
+                <div className="flex-1 text-lg font-semibold">NutriTrack Lite</div>
+            </div>
          </header>
       )}
 
       <SidebarInset>
         <main className={cn(
-          "flex-1 p-4 md:p-6 overflow-y-auto h-screen", 
-          isMobile ? "pb-[70px] pt-2" : "md:pt-6" // Adjusted mobile top padding
+          "flex-1 p-4 md:p-6 overflow-y-auto", 
+           // Adjusted mobile top/bottom padding based on presence of header/bottomNav
+          isMobile ? "pt-2 pb-[70px] h-[calc(100svh-56px)]" : "h-screen md:pt-6" 
         )}>
           {children}
         </main>
@@ -236,22 +247,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-
-  // User check is handled by AuthContext redirect logic
-  // if (!user) {
-  //   return null;
-  // }
   
   const sidebarCollapsibleType = "icon"; 
   const sidebarSidePlacement = "left"; 
 
   return (
-    <SidebarProvider 
-        defaultOpen={true} 
-        collapsible={sidebarCollapsibleType} 
-        side={sidebarSidePlacement}
-    >
-      <AppShellInternal>{children}</AppShellInternal>
-    </SidebarProvider>
+    // Wrap with TooltipProvider at a higher level if not already done for SidebarMenuButton tooltips
+    <TooltipProvider> 
+      <SidebarProvider 
+          defaultOpen={true} 
+          collapsible={sidebarCollapsibleType} 
+          side={sidebarSidePlacement}
+      >
+        <AppShellInternal>{children}</AppShellInternal>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }
+
