@@ -1,7 +1,8 @@
+
 'use client';
 
 import Image from 'next/image';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import MotivationalMessageCard from '@/components/patient/motivational-message';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -66,5 +67,4 @@ export default function InicioPacientePage() {
   );
 }
 
-// Add CardHeader and CardTitle imports for the new cards
-import { CardHeader, CardTitle } from '@/components/ui/card';
+    

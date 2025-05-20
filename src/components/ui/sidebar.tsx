@@ -1,17 +1,20 @@
+
 // src/components/ui/sidebar.tsx
 "use client"
 
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-import { PanelLeft, PanelRight, PanelLeftOpen, PanelRightOpen, ChevronLeft, ChevronRight } from "lucide-react" 
+import { PanelLeft, PanelRight, PanelLeftOpen, PanelRightOpen, ChevronLeft, ChevronRight } from "lucide-react"
+import * as SheetPrimitive from "@radix-ui/react-dialog"; // For SheetContent accessibility fix
+
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent, SheetTitle as PrimitiveSheetTitle } from "@/components/ui/sheet" // Added PrimitiveSheetTitle
+import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -35,8 +38,8 @@ type SidebarContext = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
-  collapsible: "offcanvas" | "icon" | "none" 
-  side: "left" | "right" 
+  collapsible: "offcanvas" | "icon" | "none"
+  side: "left" | "right"
 }
 
 const SidebarContext = React.createContext<SidebarContext | null>(null)
@@ -68,8 +71,8 @@ const SidebarProvider = React.forwardRef<
       className,
       style,
       children,
-      collapsible = "offcanvas", 
-      side = "left", 
+      collapsible = "offcanvas",
+      side = "left",
       ...props
     },
     ref
@@ -127,8 +130,8 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
-        collapsible, 
-        side, 
+        collapsible,
+        side,
       }),
       [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, collapsible, side]
     )
@@ -218,7 +221,7 @@ const Sidebar = React.forwardRef<
             side={side}
           >
             {/* Use PrimitiveSheetTitle for accessibility and hide it visually */}
-            <PrimitiveSheetTitle className="sr-only">Menu Lateral</PrimitiveSheetTitle>
+            <SheetPrimitive.Title className="sr-only">Menu Lateral</SheetPrimitive.Title>
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>
@@ -312,8 +315,8 @@ const SidebarRail = React.forwardRef<
   } else { // side === 'right'
     IconComponent = state === "expanded" ? ChevronRight : ChevronLeft;
   }
-  
-  const railPositionClasses = 
+
+  const railPositionClasses =
     collapsible === 'icon' && state === 'collapsed'
       ? (side === 'left' ? 'left-[calc(var(--sidebar-width-icon)/2_-_0.75rem)] top-4' : 'right-[calc(var(--sidebar-width-icon)/2_-_0.75rem)] top-4')
       : (side === 'left' ? 'left-[calc(var(--sidebar-width)_-_2rem)] top-4' : 'right-[calc(var(--sidebar-width)_-_2rem)] top-4');
@@ -328,8 +331,8 @@ const SidebarRail = React.forwardRef<
       title={state === "expanded" ? "Recolher menu" : "Expandir menu"}
       aria-label={state === "expanded" ? "Recolher menu" : "Expandir menu"}
       className={cn(
-        "absolute z-20", 
-        "h-6 w-6 p-1 rounded-full", 
+        "absolute z-20",
+        "h-6 w-6 p-1 rounded-full",
         "bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         "border border-sidebar-border shadow-sm",
         "hidden md:flex items-center justify-center",
@@ -385,35 +388,32 @@ const SidebarHeader = React.forwardRef<
   React.ComponentProps<"div">
 >(({ className, children, ...props }, ref) => {
   const { toggleSidebar, isMobile, state, collapsible, side } = useSidebar();
+  const NutriTrackIcon = (props: React.SVGProps<SVGSVGElement>) => ( // Using generic SVGProps
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M15.5 7.5c0-1.105-.895-2-2-2s-2 .895-2 2c0 1.105.895 2 2 2 .653 0 1.231-.316 1.601-.809l.007-.013c.055-.09.105-.184.149-.282.139-.31.243-.645.243-.996z"/><path d="M8.5 15c0-1.105.895-2 2-2s2 .895 2 2c0 1.105-.895 2-2 2s-2-.895-2-2z"/><path d="M12 12.5c-1.5 0-2.5 1-2.5 2.5S10.5 17.5 12 17.5s2.5-1 2.5-2.5S13.5 12.5 12 12.5zM12 9.5c-1.5 0-2.5-1-2.5-2.5S10.5 4.5 12 4.5s2.5 1 2.5 2.5S13.5 9.5 12 9.5z"/></svg>
+  );
 
-  let IconComponent;
-  if (side === 'left') {
-    IconComponent = ChevronLeft; 
-  } else { 
-    IconComponent = ChevronRight; 
-  }
 
   return (
     <div
       ref={ref}
       data-sidebar="header"
       className={cn(
-        "flex flex-col gap-2 p-4", 
+        "flex flex-col gap-2 p-4",
         className
       )}
       {...props}
     >
-      <SidebarRail /> 
+      <SidebarRail />
 
       {/* Logo/Title for expanded sidebar */}
       <div className={cn(
         "flex-col items-center",
-        "group-data-[state=expanded]:flex", 
-        "group-data-[state=collapsed]:group-data-[collapsible=icon]:hidden", 
-        "hidden" 
+        "group-data-[state=expanded]:flex",
+        "group-data-[state=collapsed]:group-data-[collapsible=icon]:hidden",
+        "hidden"
       )}>
         <div className="p-2 rounded-md bg-sidebar-primary/10 text-sidebar-primary w-fit">
-          <NutriTrackIcon className="h-8 w-8" />
+          <NutriTrackIcon className="h-8 w-8 text-sidebar-primary" />
         </div>
         <h1 className="text-xl font-semibold text-sidebar-foreground mt-2">NutriTrack Lite</h1>
       </div>
@@ -421,18 +421,18 @@ const SidebarHeader = React.forwardRef<
       {/* Icon for collapsed sidebar (icon mode) */}
       <div className={cn(
         "justify-center w-full",
-        "group-data-[state=collapsed]:group-data-[collapsible=icon]:flex", 
+        "group-data-[state=collapsed]:group-data-[collapsible=icon]:flex",
         "hidden",
         "mt-12 mb-2" // Increased top margin, kept bottom margin
       )}>
-           <NutriTrackIcon className="h-8 w-8" />
+           <NutriTrackIcon className="h-8 w-8 text-sidebar-primary" />
       </div>
-      
+
       {/* Render children prop, typically hidden when icon-collapsed */}
       <div className={cn(
-        "group-data-[state=expanded]:block", 
+        "group-data-[state=expanded]:block",
         "group-data-[state=collapsed]:group-data-[collapsible=icon]:hidden",
-        "hidden" 
+        "hidden"
       )}>
         {children}
       </div>
@@ -587,7 +587,7 @@ const SidebarMenuItem = React.forwardRef<
 ))
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
-const sidebarMenuButtonVariants = cva(
+export const sidebarMenuButtonVariants = cva(
   "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
@@ -809,16 +809,6 @@ const SidebarMenuSubButton = React.forwardRef<
 })
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 
-// Add SheetPrimitive import for SheetContent accessibility fix
-import * as SheetPrimitive from "@radix-ui/react-dialog";
-import { Sparkles } from 'lucide-react'; // Assuming NutriTrackIcon uses Sparkles
-
-// Simple NutriTrack Icon for collapsed sidebar (copied from app-shell.tsx)
-const NutriTrackIcon = ({ className }: { className?: string }) => (
-    <Sparkles className={cn("h-7 w-7 text-sidebar-primary", className)} />
-);
-
-
 export {
   Sidebar,
   SidebarContent,
@@ -834,7 +824,7 @@ export {
   SidebarMenuAction,
   SidebarMenuBadge,
   SidebarMenuButton,
-  sidebarMenuButtonVariants,
+  // sidebarMenuButtonVariants, // Not exporting this as it was causing issues and not directly used by app-shell
   SidebarMenuItem,
   SidebarMenuSkeleton,
   SidebarMenuSub,
@@ -847,5 +837,4 @@ export {
   useSidebar,
 }
 
-
-
+    
