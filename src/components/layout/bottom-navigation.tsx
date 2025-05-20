@@ -2,12 +2,12 @@
 // src/components/layout/bottom-navigation.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import type { UserRole } from '@/types';
-import { SlidersHorizontal, Home, ClipboardList, PlaySquare, Award, LayoutDashboard, Users, Workflow, Library, Sparkles } from 'lucide-react'; 
+import { UserRole } from '@/types'; // Imported UserRole
+import { SlidersHorizontal, Home, ClipboardList, PlaySquare, Award, LayoutDashboard, Users, Workflow, Library, Sparkles } from 'lucide-react';
 import MobileMoreOptionsSheet from './mobile-more-options-sheet';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -46,9 +46,20 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
   const pathname = usePathname();
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
   const { user } = useAuth();
+  const [clientHasMounted, setClientHasMounted] = useState(false);
 
-  const homePath = user?.role === UserRole.PATIENT ? "/inicio" : 
-                   user?.role === UserRole.NUTRITIONIST_WHITE_LABEL ? "/dashboard-nutricionista" : 
+  useEffect(() => {
+    setClientHasMounted(true);
+  }, []);
+
+  if (!clientHasMounted || !user) {
+    // Render nothing or a placeholder until client has mounted and user is available
+    // to avoid mismatches or errors during SSR/hydration if user/role is client-side.
+    return null;
+  }
+
+  const homePath = user?.role === UserRole.PATIENT ? "/inicio" :
+                   user?.role === UserRole.NUTRITIONIST_WHITE_LABEL ? "/dashboard-nutricionista" :
                    (user?.role === UserRole.ADMIN_SUPREMO ? "/dashboard-geral" : "/login");
 
   // Display up to 3 main navigation items in the center, plus Logo and More button
@@ -73,14 +84,14 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
         <div className="flex flex-1 items-stretch justify-around">
             {mainDisplayItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && !item.href.includes('dashboard') && !item.href.includes('inicio') && pathname.startsWith(item.href));
-            const IconComponent = item.icon || iconMap[item.href] || Home; 
+            const IconComponent = item.icon || iconMap[item.href] || Home;
 
             return (
                 <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                    "flex flex-1 flex-col items-center justify-center p-1 text-xs transition-colors duration-150 ease-in-out min-w-0", // Added min-w-0
+                    "flex flex-col items-center justify-center p-1 text-xs transition-colors duration-150 ease-in-out min-w-0",
                     isActive ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted/50"
                 )}
                 aria-current={isActive ? "page" : undefined}
