@@ -12,14 +12,31 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-let app: FirebaseApp;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
+let app: FirebaseApp | null = null;
+let db: Firestore | null = null;
+
+// Só inicializa o Firebase se a configuração essencial estiver presente
+if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+  if (!getApps().length) {
+    try {
+      app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+    } catch (error) {
+      console.error("Erro ao inicializar o Firebase:", error);
+      // Mantém app e db como null se a inicialização falhar
+      app = null;
+      db = null;
+    }
+  } else {
+    app = getApps()[0];
+    db = getFirestore(app);
+  }
 } else {
-  app = getApps()[0];
+  console.warn(
+    'Configuração do Firebase está incompleta. O Firebase não será inicializado.'
+  );
 }
 
-const db: Firestore = getFirestore(app);
-// const auth = getAuth(app); // Example if you need auth
+// const auth = app ? getAuth(app) : null; // Exemplo se precisar de auth
 
-export { db, app }; // Export 'app' if other Firebase services need it
+export { db, app }; // Export 'app' se outros serviços Firebase precisarem dele
