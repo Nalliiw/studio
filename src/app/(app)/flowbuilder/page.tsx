@@ -74,6 +74,8 @@ const stepHasTextOrOutput = (step: FlowStep): boolean => {
     return false;
   }
   const hasText = typeof step.config.text === 'string' && step.config.text.trim() !== '';
+  
+  // Consider setOutputVariable as relevant for layout if present and non-empty
   const hasOutputVar = typeof step.config.setOutputVariable === 'string' && step.config.setOutputVariable.trim() !== '';
   
   if (step.type === 'multiple_choice' || step.type === 'single_choice' || step.type === 'emoji_rating') {
@@ -963,23 +965,21 @@ export default function FlowBuilderPage() {
           if (targetStep && targetCardEl) {
             const targetCardRect = { x: targetStep.position.x, y: targetStep.position.y, width: targetCardEl.offsetWidth, height: targetCardEl.offsetHeight };
             
-            const headerHeight = 40; 
-            const variableDisplayHeight = (stepHasTextOrOutput(sourceStep) && sourceStep.config.setOutputVariable) ? 25 : 0;
-            const textDisplayHeight = (stepHasTextOrOutput(sourceStep) && sourceStep.config.text) ? 30 : 0; 
-            const optionsSectionPaddingTop = 10; 
-            const optionItemHeight = 38; 
-            
-            const optionsSectionTopY = sourceCardRect.y + headerHeight + variableDisplayHeight + textDisplayHeight + optionsSectionPaddingTop;
-            const optionCenterYInList = (index * optionItemHeight) + (optionItemHeight / 2);
-            let calculatedStartY = optionsSectionTopY + optionCenterYInList;
-            
-            calculatedStartY = Math.max(sourceCardRect.y + 10, Math.min(calculatedStartY, sourceCardRect.y + sourceCardRect.height - 10));
+            // Refined calculation for option Y position
+            const baseHeaderHeight = 40; // Approximate height of card header
+            const outputVarHeight = step.config.setOutputVariable ? 22 : 0; // Approx height if output var is shown
+            const textContentHeight = step.config.text ? 20 : 0; // Approx height if text prompt is shown
+            const optionsSectionPadding = 8; // Padding above options list
+            const optionItemHeightWithSpacing = 38; // Approximate height of one option item + spacing
 
+            let startYForOptions = sourceCardRect.y + baseHeaderHeight + outputVarHeight + textContentHeight + optionsSectionPadding;
+            
+            const optionCenterY = startYForOptions + (index * optionItemHeightWithSpacing) + (optionItemHeightWithSpacing / 2);
 
             lines.push({
               id: `${sourceStep.id}-option-${option.value}-${targetStep.id}`,
               startX: sourceCardRect.x + sourceCardRect.width, 
-              startY: calculatedStartY, 
+              startY: Math.min(optionCenterY, sourceCardRect.y + sourceCardRect.height - 10), // Ensure it's within card bounds
               endX: targetCardRect.x, 
               endY: targetCardRect.y + targetCardRect.height / 2, 
               type: 'option',
@@ -992,7 +992,8 @@ export default function FlowBuilderPage() {
       });
     });
     return lines;
-  }, [flowSteps, zoomLevel]); 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flowSteps, zoomLevel, hoveredConnectionId]); // Added hoveredConnectionId to recompute if needed for dynamic styles on cards
 
 
   const getPathDefinition = (startX: number, startY: number, endX: number, endY: number) => {
@@ -1015,7 +1016,7 @@ export default function FlowBuilderPage() {
 
 
   return (
-    <div className="flex flex-col h-full bg-muted/30"> 
+    <div className="flex flex-col h-full bg-muted/30 p-2"> 
       <div className="flex justify-between items-center p-3 border-b bg-card shadow-sm sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <Workflow className="h-6 w-6 text-primary" />
@@ -1028,8 +1029,6 @@ export default function FlowBuilderPage() {
           />
         </div>
          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => handleManualZoom('in')} title="Aumentar Zoom"><ZoomIn className="h-4 w-4" /></Button>
-            <Button variant="outline" size="icon" onClick={() => handleManualZoom('out')} title="Diminuir Zoom"><ZoomOut className="h-4 w-4" /></Button>
             <Link href="/flowbuilder/meus-fluxos" passHref>
                 <Button variant="outline"><List className="mr-2 h-4 w-4" /> Meus Fluxos</Button>
             </Link>
@@ -1172,6 +1171,15 @@ export default function FlowBuilderPage() {
                 </div>
             )}
           </div>
+          {/* Floating Zoom Buttons */}
+          <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-2">
+            <Button variant="outline" size="icon" onClick={() => handleManualZoom('in')} title="Aumentar Zoom" className="bg-card hover:bg-muted">
+                <ZoomIn className="h-5 w-5" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => handleManualZoom('out')} title="Diminuir Zoom" className="bg-card hover:bg-muted">
+                <ZoomOut className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1220,3 +1228,4 @@ export default function FlowBuilderPage() {
     </div>
   );
 }
+
