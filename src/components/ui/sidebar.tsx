@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle as PrimitiveSheetTitle } from "@/components/ui/sheet" // Added PrimitiveSheetTitle
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -217,7 +217,8 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            <SheetPrimitive.Title className="sr-only">Menu Lateral</SheetPrimitive.Title>
+            {/* Use PrimitiveSheetTitle for accessibility and hide it visually */}
+            <PrimitiveSheetTitle className="sr-only">Menu Lateral</PrimitiveSheetTitle>
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>
@@ -315,7 +316,7 @@ const SidebarRail = React.forwardRef<
   const railPositionClasses = 
     collapsible === 'icon' && state === 'collapsed'
       ? (side === 'left' ? 'left-[calc(var(--sidebar-width-icon)/2_-_0.75rem)] top-4' : 'right-[calc(var(--sidebar-width-icon)/2_-_0.75rem)] top-4')
-      : (side === 'left' ? 'left-[calc(var(--sidebar-width)_-_2rem)] top-4' : 'right-4 top-4');
+      : (side === 'left' ? 'left-[calc(var(--sidebar-width)_-_2rem)] top-4' : 'right-[calc(var(--sidebar-width)_-_2rem)] top-4');
 
 
   return (
@@ -327,7 +328,7 @@ const SidebarRail = React.forwardRef<
       title={state === "expanded" ? "Recolher menu" : "Expandir menu"}
       aria-label={state === "expanded" ? "Recolher menu" : "Expandir menu"}
       className={cn(
-        "absolute z-20", // Removed top-1/2 -translate-y-1/2
+        "absolute z-20", 
         "h-6 w-6 p-1 rounded-full", 
         "bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         "border border-sidebar-border shadow-sm",
@@ -402,6 +403,8 @@ const SidebarHeader = React.forwardRef<
       )}
       {...props}
     >
+      <SidebarRail /> 
+
       {/* Logo/Title for expanded sidebar */}
       <div className={cn(
         "flex-col items-center",
@@ -417,9 +420,10 @@ const SidebarHeader = React.forwardRef<
 
       {/* Icon for collapsed sidebar (icon mode) */}
       <div className={cn(
-        "justify-center w-full my-2",
+        "justify-center w-full",
         "group-data-[state=collapsed]:group-data-[collapsible=icon]:flex", 
-        "hidden" 
+        "hidden",
+        "mt-12 mb-2" // Increased top margin, kept bottom margin
       )}>
            <NutriTrackIcon className="h-8 w-8" />
       </div>
@@ -427,6 +431,7 @@ const SidebarHeader = React.forwardRef<
       {/* Render children prop, typically hidden when icon-collapsed */}
       <div className={cn(
         "group-data-[state=expanded]:block", 
+        "group-data-[state=collapsed]:group-data-[collapsible=icon]:hidden",
         "hidden" 
       )}>
         {children}
@@ -841,5 +846,6 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
 
 
