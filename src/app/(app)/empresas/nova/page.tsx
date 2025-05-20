@@ -33,7 +33,7 @@ export default function NovaEmpresaPage() {
   });
 
   const onSubmit: SubmitHandler<NewCompanyFormValues> = async (data) => {
-    form.formState.isSubmitting = true; // Manually set submitting state
+    // form.formState.isSubmitting will be true automatically during submission
     try {
       const response = await fetch('/api/companies', {
         method: 'POST',
@@ -45,7 +45,7 @@ export default function NovaEmpresaPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.details || 'Falha ao criar empresa.');
+        throw new Error(errorData.details?.message || errorData.error || 'Falha ao criar empresa.');
       }
 
       const newCompany = await response.json();
@@ -61,9 +61,8 @@ export default function NovaEmpresaPage() {
         description: error instanceof Error ? error.message : 'Ocorreu um erro inesperado.',
         variant: "destructive",
       });
-    } finally {
-      form.formState.isSubmitting = false; // Manually reset submitting state
     }
+    // No need to manually set form.formState.isSubmitting to false, react-hook-form handles it
   };
   
   return (
@@ -134,3 +133,4 @@ export default function NovaEmpresaPage() {
     </div>
   );
 }
+
