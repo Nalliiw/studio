@@ -28,6 +28,8 @@ export const metadata: Metadata = {
     ],
   },
   themeColor: '#007AFF', // Matches manifest theme_color
+  // Adding viewport for zoom control
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
 };
 
 export default function RootLayout({
@@ -37,6 +39,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
+      <head>
+        {/* Viewport meta tag is now in metadata object, Next.js will handle it.
+            If it wasn't, it would be placed here:
+            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        */}
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
         <Toaster />

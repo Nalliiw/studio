@@ -218,7 +218,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
       {isMobile && (
          <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 md:hidden">
             <div className="flex items-center gap-2">
-                <NutriTrackIcon className="h-6 w-6 text-primary"/>
+                {/* Logo removed from here as per request */}
                 <div className="flex-1 text-lg font-semibold">NutriTrack Lite</div>
             </div>
          </header>
