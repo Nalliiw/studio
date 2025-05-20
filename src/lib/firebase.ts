@@ -10,12 +10,13 @@ const firebaseConfig = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  // The problematic measurementId line has been removed.
 };
 
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
 
-// Só inicializa o Firebase se a configuração essencial estiver presente
+// Only initialize Firebase if essential configuration is present
 if (firebaseConfig.apiKey && firebaseConfig.projectId) {
   if (!getApps().length) {
     try {
@@ -23,7 +24,7 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
       db = getFirestore(app);
     } catch (error) {
       console.error("Erro ao inicializar o Firebase:", error);
-      // Mantém app e db como null se a inicialização falhar
+      // Keep app and db as null if initialization fails
       app = null;
       db = null;
     }
@@ -37,6 +38,6 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
   );
 }
 
-// const auth = app ? getAuth(app) : null; // Exemplo se precisar de auth
+// const auth = app ? getAuth(app) : null; // Example if you need auth
 
-export { db, app }; // Export 'app' se outros serviços Firebase precisarem dele
+export { db, app }; // Export 'app' if other Firebase services need it
