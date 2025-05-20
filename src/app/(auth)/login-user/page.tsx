@@ -1,4 +1,4 @@
-// src/app/(auth)/login/page.tsx
+// src/app/(auth)/login-user/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -15,59 +15,55 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/hooks/useAuth';
 import { UserRole, type User } from '@/types';
-import { LogIn, Sun, Moon, ShieldCheck, UserCheck } from 'lucide-react';
+import { LogIn, Sun, Moon, UserCheck } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 
-const loginSchema = z.object({
+const loginUserSchema = z.object({
   email: z.string().email({ message: 'Endereço de email inválido.' }),
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
-  // For this main login, Admin Supremo is the primary focus. Others will be redirected.
-  role: z.nativeEnum(UserRole, { errorMap: () => ({ message: "Por favor, selecione um perfil."}) }),
+  role: z.enum([UserRole.NUTRITIONIST_WHITE_LABEL, UserRole.PATIENT], { errorMap: () => ({ message: "Por favor, selecione um perfil."}) }),
 });
 
-type LoginFormValues = z.infer<typeof loginSchema>;
+type LoginUserFormValues = z.infer<typeof loginUserSchema>;
 
-const mockUsers: Record<UserRole, User> = {
-  [UserRole.ADMIN_SUPREMO]: { id: 'admin01', name: 'Admin Supremo', email: 'admin@nutritrack.com', role: UserRole.ADMIN_SUPREMO },
+// Mock users for demonstration (excluding Admin Supremo)
+const mockUsers: Partial<Record<UserRole, User>> = {
   [UserRole.NUTRITIONIST_WHITE_LABEL]: { id: 'nutri01', name: 'Dr. Nutri', email: 'nutri@nutritrack.com', role: UserRole.NUTRITIONIST_WHITE_LABEL, companyId: 'comp01' },
   [UserRole.PATIENT]: { id: 'patient01', name: 'Paciente Exemplo', email: 'patient@nutritrack.com', role: UserRole.PATIENT, companyId: 'comp01' },
 };
 
-export default function LoginPage() {
+export default function LoginUserPage() {
   const router = useRouter();
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<LoginUserFormValues>({
+    resolver: zodResolver(loginUserSchema),
     defaultValues: {
       email: '',
       password: '',
     },
   });
 
-  const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
+  const onSubmit: SubmitHandler<LoginUserFormValues> = async (data) => {
     setIsLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
 
     const userToLogin = mockUsers[data.role];
     
-    if (userToLogin && userToLogin.email.split('@')[0] === data.email.split('@')[0]) { 
-      login(userToLogin);
+    if (userToLogin && userToLogin.email?.split('@')[0] === data.email.split('@')[0]) {
+      login(userToLogin as User); // Store user in context/localStorage
 
       switch (data.role) {
-        case UserRole.ADMIN_SUPREMO:
-          router.push('/dashboard-geral');
-          break;
-        // Redirect other roles to the user-specific login if they land here by mistake
-        // or prefer to use the user-specific login for their roles.
         case UserRole.NUTRITIONIST_WHITE_LABEL:
+          router.push('/dashboard-nutricionista');
+          break;
         case UserRole.PATIENT:
-          router.push('/login-user'); // Or directly to their dashboards if preferred
+          router.push('/inicio');
           break;
         default:
-          router.push('/login'); 
+          router.push('/login-user'); 
       }
     } else {
       form.setError("email", { type: "manual", message: "Credenciais inválidas para o perfil selecionado."});
@@ -79,7 +75,7 @@ export default function LoginPage() {
   return (
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="text-center relative">
-         <Button
+        <Button
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
@@ -89,10 +85,10 @@ export default function LoginPage() {
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
         <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 text-primary w-fit">
-            <ShieldCheck className="h-8 w-8" />
+            <UserCheck className="h-8 w-8" />
         </div>
-        <CardTitle className="text-3xl font-bold">NutriTrack Lite</CardTitle>
-        <CardDescription>Bem-vindo! Faça login para continuar.</CardDescription>
+        <CardTitle className="text-3xl font-bold">Acesso Nutri/Paciente</CardTitle>
+        <CardDescription>Faça login com seu perfil de nutricionista ou paciente.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -136,7 +132,6 @@ export default function LoginPage() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value={UserRole.ADMIN_SUPREMO}>Administrador Supremo</SelectItem>
                       <SelectItem value={UserRole.NUTRITIONIST_WHITE_LABEL}>Nutricionista</SelectItem>
                       <SelectItem value={UserRole.PATIENT}>Paciente</SelectItem>
                     </SelectContent>
@@ -157,12 +152,9 @@ export default function LoginPage() {
         </Form>
       </CardContent>
       <CardFooter className="flex flex-col items-center text-sm text-muted-foreground space-y-2">
-        <p>Não tem uma conta? Entre em contato com o suporte.</p>
-        <Link href="/login-user" passHref>
-          <Button variant="outline" className="w-full">
-            <UserCheck className="mr-2 h-4 w-4" />
-            Acessar como Nutricionista ou Paciente
-          </Button>
+        <p>Problemas para acessar? Entre em contato com o suporte.</p>
+        <Link href="/login" passHref>
+            <Button variant="link" size="sm">Acessar como Administrador</Button>
         </Link>
       </CardFooter>
     </Card>
