@@ -8,7 +8,7 @@ import type { Firestore } from 'firebase/firestore';
 console.warn(
   'ATENÇÃO: Firebase está intencionalmente desconectado. ' +
   'Funcionalidades de backend (Firestore, etc.) não estarão ativas. ' +
-  'Remova esta configuração manual e configure suas variáveis de ambiente Firebase para reconectar.'
+  'Se este erro persistir, substitua manualmente o conteúdo deste arquivo e reinicie o servidor.'
 );
 
 const app: FirebaseApp | null = null;
