@@ -1,5 +1,4 @@
 
-
 // src/components/layout/app-shell.tsx
 "use client";
 
@@ -33,14 +32,14 @@ import {
   Home,
   ClipboardList,
   PlaySquare,
-  Award,
+  Award, // Changed from Elogios
   LogOut,
   Settings,
   Menu, 
   Sun,
   Moon,
   Sparkles,
-  SlidersHorizontal, // For mobile "More" if needed, or use UserCircle
+  SlidersHorizontal, 
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -71,7 +70,7 @@ const navItems: NavItem[] = [
   { href: '/inicio', label: 'Início', icon: Home, roles: [UserRole.PATIENT] },
   { href: '/formulario', label: 'Formulários', icon: ClipboardList, roles: [UserRole.PATIENT] },
   { href: '/conteudos', label: 'Conteúdos', icon: PlaySquare, roles: [UserRole.PATIENT] },
-  { href: '/conquistas', label: 'Conquistas', icon: Award, roles: [UserRole.PATIENT] },
+  { href: '/conquistas', label: 'Conquistas', icon: Award, roles: [UserRole.PATIENT] }, // Changed from Elogios
 ];
 
 const NutriTrackIcon = ({ className }: { className?: string }) => (
@@ -117,8 +116,9 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
             <SidebarMenu>
               {userNavItems.map((item) => {
                 const isActive = pathname === item.href || (item.href !== '/' && item.href !== '/dashboard-geral' && item.href !== '/dashboard-nutricionista' && item.href !== '/inicio' && pathname.startsWith(item.href));
+                // Special case for /flowbuilder to also activate /flowbuilder/meus-fluxos
                 if (item.href === '/flowbuilder/meus-fluxos' && pathname === '/flowbuilder') {
-                  // Special case for /flowbuilder to also activate /flowbuilder/meus-fluxos
+                   // isActive logic should handle this, but this comment can stay for clarity
                 }
                 
                 return (
@@ -169,7 +169,16 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                     "group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 justify-between group-data-[collapsible=icon]:justify-center cursor-default"
                   )}
                   title={sidebarState === "collapsed" && !isMobile ? (theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro') : undefined}
-                  onClick={sidebarState === "collapsed" && !isMobile ? toggleTheme : undefined} 
+                   onClick={(e) => {
+                     // Only allow click to toggle theme if sidebar is collapsed and not on mobile
+                     if (sidebarState === "collapsed" && !isMobile) {
+                       toggleTheme();
+                     }
+                     // Prevent button behavior if not meant to be interactive in expanded state
+                     if (sidebarState === "expanded" || isMobile) {
+                       e.preventDefault();
+                     }
+                   }}
                 >
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -205,14 +214,9 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
         </Sidebar>
       )}
 
-      {/* Mobile Top Bar Trigger */}
+      {/* Mobile Top Bar */}
       {isMobile && (
          <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 md:hidden">
-            {/* The original SidebarTrigger for mobile sheet menu is no longer needed if bottom nav handles "More" options */}
-            {/* <SidebarTrigger className="md:hidden">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Alternar Menu Lateral</span>
-            </SidebarTrigger> */}
             <div className="flex items-center gap-2">
                 <NutriTrackIcon className="h-6 w-6 text-primary"/>
                 <div className="flex-1 text-lg font-semibold">NutriTrack Lite</div>
@@ -223,8 +227,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
       <SidebarInset>
         <main className={cn(
           "flex-1 p-4 md:p-6 overflow-y-auto", 
-           // Adjusted mobile top/bottom padding based on presence of header/bottomNav
-          isMobile ? "pt-2 pb-[70px] h-[calc(100svh-56px)]" : "h-screen md:pt-6" 
+          isMobile ? "pt-2 pb-16 h-[calc(100svh-56px)]" : "h-screen md:pt-6" 
         )}>
           {children}
         </main>
@@ -248,11 +251,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
   
+  // User not authenticated, AuthProvider will handle redirect. AppShell should not render.
+  // This check was previously causing "Cannot update a component (`Router`)" error.
+  // AuthContext now handles redirection, so if no user, AppShellInternal won't be rendered or will get null user.
+  // The AppShellInternal itself has a check for !user and returns null.
+  
   const sidebarCollapsibleType = "icon"; 
   const sidebarSidePlacement = "left"; 
 
   return (
-    // Wrap with TooltipProvider at a higher level if not already done for SidebarMenuButton tooltips
     <TooltipProvider> 
       <SidebarProvider 
           defaultOpen={true} 
@@ -264,4 +271,3 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </TooltipProvider>
   );
 }
-
