@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Sparkles, RefreshCw } from 'lucide-react';
 import { generateMotivationalMessage } from '@/ai/flows/generate-motivational-message';
 import type { User } from '@/types'; // Assuming User type is available
