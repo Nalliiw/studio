@@ -1,5 +1,5 @@
 import { AuthProvider } from '@/contexts/AuthContext';
-// AppShell import removed as it's no longer used here
+import AppShell from '@/components/layout/app-shell'; // Restaurar a importação
 
 export default function AppLayout({
   children,
@@ -8,8 +8,7 @@ export default function AppLayout({
 }) {
   return (
     <AuthProvider>
-      {/* AppShell component removed. Children will now render directly. */}
-      {children}
+      <AppShell>{children}</AppShell> {/* Restaurar o uso do AppShell */}
     </AuthProvider>
   );
 }
