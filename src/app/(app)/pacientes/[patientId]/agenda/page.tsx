@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, use } from 'react'; // Added 'use' import
+import React, { useState, useEffect, use } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -338,3 +338,5 @@ export default function PatientAgendaPage() {
     </div>
   );
 }
+
+    
