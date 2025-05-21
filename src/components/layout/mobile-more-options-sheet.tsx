@@ -18,7 +18,8 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { UserCircle, Settings, LogOut, Moon, Sun, X } from 'lucide-react';
+import { UserCircle, Settings, LogOut, Moon, Sun, X, CalendarDays } from 'lucide-react'; // Added CalendarDays
+import { UserRole } from '@/types'; // Added UserRole
 
 interface MobileMoreOptionsSheetProps {
   isOpen: boolean;
@@ -76,6 +77,17 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange }: MobileM
                 <Settings className="mr-3 h-5 w-5" />
                 Configurações
             </Button>
+
+            {user?.role === UserRole.NUTRITIONIST_WHITE_LABEL && (
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-base py-3 h-auto"
+                onClick={() => handleNavigate('/agenda-geral-nutricionista')}
+              >
+                <CalendarDays className="mr-3 h-5 w-5" />
+                Agenda Geral
+              </Button>
+            )}
 
             <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted">
                 <Label htmlFor="dark-mode-toggle-sheet" className="flex items-center text-base cursor-pointer">
