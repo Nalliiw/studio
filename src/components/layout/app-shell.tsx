@@ -39,6 +39,7 @@ import {
   Sun,
   Moon,
   Sparkles,
+  CalendarDays, // Ícone para a nova Agenda Geral
   // SlidersHorizontal, // Moved to BottomNavigation
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -66,11 +67,13 @@ const navItems: NavItem[] = [
   { href: '/pacientes', label: 'Pacientes', icon: Users, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] },
   { href: '/flowbuilder/meus-fluxos', label: 'Meus Fluxos', icon: Workflow, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] },
   { href: '/biblioteca', label: 'Biblioteca', icon: Library, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] },
+  { href: '/agenda-geral-nutricionista', label: 'Agenda Geral', icon: CalendarDays, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] }, // Novo item
   // Paciente
   { href: '/inicio', label: 'Início', icon: Home, roles: [UserRole.PATIENT] },
   { href: '/formulario', label: 'Formulários', icon: ClipboardList, roles: [UserRole.PATIENT] },
   { href: '/conteudos', label: 'Conteúdos', icon: PlaySquare, roles: [UserRole.PATIENT] },
   { href: '/conquistas', label: 'Conquistas', icon: Award, roles: [UserRole.PATIENT] },
+  { href: '/minha-agenda', label: 'Minha Agenda', icon: CalendarDays, roles: [UserRole.PATIENT] },
 ];
 
 const NutriTrackIcon = ({ className }: { className?: string }) => (
@@ -224,7 +227,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto", 
-          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" // Adjusted mobile padding: px-4 for side margins, pb-20 (80px) for bottom nav clearance
+          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" 
         )}>
           {children}
       </SidebarInset>
