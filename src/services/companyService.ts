@@ -36,7 +36,12 @@ export async function createCompany(companyData: { name: string; cnpj: string })
 export async function getCompanies(): Promise<Company[]> {
   if (!db) {
     console.warn('Firestore (db) não está inicializado. Retornando array vazio. Verifique a configuração do Firebase e se o backend está conectado.');
-    return [];
+    // Lançar erro aqui também para ser pego pela API route, ou a API route deve checar se o array está vazio e inferir o problema.
+    // Por consistência com createCompany, vamos lançar o erro.
+    const errorMessage = 'Firestore (db) não está inicializado. Verifique a configuração do Firebase e se o backend está conectado.';
+    console.error(errorMessage);
+    throw new Error(errorMessage);
+    // return []; // Alternativamente, retornar array vazio e a API lida com isso.
   }
   try {
     const querySnapshot = await getDocs(collection(db, COMPANIES_COLLECTION));
@@ -54,8 +59,9 @@ export async function getCompanies(): Promise<Company[]> {
     return companies;
   } catch (error) {
     console.error('Erro ao buscar empresas do Firestore:', error);
-    // Retorna array vazio em caso de erro para não quebrar o frontend, mas loga o erro.
-    // Dependendo da política de erros, poderia lançar o erro também.
-    return []; 
+    if (error instanceof Error) {
+        throw new Error(`Falha ao buscar empresas: ${error.message}`);
+    }
+    throw new Error('Falha ao buscar empresas.');
   }
 }

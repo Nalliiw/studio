@@ -4,24 +4,25 @@ import { getFlowById, updateFlow, deleteFlow } from '@/services/flowService';
 import { z } from 'zod';
 import type { FlowStep } from '@/types';
 
-// Zod schema for validating flow step structure (simplified, adjust as needed for full validation)
-const flowStepSchema = z.object({
-  id: z.string(),
-  type: z.string(), // In a real app, use z.enum with FlowStepType values
-  title: z.string(),
-  config: z.object({
+const flowStepConfigSchema = z.object({
     text: z.string().optional(),
     options: z.array(z.object({
-      value: z.string(),
-      label: z.string(),
-      nextStepId: z.string().optional(),
+        value: z.string(),
+        label: z.string(),
+        nextStepId: z.string().optional(),
     })).optional(),
     url: z.string().optional(),
     placeholder: z.string().optional(),
     maxEmojis: z.number().optional(),
     setOutputVariable: z.string().optional(),
     defaultNextStepId: z.string().optional(),
-  }),
+}).passthrough();
+
+const flowStepSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  title: z.string(),
+  config: flowStepConfigSchema,
   position: z.object({
     x: z.number(),
     y: z.number(),
@@ -52,6 +53,9 @@ export async function GET(
   } catch (error) {
     console.error('API Error fetching flow by ID:', error);
     const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
+    if (errorMessage.includes('Firestore (db) não está inicializado')) {
+      return NextResponse.json({ error: 'Serviço Indisponível: Backend (Firebase) não conectado.', details: errorMessage }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Falha ao buscar fluxo.', details: errorMessage }, { status: 500 });
   }
 }
@@ -67,17 +71,15 @@ export async function PUT(
     }
     const json = await request.json();
     
-    // Validate only the fields that can be updated
     const parsedData = updateFlowSchema.safeParse(json);
 
     if (!parsedData.success) {
-      return NextResponse.json({ error: 'Dados de entrada inválidos', details: parsedData.error.flatten() }, { status: 400 });
+      return NextResponse.json({ error: 'Dados de entrada inválidos para atualizar fluxo', details: parsedData.error.flatten() }, { status: 400 });
     }
     
-    // Construct the update payload carefully
     const updatePayload: { name?: string; steps?: FlowStep[]; status?: 'draft' | 'active' | 'archived' } = {};
     if (parsedData.data.name) updatePayload.name = parsedData.data.name;
-    if (parsedData.data.steps) updatePayload.steps = parsedData.data.steps as FlowStep[]; // Cast after validation
+    if (parsedData.data.steps) updatePayload.steps = parsedData.data.steps as FlowStep[];
     if (parsedData.data.status) updatePayload.status = parsedData.data.status;
 
 
@@ -90,6 +92,9 @@ export async function PUT(
   } catch (error) {
     console.error('API Error updating flow:', error);
     const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
+    if (errorMessage.includes('Firestore (db) não está inicializado')) {
+      return NextResponse.json({ error: 'Serviço Indisponível: Backend (Firebase) não conectado.', details: errorMessage }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Falha ao atualizar fluxo.', details: errorMessage }, { status: 500 });
   }
 }
@@ -108,6 +113,9 @@ export async function DELETE(
   } catch (error) {
     console.error('API Error deleting flow:', error);
     const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
+    if (errorMessage.includes('Firestore (db) não está inicializado')) {
+      return NextResponse.json({ error: 'Serviço Indisponível: Backend (Firebase) não conectado.', details: errorMessage }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Falha ao excluir fluxo.', details: errorMessage }, { status: 500 });
   }
 }

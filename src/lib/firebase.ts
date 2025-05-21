@@ -10,7 +10,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyAxzIqz02q90ja_Z-b5nL_O2VoNo30sLT0",
   authDomain: "nutritrack-lite-x6ffb.firebaseapp.com",
   projectId: "nutritrack-lite-x6ffb",
-  storageBucket: "nutritrack-lite-x6ffb.appspot.com", // Corrected common typo: .appspot.com (was .firebasestorage.app)
+  storageBucket: "nutritrack-lite-x6ffb.firebasestorage.app", // Using user-provided value
   messagingSenderId: "235653291259",
   appId: "1:235653291259:web:83efefa74e5670b7d3645e"
 };

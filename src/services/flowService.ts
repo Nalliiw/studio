@@ -6,6 +6,7 @@ import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, update
 import type { Flow, FlowStep } from '@/types';
 
 const FLOWS_COLLECTION = 'flows';
+const FIRESTORE_UNINITIALIZED_ERROR = 'Firestore (db) não está inicializado. Verifique a configuração do Firebase.';
 
 export async function createFlow(flowData: {
   name: string;
@@ -14,9 +15,8 @@ export async function createFlow(flowData: {
   status?: 'draft' | 'active' | 'archived';
 }): Promise<Flow> {
   if (!db) {
-    const errorMessage = 'Firestore (db) não está inicializado. Verifique a configuração do Firebase.';
-    console.error(errorMessage);
-    throw new Error(errorMessage);
+    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
   try {
     const docRef = await addDoc(collection(db, FLOWS_COLLECTION), {
@@ -29,7 +29,6 @@ export async function createFlow(flowData: {
       id: docRef.id,
       ...flowData,
       status: flowData.status || 'draft',
-      // Timestamps will be handled by Firestore, fetching will convert them
     };
   } catch (error) {
     console.error('Erro ao criar fluxo no Firestore:', error);
@@ -42,8 +41,8 @@ export async function createFlow(flowData: {
 
 export async function getFlowsByNutritionist(nutritionistId: string): Promise<Flow[]> {
   if (!db) {
-    console.warn('Firestore (db) não está inicializado. Retornando array vazio.');
-    return [];
+    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
   try {
     const q = query(collection(db, FLOWS_COLLECTION), where('nutritionistId', '==', nutritionistId));
@@ -57,23 +56,25 @@ export async function getFlowsByNutritionist(nutritionistId: string): Promise<Fl
         steps: data.steps,
         nutritionistId: data.nutritionistId,
         status: data.status || 'draft',
-        // Convert Timestamps to ISO strings or Date objects for client-side consistency
         createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
         lastModified: data.lastModified?.toDate ? data.lastModified.toDate().toISOString() : data.lastModified,
-        patientAssignments: data.patientAssignments || 0, // Assuming this might be stored or calculated
+        patientAssignments: data.patientAssignments || 0,
       } as Flow);
     });
     return flows.sort((a, b) => new Date(b.lastModified || 0).getTime() - new Date(a.lastModified || 0).getTime());
   } catch (error) {
     console.error('Erro ao buscar fluxos do Firestore:', error);
-    return [];
+    if (error instanceof Error) {
+      throw new Error(`Falha ao buscar fluxos: ${error.message}`);
+    }
+    throw new Error('Falha ao buscar fluxos.');
   }
 }
 
 export async function getFlowById(flowId: string): Promise<Flow | null> {
   if (!db) {
-    console.warn('Firestore (db) não está inicializado.');
-    return null;
+    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
   try {
     const flowDocRef = doc(db, FLOWS_COLLECTION, flowId);
@@ -95,16 +96,18 @@ export async function getFlowById(flowId: string): Promise<Flow | null> {
     }
   } catch (error) {
     console.error('Erro ao buscar fluxo por ID:', error);
-    return null;
+    if (error instanceof Error) {
+      throw new Error(`Falha ao buscar fluxo por ID: ${error.message}`);
+    }
+    throw new Error('Falha ao buscar fluxo por ID.');
   }
 }
 
 
 export async function updateFlow(flowId: string, flowData: Partial<Omit<Flow, 'id' | 'createdAt' | 'nutritionistId'>>): Promise<void> {
   if (!db) {
-    const errorMessage = 'Firestore (db) não está inicializado.';
-    console.error(errorMessage);
-    throw new Error(errorMessage);
+    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
   try {
     const flowDocRef = doc(db, FLOWS_COLLECTION, flowId);
@@ -123,9 +126,8 @@ export async function updateFlow(flowId: string, flowData: Partial<Omit<Flow, 'i
 
 export async function deleteFlow(flowId: string): Promise<void> {
   if (!db) {
-    const errorMessage = 'Firestore (db) não está inicializado.';
-    console.error(errorMessage);
-    throw new Error(errorMessage);
+    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
   try {
     const flowDocRef = doc(db, FLOWS_COLLECTION, flowId);
