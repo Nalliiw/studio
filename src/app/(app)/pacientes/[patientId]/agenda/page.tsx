@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react'; // Added 'use' import
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,7 +49,11 @@ const mockScheduledItems: ScheduledItem[] = [
 
 
 export default function PatientAgendaPage() {
-  const params = useParams();
+  const paramsFromHook = useParams();
+  // Unwrap params using React.use as suggested by the Next.js error message.
+  // Using 'as any' to bypass potential TypeScript type errors if the hook's return type isn't directly 'use'-able.
+  const params = use(paramsFromHook as any); 
+  
   const router = useRouter();
   const patientId = params.patientId as string;
 
@@ -334,5 +338,3 @@ export default function PatientAgendaPage() {
     </div>
   );
 }
-
-    
