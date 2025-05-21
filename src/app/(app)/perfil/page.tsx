@@ -1,6 +1,7 @@
+
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { UserCircle, Edit } from 'lucide-react';
@@ -64,3 +65,4 @@ export default function PerfilPage() {
     </div>
   );
 }
+
