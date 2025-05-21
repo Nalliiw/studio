@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { List, Clock, Workflow, MessageSquare, User, CalendarDays, Users } from 'lucide-react';
 import { format, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils'; // Added missing import
 
 // Definindo o tipo para os itens da agenda do nutricionista
 interface NutricionistaScheduledItem {
@@ -156,3 +157,4 @@ export default function AgendaGeralNutricionistaPage() {
     </div>
   );
 }
+
