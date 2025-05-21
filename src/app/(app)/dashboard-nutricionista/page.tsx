@@ -52,12 +52,12 @@ export default function DashboardNutricionistaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-4"> {/* Added gap-4 for overall spacing if header items wrap */}
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Dashboard do Nutricionista</h1>
             <p className="text-muted-foreground">Gerencie seus pacientes, fluxos e conteúdos.</p>
         </div>
-        <div className="space-x-4"> {/* Alterado de space-x-2 para space-x-4 */}
+        <div className="flex flex-wrap gap-2 sm:gap-4"> {/* Changed from space-x-4 to flex-wrap and gap */}
             <Link href="/pacientes/novo" passHref>
                 <Button variant="default"><PlusCircle className="mr-2 h-4 w-4" /> Novo Paciente</Button>
             </Link>
