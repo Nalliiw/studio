@@ -7,23 +7,22 @@ const COMPANIES_COLLECTION = 'companies';
 
 export async function createCompany(companyData: { name: string; cnpj: string }): Promise<Company> {
   if (!db) {
-    console.error('Firestore (db) não está inicializado. Verifique a configuração do Firebase.');
-    throw new Error('Serviço Indisponível: Backend não conectado.');
+    const errorMessage = 'Firestore (db) não está inicializado. Verifique a configuração do Firebase e se o backend está conectado.';
+    console.error(errorMessage);
+    throw new Error(errorMessage);
   }
   try {
     const docRef = await addDoc(collection(db, COMPANIES_COLLECTION), {
       ...companyData,
       nutritionistCount: 0,
       status: 'active',
-      createdAt: serverTimestamp(), // Use serverTimestamp para o Firebase definir a data/hora
+      createdAt: serverTimestamp(),
     });
     return {
       id: docRef.id,
       ...companyData,
       nutritionistCount: 0,
       status: 'active',
-      // createdAt não é retornado diretamente aqui, pois é definido pelo servidor.
-      // Se precisar dele no objeto retornado, você teria que buscar o documento novamente.
     };
   } catch (error) {
     console.error('Erro ao criar empresa no Firestore:', error);
@@ -36,7 +35,7 @@ export async function createCompany(companyData: { name: string; cnpj: string })
 
 export async function getCompanies(): Promise<Company[]> {
   if (!db) {
-    console.warn('Firestore (db) não está inicializado. Retornando array vazio. Verifique a configuração do Firebase.');
+    console.warn('Firestore (db) não está inicializado. Retornando array vazio. Verifique a configuração do Firebase e se o backend está conectado.');
     return [];
   }
   try {
@@ -44,19 +43,19 @@ export async function getCompanies(): Promise<Company[]> {
     const companies: Company[] = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      // Converta Timestamp do Firestore para string ISO se necessário, ou mantenha como Timestamp.
-      // Para este exemplo, não estamos lidando com timestamps na interface Company.
       companies.push({
         id: doc.id,
         name: data.name,
         cnpj: data.cnpj,
         nutritionistCount: data.nutritionistCount,
         status: data.status,
-      } as Company); // O 'as Company' pode precisar de mais cuidado com tipos
+      } as Company); 
     });
     return companies;
   } catch (error) {
     console.error('Erro ao buscar empresas do Firestore:', error);
-    return []; // Retorna array vazio em caso de erro para não quebrar o frontend
+    // Retorna array vazio em caso de erro para não quebrar o frontend, mas loga o erro.
+    // Dependendo da política de erros, poderia lançar o erro também.
+    return []; 
   }
 }

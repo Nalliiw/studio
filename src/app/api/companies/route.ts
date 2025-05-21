@@ -23,8 +23,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('API Error creating company:', error);
     const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
-    if (errorMessage.includes('Backend (Firebase) não está conectado')) {
-      return NextResponse.json({ error: 'Serviço Indisponível: Backend não conectado.', details: errorMessage }, { status: 503 });
+    // Verifica se a mensagem de erro indica que o Firestore não está inicializado
+    if (errorMessage.includes('Firestore (db) não está inicializado')) {
+      return NextResponse.json({ error: 'Serviço Indisponível: Backend (Firebase) não conectado ou configurado corretamente.', details: errorMessage }, { status: 503 });
     }
     return NextResponse.json({ error: 'Falha ao criar empresa.', details: errorMessage }, { status: 500 });
   }
@@ -33,11 +34,12 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const companies = await getCompanies();
-    // Se o backend estiver desconectado, getCompanies retornará [], o que é um comportamento aceitável para GET.
-    // Não precisamos de tratamento especial aqui, a menos que queiramos retornar um status diferente.
+    // Se getCompanies retornar um array vazio (pode ser por erro ou por não haver dados),
+    // a API simplesmente retornará o array vazio, o que é um comportamento aceitável para GET.
     return NextResponse.json(companies);
   } catch (error) {
-    // Esta parte do catch pode não ser alcançada se getCompanies já tratar seus próprios erros e retornar [].
+    // Este catch pode não ser acionado se getCompanies já tratar seus próprios erros e retornar [].
+    // Mas é bom ter para outros erros inesperados.
     console.error('API Error fetching companies:', error);
     const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
     return NextResponse.json({ error: 'Falha ao buscar empresas.', details: errorMessage }, { status: 500 });

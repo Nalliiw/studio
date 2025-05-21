@@ -10,23 +10,23 @@ const firebaseConfig = {
   apiKey: "AIzaSyAxzIqz02q90ja_Z-b5nL_O2VoNo30sLT0",
   authDomain: "nutritrack-lite-x6ffb.firebaseapp.com",
   projectId: "nutritrack-lite-x6ffb",
-  storageBucket: "nutritrack-lite-x6ffb.appspot.com", // Corrected common typo: .appspot.com
+  storageBucket: "nutritrack-lite-x6ffb.appspot.com", // Corrected common typo: .appspot.com (was .firebasestorage.app)
   messagingSenderId: "235653291259",
   appId: "1:235653291259:web:83efefa74e5670b7d3645e"
 };
 
-let app: FirebaseApp;
-let db: Firestore;
+let app: FirebaseApp | null = null;
+let db: Firestore | null = null;
 
 // Initialize Firebase
 // Check if Firebase has already been initialized
 if (!getApps().length) {
   try {
+    console.log("Attempting to initialize Firebase with provided config:", firebaseConfig);
     app = initializeApp(firebaseConfig);
     console.log("Firebase initialized successfully with provided config.");
   } catch (error) {
     console.error("Error initializing Firebase with provided config:", error);
-    // @ts-ignore
     app = null; // Ensure app is null if initialization fails
   }
 } else {
@@ -34,17 +34,14 @@ if (!getApps().length) {
   console.log("Firebase was already initialized.");
 }
 
-// @ts-ignore
 if (app) {
   try {
     db = getFirestore(app);
   } catch (error) {
     console.error("Error getting Firestore instance:", error);
-    // @ts-ignore
     db = null; // Ensure db is null if getting instance fails
   }
 } else {
-    // @ts-ignore
     db = null; 
     console.warn("Firebase app was not initialized, Firestore instance cannot be created.");
 }
