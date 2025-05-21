@@ -135,6 +135,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                       <SidebarMenuButton
                         isActive={isActive}
                         tooltip={item.label}
+                        className={cn(isActive && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90")}
                       >
                         <item.icon />
                         <span>{item.label}</span>
@@ -164,7 +165,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                   </SidebarMenuButton>
                </SidebarMenuItem>
               <SidebarMenuItem>
-                  <SidebarMenuButton isActive={pathname === '/configuracoes'} tooltip="Configurações" onClick={handleSettingsClick}>
+                  <SidebarMenuButton isActive={pathname === '/configuracoes'} tooltip="Configurações" onClick={handleSettingsClick}  className={cn(pathname === '/configuracoes' && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90")}>
                       <Settings />
                       <span>Configurações</span>
                   </SidebarMenuButton>
@@ -227,7 +228,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto", 
-          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" 
+           isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" // Increased mobile bottom padding
         )}>
           {children}
       </SidebarInset>
@@ -265,3 +266,4 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </TooltipProvider>
   );
 }
+
