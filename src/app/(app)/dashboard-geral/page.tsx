@@ -87,7 +87,7 @@ export default function DashboardGeralPage() {
           <CardTitle>Taxa de Engajamento (Formulários)</CardTitle>
           <CardDescription>Respostas de formulários nos últimos 6 meses.</CardDescription>
         </CardHeader>
-        <CardContent className="h-[300px] w-full p-0 pr-6"> {/* Reduced height from h-[350px] */}
+        <CardContent className="h-[250px] w-full p-0 pr-6"> {/* Reduced height from h-[300px] */}
           <ChartContainer config={chartConfig} className="h-full w-full">
             <RechartsBarChart data={engagementData} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
               <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
