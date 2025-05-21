@@ -14,11 +14,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { MoreHorizontal, PlusCircle, Search, Eye, Edit, PlayCircle, Trash2, CalendarPlus, Workflow, Loader2, AlertTriangle } from 'lucide-react';
 import type { Flow } from '@/types'; 
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card'; // Removed CardHeader, CardTitle, CardDescription as they are not used.
+import { Card, CardContent } from '@/components/ui/card'; 
 import { toast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -61,7 +61,13 @@ export default function MeusFluxosPage() {
       }
     };
 
-    fetchFlows();
+    if (user?.id) {
+        fetchFlows();
+    } else {
+        // Se o usuário não estiver disponível imediatamente, podemos aguardar ou lidar com isso.
+        // Por agora, vamos apenas não buscar se não houver ID.
+        setIsLoading(false); 
+    }
   }, [user?.id]);
 
   const filteredFlows = flows.filter(flow =>
@@ -207,14 +213,14 @@ export default function MeusFluxosPage() {
                            <DropdownMenuItem onSelect={() => alert(`Atribuir ${flow.name} a pacientes`)}>
                             <CalendarPlus className="mr-2 h-4 w-4" /> Atribuir/Agendar
                           </DropdownMenuItem>
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem 
-                              onSelect={(e) => {e.preventDefault(); setFlowToDelete(flow)}}
-                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> Excluir Fluxo
-                            </DropdownMenuItem>
-                          </AlertDialogTrigger>
+                          
+                          <DropdownMenuItem 
+                            onSelect={(e) => {e.preventDefault(); setFlowToDelete(flow)}}
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Excluir Fluxo
+                          </DropdownMenuItem>
+                          
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
