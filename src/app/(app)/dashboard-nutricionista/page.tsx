@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -56,7 +57,7 @@ export default function DashboardNutricionistaPage() {
             <h1 className="text-3xl font-bold tracking-tight">Dashboard do Nutricionista</h1>
             <p className="text-muted-foreground">Gerencie seus pacientes, fluxos e conteúdos.</p>
         </div>
-        <div className="space-x-2">
+        <div className="space-x-4"> {/* Alterado de space-x-2 para space-x-4 */}
             <Link href="/pacientes/novo" passHref>
                 <Button variant="default"><PlusCircle className="mr-2 h-4 w-4" /> Novo Paciente</Button>
             </Link>
