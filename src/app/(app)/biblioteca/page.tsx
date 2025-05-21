@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -142,7 +143,7 @@ export default function BibliotecaPage() {
                             <TableCell>{getIconForType(content.type)}</TableCell>
                             <TableCell className="font-medium">{content.title}</TableCell>
                             <TableCell>{content.category}</TableCell>
-                            <TableCell className="text-right space-x-1">
+                            <TableCell className="text-right space-x-2">
                                 <Button variant="ghost" size="icon" onClick={() => alert(`Editar ${content.title}`)}>
                                     <Edit className="h-4 w-4" />
                                 </Button>

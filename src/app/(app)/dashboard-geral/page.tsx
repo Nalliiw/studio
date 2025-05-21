@@ -37,7 +37,7 @@ export default function DashboardGeralPage() {
 
   return (
     <div className="space-y-4"> {/* Reduced from space-y-6 */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard Geral</h1>
           <p className="text-muted-foreground">Visão geral do sistema NutriTrack Lite.</p>
@@ -101,7 +101,7 @@ export default function DashboardGeralPage() {
         </CardContent>
       </Card>
       
-      <div className="flex space-x-4">
+      <div className="flex flex-wrap gap-4 mt-6">
         <Link href="/empresas" passHref>
             <Button variant="default"><Building className="mr-2 h-4 w-4" /> Ver Empresas</Button>
         </Link>

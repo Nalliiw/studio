@@ -50,8 +50,6 @@ const mockScheduledItems: ScheduledItem[] = [
 
 export default function PatientAgendaPage() {
   const paramsFromHook = useParams();
-  // Unwrap params using React.use as suggested by the Next.js error message.
-  // Using 'as any' to bypass potential TypeScript type errors if the hook's return type isn't directly 'use'-able.
   const params = use(paramsFromHook as any); 
   
   const router = useRouter();
@@ -164,7 +162,7 @@ export default function PatientAgendaPage() {
   return (
     <div className="space-y-6 h-full flex flex-col">
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" onClick={() => router.push('/pacientes')} aria-label="Voltar para pacientes">
+        <Button variant="outline" size="icon" onClick={() => router.back()} aria-label="Voltar">
             <ChevronLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -202,7 +200,7 @@ export default function PatientAgendaPage() {
                                             </CardDescription>
                                         </div>
                                     </div>
-                                    <div className="flex gap-1">
+                                    <div className="flex items-center gap-1 sm:gap-2">
                                         <Button variant="ghost" size="icon" onClick={() => handleOpenScheduleDialog(item)}><Edit className="h-4 w-4" /></Button>
                                         <Button variant="ghost" size="icon" onClick={() => handleDeleteScheduledItem(item.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                                     </div>
@@ -328,7 +326,7 @@ export default function PatientAgendaPage() {
             </div>
 
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:justify-end">
             <Button variant="outline" onClick={() => setIsSchedulingDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleSaveScheduledItem}>Salvar Agendamento</Button>
           </DialogFooter>
@@ -338,5 +336,3 @@ export default function PatientAgendaPage() {
     </div>
   );
 }
-
-    
