@@ -1,34 +1,32 @@
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, Timestamp, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, serverTimestamp } from 'firebase/firestore';
 import type { Company } from '@/types';
 
 const COMPANIES_COLLECTION = 'companies';
 
-const backendErrorMessage = 'Backend (Firebase) não está conectado. Funcionalidade desabilitada.';
-
 export async function createCompany(companyData: { name: string; cnpj: string }): Promise<Company> {
-  console.warn(`createCompany: ${backendErrorMessage}`);
   if (!db) {
-    throw new Error(backendErrorMessage);
+    console.error('Firestore (db) não está inicializado. Verifique a configuração do Firebase.');
+    throw new Error('Serviço Indisponível: Backend não conectado.');
   }
-  // O código abaixo não será executado se db for null, mas o mantemos para referência futura.
   try {
     const docRef = await addDoc(collection(db, COMPANIES_COLLECTION), {
       ...companyData,
       nutritionistCount: 0,
       status: 'active',
-      createdAt: serverTimestamp(),
+      createdAt: serverTimestamp(), // Use serverTimestamp para o Firebase definir a data/hora
     });
     return {
       id: docRef.id,
       ...companyData,
       nutritionistCount: 0,
       status: 'active',
+      // createdAt não é retornado diretamente aqui, pois é definido pelo servidor.
+      // Se precisar dele no objeto retornado, você teria que buscar o documento novamente.
     };
   } catch (error) {
-    console.error('Error creating company (mesmo com db potencialmente conectado):', error);
-    // Lançar o erro original ou um erro mais genérico
+    console.error('Erro ao criar empresa no Firestore:', error);
     if (error instanceof Error) {
         throw new Error(`Falha ao criar empresa: ${error.message}`);
     }
@@ -38,27 +36,27 @@ export async function createCompany(companyData: { name: string; cnpj: string })
 
 export async function getCompanies(): Promise<Company[]> {
   if (!db) {
-    console.warn(`getCompanies: ${backendErrorMessage} Retornando array vazio.`);
+    console.warn('Firestore (db) não está inicializado. Retornando array vazio. Verifique a configuração do Firebase.');
     return [];
   }
-  // O código abaixo não será executado se db for null, mas o mantemos para referência futura.
   try {
     const querySnapshot = await getDocs(collection(db, COMPANIES_COLLECTION));
     const companies: Company[] = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
+      // Converta Timestamp do Firestore para string ISO se necessário, ou mantenha como Timestamp.
+      // Para este exemplo, não estamos lidando com timestamps na interface Company.
       companies.push({
         id: doc.id,
         name: data.name,
         cnpj: data.cnpj,
         nutritionistCount: data.nutritionistCount,
         status: data.status,
-      } as Company);
+      } as Company); // O 'as Company' pode precisar de mais cuidado com tipos
     });
     return companies;
   } catch (error) {
-    console.error('Error fetching companies (mesmo com db potencialmente conectado):', error);
-    // Retornar array vazio em caso de erro para não quebrar o frontend que espera uma lista
-    return [];
+    console.error('Erro ao buscar empresas do Firestore:', error);
+    return []; // Retorna array vazio em caso de erro para não quebrar o frontend
   }
 }
