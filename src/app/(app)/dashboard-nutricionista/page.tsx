@@ -96,7 +96,7 @@ export default function DashboardNutricionistaPage() {
             <CardTitle>Evolução de Pacientes Ativos</CardTitle>
             <CardDescription>Número de pacientes ativos nos últimos 6 meses.</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px] w-full p-0 pr-6">
+          <CardContent className="h-[250px] w-full p-0 pr-6">
             <ChartContainer config={chartConfigActivePatients} className="h-full w-full">
               <LineChart data={activePatientsData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                 <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
@@ -112,11 +112,11 @@ export default function DashboardNutricionistaPage() {
             <CardTitle>Status dos Formulários</CardTitle>
             <CardDescription>Distribuição de formulários respondidos e pendentes.</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px] w-full p-0 flex items-center justify-center">
-             <ChartContainer config={chartConfigForms} className="mx-auto aspect-square max-h-[250px]">
+          <CardContent className="h-[250px] w-full p-0 flex items-center justify-center">
+             <ChartContainer config={chartConfigForms} className="mx-auto aspect-square max-h-[220px]">
               <PieChart>
                 <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                <Pie data={formsData} dataKey="value" nameKey="name" innerRadius={60} strokeWidth={5}>
+                <Pie data={formsData} dataKey="value" nameKey="name" innerRadius={50} strokeWidth={5}>
                    {formsData.map((entry) => (
                     <Cell key={`cell-${entry.name}`} fill={entry.fill} />
                   ))}
