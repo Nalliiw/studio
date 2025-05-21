@@ -14,63 +14,108 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Search, Eye, Edit, PlayCircle, Trash2, CalendarPlus, Workflow } from 'lucide-react';
-import type { Flow, FlowStep } from '@/types'; 
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { MoreHorizontal, PlusCircle, Search, Eye, Edit, PlayCircle, Trash2, CalendarPlus, Workflow, Loader2, AlertTriangle } from 'lucide-react';
+import type { Flow } from '@/types'; 
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card'; // Removed CardHeader, CardTitle, CardDescription as they are not used.
 import { toast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-
-// Mock data for flows
-const mockFlows: (Flow & { lastModified: string; status: 'draft' | 'active' | 'archived'; patientAssignments: number })[] = [
-  { 
-    id: 'flow1', 
-    name: 'Questionário Inicial Completo', 
-    steps: [
-      { id: 'f1_step1', type: 'information_text', title: 'Bem-vindo ao Questionário', config: { text: 'Este é o questionário inicial completo.' }, position: {x: 50, y: 50}},
-      { id: 'f1_step2', type: 'text_input', title: 'Seu Nome', config: { text: 'Qual o seu nome completo?', defaultNextStepId: 'f1_step3', placeholder: 'Nome Completo' }, position: {x: 350, y: 50}},
-      { id: 'f1_step3', type: 'single_choice', title: 'Seu Sexo', config: { text: 'Qual o seu sexo?', options: [{value: 'm', label: 'Masculino'}, {value: 'f', label: 'Feminino'}]}, position: {x: 50, y: 300}},
-    ], 
-    nutritionistId: 'n1', 
-    lastModified: '2024-05-28T10:00:00Z', 
-    status: 'active', 
-    patientAssignments: 15 
-  },
-  { id: 'flow2', name: 'Check-in Semanal Rápido', steps: [], nutritionistId: 'n1', lastModified: '2024-05-25T14:30:00Z', status: 'draft', patientAssignments: 0 },
-  { id: 'flow3', name: 'Avaliação de Hábitos Alimentares (v2)', steps: [], nutritionistId: 'n1', lastModified: '2024-05-20T09:15:00Z', status: 'active', patientAssignments: 8 },
-  { id: 'flow_old', name: 'Questionário de Satisfação (Antigo)', steps: [], nutritionistId: 'n1', lastModified: '2023-12-10T11:00:00Z', status: 'archived', patientAssignments: 22 },
-];
+import { useAuth } from '@/hooks/useAuth';
 
 export default function MeusFluxosPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [flows, setFlows] = useState(mockFlows); 
+  const { user } = useAuth();
   const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [flows, setFlows] = useState<Flow[]>([]); 
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [flowToDelete, setFlowToDelete] = useState<Flow | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const fetchFlows = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        setError("Usuário não autenticado.");
+        return;
+      }
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`/api/flows?nutritionistId=${user.id}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Falha ao buscar fluxos.');
+        }
+        const data: Flow[] = await response.json();
+        setFlows(data);
+      } catch (err) {
+        console.error("Erro ao buscar fluxos:", err);
+        setError(err instanceof Error ? err.message : "Ocorreu um erro inesperado.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFlows();
+  }, [user?.id]);
 
   const filteredFlows = flows.filter(flow =>
     flow.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleDeleteFlow = (flowId: string) => {
-    setFlows(prevFlows => prevFlows.filter(f => f.id !== flowId));
-    toast({ title: "Fluxo Removido", description: "O fluxo foi removido com sucesso." });
+  const handleDeleteFlow = async () => {
+    if (!flowToDelete) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/flows/${flowToDelete.id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Falha ao excluir fluxo.');
+      }
+      setFlows(prevFlows => prevFlows.filter(f => f.id !== flowToDelete.id));
+      toast({ title: "Fluxo Removido", description: `O fluxo "${flowToDelete.name}" foi removido com sucesso.` });
+    } catch (err) {
+      toast({ title: "Erro ao Remover Fluxo", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
+      setFlowToDelete(null);
+    }
   };
   
-  const handleToggleStatus = (flowId: string) => {
-    setFlows(prevFlows => prevFlows.map(f => {
-        if (f.id === flowId) {
-            let newStatus = f.status === 'active' ? 'draft' : 'active';
-            if (f.status === 'archived') newStatus = 'draft'; 
-            toast({ title: "Status Alterado", description: `Fluxo agora está ${newStatus === 'active' ? 'ativo' : (newStatus === 'draft' ? 'como rascunho' : 'arquivado')}.` });
-            // @ts-ignore
-            return {...f, status: newStatus};
+  const handleToggleStatus = async (flow: Flow) => {
+    let newStatus: Flow['status'] = 'draft';
+    if (flow.status === 'draft') newStatus = 'active';
+    else if (flow.status === 'active') newStatus = 'archived';
+    else if (flow.status === 'archived') newStatus = 'draft';
+
+    try {
+        const response = await fetch(`/api/flows/${flow.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Falha ao alterar status do fluxo.');
         }
-        return f;
-    }));
+        setFlows(prevFlows => prevFlows.map(f => f.id === flow.id ? {...f, status: newStatus, lastModified: new Date().toISOString()} : f));
+        toast({ title: "Status Alterado", description: `Fluxo "${flow.name}" agora está ${newStatus === 'active' ? 'ativo' : (newStatus === 'draft' ? 'como rascunho' : 'arquivado')}.` });
+    } catch (err) {
+        toast({ title: "Erro ao Alterar Status", description: (err as Error).message, variant: "destructive" });
+    }
   };
 
+  const getStatusText = (status?: Flow['status']) => {
+    if (status === 'active') return 'Ativo';
+    if (status === 'draft') return 'Rascunho';
+    if (status === 'archived') return 'Arquivado';
+    return 'Desconhecido';
+  }
 
   return (
     <div className="space-y-6 h-full flex flex-col">
@@ -101,7 +146,19 @@ export default function MeusFluxosPage() {
 
       <Card className="shadow-md flex-grow">
         <CardContent className="p-0 h-full">
-          {filteredFlows.length > 0 ? (
+          {isLoading ? (
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-10">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                <p className="text-lg">Carregando fluxos...</p>
+            </div>
+          ) : error ? (
+            <div className="h-full flex flex-col items-center justify-center text-destructive p-10 text-center">
+                <AlertTriangle className="h-12 w-12 mb-4" />
+                <p className="text-lg font-semibold">Erro ao carregar fluxos</p>
+                <p className="text-sm mb-4">{error}</p>
+                <Button variant="outline" onClick={() => window.location.reload()}>Tentar Novamente</Button>
+            </div>
+          ) : filteredFlows.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -116,7 +173,7 @@ export default function MeusFluxosPage() {
                 {filteredFlows.map((flow) => (
                   <TableRow key={flow.id}>
                     <TableCell className="font-medium">{flow.name}</TableCell>
-                    <TableCell>{format(new Date(flow.lastModified), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</TableCell>
+                    <TableCell>{flow.lastModified ? format(parseISO(flow.lastModified as string), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : '-'}</TableCell>
                     <TableCell className="text-center">
                       <Badge variant={flow.status === 'active' ? 'default' : (flow.status === 'draft' ? 'secondary' : 'outline')}
                              className={cn(
@@ -125,10 +182,10 @@ export default function MeusFluxosPage() {
                                 flow.status === 'archived' && 'bg-gray-400 hover:bg-gray-500 text-gray-800'
                              )}
                       >
-                        {flow.status === 'active' ? 'Ativo' : (flow.status === 'draft' ? 'Rascunho' : 'Arquivado')}
+                        {getStatusText(flow.status)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-center">{flow.patientAssignments}</TableCell>
+                    <TableCell className="text-center">{flow.patientAssignments || 0}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -143,15 +200,21 @@ export default function MeusFluxosPage() {
                            <DropdownMenuItem onSelect={() => alert(`Visualizar ${flow.name}`)}>
                             <Eye className="mr-2 h-4 w-4" /> Visualizar
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => handleToggleStatus(flow.id)}>
-                            <PlayCircle className="mr-2 h-4 w-4" /> {flow.status === 'active' ? 'Desativar' : 'Ativar'}
+                          <DropdownMenuItem onSelect={() => handleToggleStatus(flow)}>
+                            <PlayCircle className="mr-2 h-4 w-4" /> 
+                            {flow.status === 'active' ? 'Arquivar' : (flow.status === 'draft' ? 'Ativar' : 'Reativar (Rascunho)')}
                           </DropdownMenuItem>
                            <DropdownMenuItem onSelect={() => alert(`Atribuir ${flow.name} a pacientes`)}>
                             <CalendarPlus className="mr-2 h-4 w-4" /> Atribuir/Agendar
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => handleDeleteFlow(flow.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                            <Trash2 className="mr-2 h-4 w-4" /> Excluir Fluxo
-                          </DropdownMenuItem>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem 
+                              onSelect={(e) => {e.preventDefault(); setFlowToDelete(flow)}}
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Excluir Fluxo
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -171,6 +234,25 @@ export default function MeusFluxosPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!flowToDelete} onOpenChange={(open) => !open && setFlowToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o fluxo "{flowToDelete?.name}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setFlowToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteFlow} disabled={isDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+

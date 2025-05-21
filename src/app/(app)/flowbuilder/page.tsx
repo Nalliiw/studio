@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Workflow, Save, PlusCircle, Trash2, Eye, PlayCircle, ListChecks, TextCursorInput,
-  CircleDot, ImageUp, Smile, Mic, Video as VideoIcon, FileText, Image as ImageIcon, FileAudio, Film, AlignLeft, HelpCircle, Link2, Variable, ZoomIn, ZoomOut, Move, Unlink, List
+  CircleDot, ImageUp, Smile, Mic, Video as VideoIcon, FileText, Image as ImageIcon, FileAudio, Film, AlignLeft, HelpCircle, Link2, Variable, ZoomIn, ZoomOut, Move, Unlink, List, Loader2
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -21,7 +21,8 @@ import type { Flow, FlowStep, FlowStepType, FlowStepOption, FlowStepConfig } fro
 import { cn } from '@/lib/utils';
 import FlowPreviewModal from '@/components/flow/flow-preview-modal';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation'; // Added useRouter
+import { useAuth } from '@/hooks/useAuth';
 
 
 interface Tool {
@@ -74,8 +75,6 @@ const stepHasTextOrOutput = (step: FlowStep): boolean => {
     return false;
   }
   const hasText = typeof step.config.text === 'string' && step.config.text.trim() !== '';
-  
-  // Consider setOutputVariable as relevant for layout if present and non-empty
   const hasOutputVar = typeof step.config.setOutputVariable === 'string' && step.config.setOutputVariable.trim() !== '';
   
   if (step.type === 'multiple_choice' || step.type === 'single_choice' || step.type === 'emoji_rating') {
@@ -84,18 +83,6 @@ const stepHasTextOrOutput = (step: FlowStep): boolean => {
 
   return hasText || hasOutputVar;
 };
-
-
-const mockFlowForEditing: Flow = { 
-    id: 'flow1', 
-    name: 'Questionário Inicial Completo (Editado)', 
-    steps: [
-      { id: 'f1_step1', type: 'information_text', title: 'Bem-vindo ao Questionário', config: { text: 'Este é o questionário inicial completo. Edite-o!' }, position: {x: 50, y: 50}},
-      { id: 'f1_step2', type: 'text_input', title: 'Seu Nome', config: { text: 'Qual o seu nome completo?', defaultNextStepId: 'f1_step3', placeholder: 'Nome Completo' }, position: {x: 350, y: 50}},
-      { id: 'f1_step3', type: 'single_choice', title: 'Seu Sexo', config: { text: 'Qual o seu sexo?', options: [{value: 'm', label: 'Masculino'}, {value: 'f', label: 'Feminino'}]}, position: {x: 50, y: 300}},
-    ], 
-    nutritionistId: 'n1', 
-  };
 
 
 const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onStartInteraction, isConnectingSource, isPotentialTarget, onInitiateConnection, onDisconnect, onHoverConnectionLine, onLeaveConnectionLine, hoveredConnectionId }: {
@@ -449,10 +436,13 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
 
 
 export default function FlowBuilderPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const flowIdToEdit = searchParams.get('edit');
   
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(!!flowIdToEdit);
+  const [isLoadingFlow, setIsLoadingFlow] = useState(!!flowIdToEdit);
   const [flowName, setFlowName] = useState('');
   const [flowSteps, setFlowSteps] = useState<FlowStep[]>([]);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
@@ -468,37 +458,49 @@ export default function FlowBuilderPage() {
   const MAX_ZOOM = 2.5;
   const ZOOM_SENSITIVITY = 0.001;
 
-
   const [connectingState, setConnectingState] = useState<ConnectingState | null>(null);
   const [hoveredConnectionId, setHoveredConnectionId] = useState<string | null>(null);
 
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [initialPreviewStepId, setInitialPreviewStepId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isMobile = useIsMobile();
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTapRef = useRef(0);
   
 
-  useEffect(() => {
-    if (flowIdToEdit) {
-      setIsEditing(true);
-      if (flowIdToEdit === mockFlowForEditing.id) {
-        setFlowName(mockFlowForEditing.name);
-        setFlowSteps(mockFlowForEditing.steps);
-        toast({ title: "Modo de Edição", description: `Carregando fluxo: ${mockFlowForEditing.name}` });
-      } else {
-        toast({ title: "Erro ao Carregar Fluxo", description: `Fluxo com ID "${flowIdToEdit}" não encontrado. Iniciando um novo fluxo.`, variant: "destructive" });
-        setIsEditing(false); 
-        setFlowName('');
-        setFlowSteps([]);
+ useEffect(() => {
+    const fetchFlowToEdit = async (id: string) => {
+      setIsLoadingFlow(true);
+      try {
+        const response = await fetch(`/api/flows/${id}`);
+        if (!response.ok) {
+          throw new Error('Falha ao buscar fluxo para edição.');
+        }
+        const flowData: Flow = await response.json();
+        setFlowName(flowData.name);
+        setFlowSteps(flowData.steps || []); // Ensure steps is an array
+        setIsEditing(true);
+        toast({ title: "Modo de Edição", description: `Carregando fluxo: ${flowData.name}` });
+      } catch (error) {
+        console.error("Erro ao carregar fluxo:", error);
+        toast({ title: "Erro ao Carregar Fluxo", description: (error as Error).message, variant: "destructive" });
+        router.push('/flowbuilder'); // Redirect to new flow if loading fails
+      } finally {
+        setIsLoadingFlow(false);
       }
+    };
+
+    if (flowIdToEdit) {
+      fetchFlowToEdit(flowIdToEdit);
     } else {
       setIsEditing(false);
+      setIsLoadingFlow(false);
       setFlowName('');
       setFlowSteps([]);
     }
-  }, [flowIdToEdit]);
+  }, [flowIdToEdit, router]);
 
 
   const addStep = useCallback((toolType: FlowStepType, position: { x: number; y: number }) => {
@@ -536,7 +538,7 @@ export default function FlowBuilderPage() {
       const y = (event.clientY - canvasRect.top + canvasRef.current.scrollTop) / zoomLevel;
       addStep(toolType, { x: x - CARD_WIDTH / 2, y: y - CARD_HEIGHT_ESTIMATE / 2 }); 
       const tool = toolPalette.find(t => t.type === toolType);
-      toast({ title: "Ferramenta Adicionada", description: `${tool?.label || 'Ferramenta'} foi adicionada ao fluxo.` });
+      toast({ title: "Ferramenta Adicionada", description: `${tool?.label || 'Ferramenta'} foi adicionada ao fluxo.`, duration: 2000 });
     }
   };
 
@@ -635,7 +637,7 @@ export default function FlowBuilderPage() {
         const x = (canvasRef.current.scrollLeft + canvasRect.width / 2) / zoomLevel - (CARD_WIDTH / 2);
         const y = (canvasRef.current.scrollTop + canvasRect.height / 2) / zoomLevel - (CARD_HEIGHT_ESTIMATE / 2);
         addStep(tool.type, { x: Math.max(0,x), y: Math.max(0,y) });
-        toast({ title: "Ferramenta Adicionada", description: `${tool.label} adicionado ao fluxo.`});
+        toast({ title: "Ferramenta Adicionada", description: `${tool.label} adicionado ao fluxo.`, duration: 2000});
       }
     } else { 
       lastTapRef.current = currentTime;
@@ -793,7 +795,11 @@ export default function FlowBuilderPage() {
     );
   };
 
-  const handleSaveFlow = async () => {
+  const handleSaveOrUpdateFlow = async () => {
+    if (!user) {
+      toast({ title: "Erro de Autenticação", description: "Você precisa estar logado para salvar um fluxo.", variant: "destructive" });
+      return;
+    }
     if (flowName.trim() === '') {
       toast({ title: "Erro", description: "O nome do fluxo é obrigatório.", variant: "destructive" });
       return;
@@ -802,23 +808,41 @@ export default function FlowBuilderPage() {
       toast({ title: "Erro", description: "Adicione pelo menos uma etapa ao fluxo.", variant: "destructive" });
       return;
     }
-    console.log('Salvando fluxo:', { flowName, steps: flowSteps });
-    await new Promise(resolve => setTimeout(resolve, 1000)); 
-    toast({ title: "Fluxo Salvo!", description: `O fluxo "${flowName}" foi salvo com sucesso.` });
-  };
 
-  const handleUpdateFlow = async () => {
-    if (flowName.trim() === '') {
-      toast({ title: "Erro", description: "O nome do fluxo é obrigatório.", variant: "destructive" });
-      return;
+    setIsSubmitting(true);
+    const flowPayload = {
+      name: flowName,
+      steps: flowSteps,
+      nutritionistId: user.id, // Assuming user.id is the nutritionistId
+      status: 'draft' as 'draft' | 'active' | 'archived', // Default to draft, or fetch current status if editing
+    };
+
+    try {
+      let response;
+      if (isEditing && flowIdToEdit) {
+        response = await fetch(`/api/flows/${flowIdToEdit}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: flowPayload.name, steps: flowPayload.steps }), // Only send updatable fields
+        });
+        if (!response.ok) throw new Error('Falha ao atualizar fluxo.');
+        toast({ title: "Fluxo Atualizado!", description: `O fluxo "${flowName}" foi atualizado com sucesso.` });
+      } else {
+        response = await fetch('/api/flows', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(flowPayload),
+        });
+        if (!response.ok) throw new Error('Falha ao salvar fluxo.');
+        toast({ title: "Fluxo Salvo!", description: `O fluxo "${flowName}" foi salvo com sucesso.` });
+      }
+      router.push('/flowbuilder/meus-fluxos');
+    } catch (error) {
+      console.error("Erro ao salvar/atualizar fluxo:", error);
+      toast({ title: `Erro ao ${isEditing ? 'Atualizar' : 'Salvar'} Fluxo`, description: (error as Error).message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
     }
-    if (flowSteps.length === 0) {
-      toast({ title: "Erro", description: "Adicione pelo menos uma etapa ao fluxo.", variant: "destructive" });
-      return;
-    }
-    console.log('Atualizando fluxo:', { flowId: flowIdToEdit, flowName, steps: flowSteps });
-    await new Promise(resolve => setTimeout(resolve, 1000)); 
-    toast({ title: "Fluxo Atualizado!", description: `O fluxo "${flowName}" foi atualizado com sucesso.` });
   };
   
   const handleManualZoom = (direction: 'in' | 'out') => {
@@ -965,12 +989,11 @@ export default function FlowBuilderPage() {
           if (targetStep && targetCardEl) {
             const targetCardRect = { x: targetStep.position.x, y: targetStep.position.y, width: targetCardEl.offsetWidth, height: targetCardEl.offsetHeight };
             
-            // Refined calculation for option Y position
-            const baseHeaderHeight = 40; // Approximate height of card header
-            const outputVarHeight = step.config.setOutputVariable ? 22 : 0; // Approx height if output var is shown
-            const textContentHeight = step.config.text ? 20 : 0; // Approx height if text prompt is shown
-            const optionsSectionPadding = 8; // Padding above options list
-            const optionItemHeightWithSpacing = 38; // Approximate height of one option item + spacing
+            const baseHeaderHeight = 40; 
+            const outputVarHeight = sourceStep.config.setOutputVariable ? 22 : 0; 
+            const textContentHeight = sourceStep.config.text ? 20 : 0; 
+            const optionsSectionPadding = 8; 
+            const optionItemHeightWithSpacing = 38; 
 
             let startYForOptions = sourceCardRect.y + baseHeaderHeight + outputVarHeight + textContentHeight + optionsSectionPadding;
             
@@ -979,7 +1002,7 @@ export default function FlowBuilderPage() {
             lines.push({
               id: `${sourceStep.id}-option-${option.value}-${targetStep.id}`,
               startX: sourceCardRect.x + sourceCardRect.width, 
-              startY: Math.min(optionCenterY, sourceCardRect.y + sourceCardRect.height - 10), // Ensure it's within card bounds
+              startY: Math.min(optionCenterY, sourceCardRect.y + sourceCardRect.height - 10), 
               endX: targetCardRect.x, 
               endY: targetCardRect.y + targetCardRect.height / 2, 
               type: 'option',
@@ -992,8 +1015,7 @@ export default function FlowBuilderPage() {
       });
     });
     return lines;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flowSteps, zoomLevel, hoveredConnectionId]); // Added hoveredConnectionId to recompute if needed for dynamic styles on cards
+  }, [flowSteps, zoomLevel, hoveredConnectionId]); 
 
 
   const getPathDefinition = (startX: number, startY: number, endX: number, endY: number) => {
@@ -1013,6 +1035,15 @@ export default function FlowBuilderPage() {
         handleDisconnect(line.sourceStepId, 'option', line.sourceOptionValue);
     }
   };
+
+  if (isLoadingFlow) {
+    return (
+      <div className="flex flex-col h-full bg-muted/30 p-2 items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Carregando fluxo...</p>
+      </div>
+    );
+  }
 
 
   return (
@@ -1212,8 +1243,9 @@ export default function FlowBuilderPage() {
       <CardFooter className="border-t p-3 flex justify-end gap-2 bg-card shadow-inner sticky bottom-0 z-40">
         <Button variant="outline" onClick={handleOpenPreview}><Eye className="mr-2 h-4 w-4" /> Visualizar</Button>
         <Button variant="outline" onClick={() => alert("Ativação de fluxo ainda não implementada.")}><PlayCircle className="mr-2 h-4 w-4" /> Ativar Fluxo</Button>
-        <Button onClick={isEditing ? handleUpdateFlow : handleSaveFlow}>
-          <Save className="mr-2 h-4 w-4" /> {isEditing ? 'Atualizar Fluxo' : 'Salvar Fluxo'}
+        <Button onClick={handleSaveOrUpdateFlow} disabled={isSubmitting}>
+          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          {isEditing ? 'Atualizar Fluxo' : 'Salvar Fluxo'}
         </Button>
       </CardFooter>
 
@@ -1228,4 +1260,3 @@ export default function FlowBuilderPage() {
     </div>
   );
 }
-

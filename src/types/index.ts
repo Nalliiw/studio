@@ -73,6 +73,10 @@ export interface Flow {
   name: string;
   steps: FlowStep[];
   nutritionistId: string;
+  createdAt?: any; // Firebase Timestamp or string
+  lastModified?: any; // Firebase Timestamp or string
+  status?: 'draft' | 'active' | 'archived';
+  patientAssignments?: number; // Primarily for frontend display logic based on mock data, backend might calculate this differently
 }
 
 export interface Content {
