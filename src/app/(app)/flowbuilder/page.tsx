@@ -21,7 +21,7 @@ import type { Flow, FlowStep, FlowStepType, FlowStepOption, FlowStepConfig } fro
 import { cn } from '@/lib/utils';
 import FlowPreviewModal from '@/components/flow/flow-preview-modal';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useSearchParams, useRouter } from 'next/navigation'; // Added useRouter
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
 
@@ -49,13 +49,13 @@ const toolPalette: Tool[] = [
 ];
 
 const NO_NEXT_STEP_VALUE = "__NO_NEXT_STEP__";
-const CARD_WIDTH = 240; 
-const CARD_HEIGHT_ESTIMATE = 240; 
+const CARD_WIDTH = 240;
+const CARD_HEIGHT_ESTIMATE = 260;
 
 interface ConnectingState {
   sourceStepId: string;
   sourceType: 'default' | 'option';
-  sourceOptionValue?: string; 
+  sourceOptionValue?: string;
 }
 
 interface ConnectionLine {
@@ -76,9 +76,9 @@ const stepHasTextOrOutput = (step: FlowStep): boolean => {
   }
   const hasText = typeof step.config.text === 'string' && step.config.text.trim() !== '';
   const hasOutputVar = typeof step.config.setOutputVariable === 'string' && step.config.setOutputVariable.trim() !== '';
-  
+
   if (step.type === 'multiple_choice' || step.type === 'single_choice' || step.type === 'emoji_rating') {
-    return true; 
+    return true;
   }
 
   return hasText || hasOutputVar;
@@ -87,10 +87,10 @@ const stepHasTextOrOutput = (step: FlowStep): boolean => {
 
 const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onStartInteraction, isConnectingSource, isPotentialTarget, onInitiateConnection, onDisconnect, onHoverConnectionLine, onLeaveConnectionLine, hoveredConnectionId }: {
   step: FlowStep;
-  onClick: (e: React.MouseEvent<HTMLDivElement>) => void; 
+  onClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   onRemove: (id: string) => void;
   allSteps: FlowStep[];
-  onStartInteraction: (clientX: number, clientY: number, stepId: string) => void; 
+  onStartInteraction: (clientX: number, clientY: number, stepId: string) => void;
   isConnectingSource: boolean;
   isPotentialTarget: boolean;
   onInitiateConnection: (sourceStepId: string, sourceType: 'default' | 'option', sourceOptionValue?: string) => void;
@@ -103,7 +103,7 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onStartInter
   const getStepTitleById = (id?: string) => allSteps.find(s => s.id === id)?.title || 'Próxima Etapa';
 
   const handleConnectClick = (e: React.MouseEvent, sourceType: 'default' | 'option', optionValue?: string) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     onInitiateConnection(step.id, sourceType, optionValue);
   };
 
@@ -117,17 +117,17 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onStartInter
     <Card
       onMouseDown={(e) => {
         if ((e.target as HTMLElement).closest('button, a, select, input, textarea')) return;
-        if (e.button === 0) { 
+        if (e.button === 0) {
           onStartInteraction(e.clientX, e.clientY, step.id);
         }
       }}
       onTouchStart={(e) => {
          if ((e.target as HTMLElement).closest('button, a, select, input, textarea')) return;
-         if (e.touches.length === 1) { 
+         if (e.touches.length === 1) {
            onStartInteraction(e.touches[0].clientX, e.touches[0].clientY, step.id);
          }
       }}
-      onClick={onClick} 
+      onClick={onClick}
       className={cn(
         "p-3 shadow-lg rounded-lg hover:shadow-xl transition-shadow duration-150 ease-in-out cursor-grab absolute w-60 bg-card flex flex-col space-y-2 border-2",
         isConnectingSource && "ring-2 ring-primary ring-offset-2 shadow-primary/50 border-primary",
@@ -135,7 +135,7 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onStartInter
          !isConnectingSource && !isPotentialTarget && "border-card"
       )}
       id={`step-card-${step.id}`}
-      style={{ left: step.position.x, top: step.position.y }}
+      style={{ left: step.position.x, top: step.position.y, minHeight: `${CARD_HEIGHT_ESTIMATE}px` }}
     >
       <div className="flex justify-between items-center pb-2 border-b border-border/50">
         <div className="flex items-center gap-2 truncate">
@@ -190,7 +190,7 @@ const FlowStepCardComponent = ({ step, onClick, onRemove, allSteps, onStartInter
           ))}
         </div>
       )}
-      
+
       <div className={cn("text-xs flex items-center justify-between pt-2 mt-auto group/default-next", (step.type === 'multiple_choice' || step.type === 'single_choice') && step.config.options && step.config.options.length > 0 ? "border-t border-border/30" : "border-t-0")}>
         <div className="flex items-center truncate">
           <span className="text-muted-foreground mr-1">{ (step.type === 'multiple_choice' || step.type === 'single_choice') ? "SAÍDA PADRÃO:" : "PRÓXIMA ETAPA:"}</span>
@@ -237,7 +237,7 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
   const handleConfigChange = (field: keyof FlowStepConfig, value: any) => {
     onUpdateStep({ ...step, config: { ...step.config, [field]: value } });
   };
-  
+
   const handleTitleChange = (newTitle: string) => {
      onUpdateStep({ ...step, title: newTitle });
   }
@@ -248,7 +248,7 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
       setNewOptionLabel('');
     }
   };
-  
+
   const safeSelectValue = (value: string | undefined) => value || NO_NEXT_STEP_VALUE;
 
 
@@ -268,8 +268,8 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
         { (step.type.startsWith('display_') || step.type.endsWith('_input') || step.type.endsWith('_upload') || step.type.endsWith('_record') || step.type === 'information_text' || step.type === 'emoji_rating') && (
           <div>
             <Label htmlFor={`step-text-${step.id}`}>
-              {step.type.includes('choice') || step.type.endsWith('_input') ? 'Texto da Pergunta/Instrução' : 
-              step.type.startsWith('display_') ? 'Descrição/Título do Conteúdo' : 
+              {step.type.includes('choice') || step.type.endsWith('_input') ? 'Texto da Pergunta/Instrução' :
+              step.type.startsWith('display_') ? 'Descrição/Título do Conteúdo' :
               step.type === 'information_text' ? 'Conteúdo do Texto' :
               'Instrução'}
             </Label>
@@ -332,7 +332,7 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
               onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {
                       const file = e.target.files[0];
-                      handleConfigChange('url', URL.createObjectURL(file)); 
+                      handleConfigChange('url', URL.createObjectURL(file));
                       if (!step.config.text) handleConfigChange('text', file.name);
                   }
               }}
@@ -401,7 +401,7 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
           </div>
         )}
 
-        <div> 
+        <div>
             <Label htmlFor={`step-defaultnextstep-${step.id}`}>Próxima Etapa Padrão</Label>
             <div className="flex items-center gap-1">
               <Select
@@ -423,7 +423,7 @@ const PropertiesEditor = ({ step, onUpdateStep, onRemoveOption, onAddOption, onO
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-                {step.type.includes('choice') 
+                {step.type.includes('choice')
                 ? "Usado se uma opção não tiver ramificação específica ou como fallback."
                 : "Próxima etapa após esta."}
             </p>
@@ -440,19 +440,19 @@ export default function FlowBuilderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const flowIdToEdit = searchParams.get('edit');
-  
+
   const [isEditing, setIsEditing] = useState(!!flowIdToEdit);
   const [isLoadingFlow, setIsLoadingFlow] = useState(!!flowIdToEdit);
   const [flowName, setFlowName] = useState('');
   const [flowSteps, setFlowSteps] = useState<FlowStep[]>([]);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
-  
+
   const [draggingStepId, setDraggingStepId] = useState<string | null>(null);
   const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
-  
+
   const [isEditPropertiesPopupOpen, setIsEditPropertiesPopupOpen] = useState(false);
-  
+
   const [zoomLevel, setZoomLevel] = useState(1);
   const MIN_ZOOM = 0.2;
   const MAX_ZOOM = 2.5;
@@ -468,7 +468,7 @@ export default function FlowBuilderPage() {
   const isMobile = useIsMobile();
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTapRef = useRef(0);
-  
+
 
  useEffect(() => {
     const fetchFlowToEdit = async (id: string) => {
@@ -486,7 +486,7 @@ export default function FlowBuilderPage() {
       } catch (error) {
         console.error("Erro ao carregar fluxo:", error);
         toast({ title: "Erro ao Carregar Fluxo", description: (error as Error).message, variant: "destructive" });
-        router.push('/flowbuilder'); // Redirect to new flow if loading fails
+        router.push('/flowbuilder/meus-fluxos'); // Redirect to list if loading fails
       } finally {
         setIsLoadingFlow(false);
       }
@@ -511,7 +511,7 @@ export default function FlowBuilderPage() {
       id: Date.now().toString(),
       type: tool.type,
       title: tool.defaultTitle,
-      config: JSON.parse(JSON.stringify(tool.defaultConfig)), 
+      config: JSON.parse(JSON.stringify(tool.defaultConfig)),
       position: position,
     };
     setFlowSteps(prev => [...prev, newStep]);
@@ -536,9 +536,9 @@ export default function FlowBuilderPage() {
       const canvasRect = canvasRef.current.getBoundingClientRect();
       const x = (event.clientX - canvasRect.left + canvasRef.current.scrollLeft) / zoomLevel;
       const y = (event.clientY - canvasRect.top + canvasRef.current.scrollTop) / zoomLevel;
-      addStep(toolType, { x: x - CARD_WIDTH / 2, y: y - CARD_HEIGHT_ESTIMATE / 2 }); 
+      addStep(toolType, { x: x - CARD_WIDTH / 2, y: y - CARD_HEIGHT_ESTIMATE / 2 });
       const tool = toolPalette.find(t => t.type === toolType);
-      toast({ title: "Ferramenta Adicionada", description: `${tool?.label || 'Ferramenta'} foi adicionada ao fluxo.`, duration: 2000 });
+      toast({ title: "Ferramenta Adicionada", description: `${tool?.label || 'Ferramenta'} adicionada ao fluxo.`, duration: 2000 });
     }
   };
 
@@ -546,11 +546,11 @@ export default function FlowBuilderPage() {
  const handleInteractionMove = useCallback((clientX: number, clientY: number) => {
     if (!draggingStepId || !canvasRef.current) return;
     const canvasRect = canvasRef.current.getBoundingClientRect();
-    
+
     let newX = (clientX / zoomLevel) - dragOffset.current.x - (canvasRect.left / zoomLevel) + (canvasRef.current.scrollLeft / zoomLevel);
     let newY = (clientY / zoomLevel) - dragOffset.current.y - (canvasRect.top / zoomLevel) + (canvasRef.current.scrollTop / zoomLevel);
 
-    newX = Math.max(0, newX); 
+    newX = Math.max(0, newX);
     newY = Math.max(0, newY);
 
     setFlowSteps(prevSteps =>
@@ -572,12 +572,12 @@ export default function FlowBuilderPage() {
 
     const onMouseMove = (e: MouseEvent) => handleInteractionMove(e.clientX, e.clientY);
     const onTouchMove = (e: TouchEvent) => {
-        if (draggingStepId && e.touches[0]) { 
-            e.preventDefault(); 
+        if (draggingStepId && e.touches[0]) {
+            e.preventDefault();
             handleInteractionMove(e.touches[0].clientX, e.touches[0].clientY);
         }
     };
-    
+
     const onMouseUpOrTouchEnd = () => handleInteractionEnd();
 
     if (draggingStepId) {
@@ -595,7 +595,7 @@ export default function FlowBuilderPage() {
   }, [draggingStepId, handleInteractionMove, handleInteractionEnd]);
 
   const handleStepInteractionStart = useCallback((clientX: number, clientY: number, stepId: string) => {
-    if (connectingState) return; 
+    if (connectingState) return;
     const step = flowSteps.find(s => s.id === stepId);
     if (!step || !canvasRef.current) return;
 
@@ -609,31 +609,28 @@ export default function FlowBuilderPage() {
 
 
   const handleToolTouchStart = (event: React.TouchEvent<HTMLButtonElement>) => {
-    // For mobile, prevent default to stop potential page scroll/zoom when initiating touch on tool buttons
-    // if (isMobile) event.preventDefault();
-
     if (!isMobile) return;
-  
+
     if (tapTimeoutRef.current) {
       clearTimeout(tapTimeoutRef.current);
       tapTimeoutRef.current = null;
     }
-    
+
     if (event.touches.length === 1) {
-       event.preventDefault(); 
+       event.preventDefault();
     }
   };
-  
+
   const handleToolTouchEndOnButton = (event: React.TouchEvent<HTMLButtonElement>, tool: Tool) => {
     if (!isMobile) return;
-      
+
     const currentTime = new Date().getTime();
     const tapLength = currentTime - lastTapRef.current;
 
-    if (tapLength < 300 && tapLength > 0) { 
-      if(tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current); 
+    if (tapLength < 300 && tapLength > 0) {
+      if(tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current);
       tapTimeoutRef.current = null;
-      lastTapRef.current = 0; 
+      lastTapRef.current = 0;
 
       if (canvasRef.current) {
         const canvasRect = canvasRef.current.getBoundingClientRect();
@@ -642,19 +639,19 @@ export default function FlowBuilderPage() {
         addStep(tool.type, { x: Math.max(0,x), y: Math.max(0,y) });
         toast({ title: "Ferramenta Adicionada", description: `${tool.label} adicionado ao fluxo.`, duration: 2000});
       }
-    } else { 
+    } else {
       lastTapRef.current = currentTime;
       tapTimeoutRef.current = setTimeout(() => {
-         toast({ title: tool.label, duration: 2000, description: "Toque duas vezes para adicionar." }); // Increased duration
+         toast({ title: tool.label, duration: 2000, description: "Toque duas vezes para adicionar." });
         tapTimeoutRef.current = null;
-      }, 300); 
+      }, 300);
     }
   };
 
 
   const handleInitiateConnection = (sourceStepId: string, sourceType: 'default' | 'option', sourceOptionValue?: string) => {
     setConnectingState({ sourceStepId, sourceType, sourceOptionValue });
-    setIsEditPropertiesPopupOpen(false); 
+    setIsEditPropertiesPopupOpen(false);
     toast({ title: "Conectando Etapa", description: "Clique na etapa de destino para criar a ligação." });
   };
 
@@ -714,12 +711,12 @@ export default function FlowBuilderPage() {
 
 
   const handleStepCardClick = (e: React.MouseEvent<HTMLDivElement>, stepId: string) => {
-    if (draggingStepId && draggingStepId === stepId) { 
+    if (draggingStepId && draggingStepId === stepId) {
         return;
     }
 
-    if (connectingState) { 
-      if (connectingState.sourceStepId === stepId) { 
+    if (connectingState) {
+      if (connectingState.sourceStepId === stepId) {
         toast({ title: "Ação Inválida", description: "Não é possível conectar uma etapa a ela mesma desta forma.", variant: "destructive" });
         return;
       }
@@ -749,7 +746,7 @@ export default function FlowBuilderPage() {
             newConfig.defaultNextStepId = undefined;
         }
         if (newConfig.options) {
-            newConfig.options = newConfig.options.map(opt => 
+            newConfig.options = newConfig.options.map(opt =>
                 opt.nextStepId === idToRemove ? {...opt, nextStepId: undefined} : opt
             );
         }
@@ -757,12 +754,12 @@ export default function FlowBuilderPage() {
     }));
     toast({ title: "Elemento Removido", description: "A etapa foi removida do fluxo." });
   };
-  
+
   const handleAddOptionToStep = (stepId: string, newOptionLabel: string) => {
     setFlowSteps(prevSteps =>
       prevSteps.map(step => {
         if (step.id === stepId && (step.type === 'multiple_choice' || step.type === 'single_choice')) {
-          const newOptionValue = `opt_${Date.now()}`; 
+          const newOptionValue = `opt_${Date.now()}`;
           const newOption: FlowStepOption = { value: newOptionValue, label: newOptionLabel };
           const options = step.config.options ? [...step.config.options, newOption] : [newOption];
           return { ...step, config: { ...step.config, options } };
@@ -783,7 +780,7 @@ export default function FlowBuilderPage() {
       })
     );
   };
-  
+
   const handleOptionChange = (stepId: string, optionValue: string, newLabel: string, newNextStepId?: string) => {
     setFlowSteps(prevSteps =>
       prevSteps.map(step => {
@@ -813,39 +810,75 @@ const handleSaveOrUpdateFlow = async () => {
     }
 
     setIsSubmitting(true);
-    const flowPayload = {
+    const flowPayloadForCreate = {
       name: flowName,
       steps: flowSteps,
-      nutritionistId: user.id, 
-      status: 'draft' as 'draft' | 'active' | 'archived', 
+      nutritionistId: user.id,
+      status: 'draft' as 'draft' | 'active' | 'archived',
     };
+    const flowPayloadForUpdate = {
+      name: flowName,
+      steps: flowSteps,
+      // nutritionistId and status are not typically updated here, or status handled separately
+    };
+
 
     try {
       let response;
-      let errorMessage = `Falha ao ${isEditing ? 'atualizar' : 'salvar'} fluxo.`;
+      const initialErrorMessage = `Falha ao ${isEditing ? 'atualizar' : 'salvar'} fluxo.`;
+
 
       if (isEditing && flowIdToEdit) {
         response = await fetch(`/api/flows/${flowIdToEdit}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: flowPayload.name, steps: flowPayload.steps }),
+          body: JSON.stringify(flowPayloadForUpdate),
         });
       } else {
         response = await fetch('/api/flows', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(flowPayload),
+          body: JSON.stringify(flowPayloadForCreate),
         });
       }
 
       if (!response.ok) {
+        let detailedErrorMessage = initialErrorMessage; // Fallback
         try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.details?.message || errorMessage;
-        } catch (parseError) {
-          // If parsing JSON fails, use the original generic error.
+          const responseText = await response.text();
+          if (responseText) {
+            try {
+              const errorData = JSON.parse(responseText);
+              if (errorData.error) {
+                detailedErrorMessage = errorData.error;
+                if (errorData.details) {
+                    if (errorData.details.message) {
+                         detailedErrorMessage += `: ${errorData.details.message}`;
+                    } else if (typeof errorData.details === 'string') {
+                        detailedErrorMessage += `: ${errorData.details}`;
+                    } else if (errorData.details.formErrors && Array.isArray(errorData.details.formErrors) && errorData.details.formErrors.length > 0) {
+                        detailedErrorMessage += `: ${errorData.details.formErrors.join(', ')}`;
+                    } else if (errorData.details._errors && Array.isArray(errorData.details._errors) && errorData.details._errors.length > 0) {
+                         detailedErrorMessage += `: ${errorData.details._errors.join(', ')}`;
+                    }
+                }
+              } else if (errorData.message) {
+                detailedErrorMessage = errorData.message;
+              } else {
+                detailedErrorMessage = responseText; // Use raw text if no specific error fields
+              }
+            } catch (jsonParseError) {
+              // JSON parsing failed, use the raw text
+              detailedErrorMessage = responseText;
+            }
+          } else {
+             detailedErrorMessage = `Erro ${response.status}: ${response.statusText || initialErrorMessage}`;
+          }
+        } catch (textError) {
+          // Failed to even get text, stick with initial error or status text
+          detailedErrorMessage = `Erro ${response.status}: ${response.statusText || initialErrorMessage}`;
         }
-        throw new Error(errorMessage);
+        throw new Error(detailedErrorMessage);
       }
 
       toast({ title: `Fluxo ${isEditing ? 'Atualizado' : 'Salvo'}!`, description: `O fluxo "${flowName}" foi ${isEditing ? 'atualizado' : 'salvo'} com sucesso.` });
@@ -857,14 +890,14 @@ const handleSaveOrUpdateFlow = async () => {
       setIsSubmitting(false);
     }
   };
-  
+
   const handleManualZoom = (direction: 'in' | 'out') => {
     const factor = direction === 'in' ? 1.2 : 1 / 1.2;
     const newZoom = Math.max(MIN_ZOOM, Math.min(zoomLevel * factor, MAX_ZOOM));
-    
+
     if (canvasRef.current) {
         const canvas = canvasRef.current;
-        const canvasRect = canvas.getBoundingClientRect();
+        // const canvasRect = canvas.getBoundingClientRect();
 
         const viewportCenterX = canvas.scrollLeft + canvas.offsetWidth / 2;
         const viewportCenterY = canvas.scrollTop + canvas.offsetHeight / 2;
@@ -876,7 +909,7 @@ const handleSaveOrUpdateFlow = async () => {
 
         const newScrollLeft = (worldX * newZoom) - (canvas.offsetWidth / 2);
         const newScrollTop = (worldY * newZoom) - (canvas.offsetHeight / 2);
-        
+
         canvas.scrollLeft = newScrollLeft;
         canvas.scrollTop = newScrollTop;
     } else {
@@ -890,7 +923,7 @@ const handleSaveOrUpdateFlow = async () => {
 
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    
+
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
@@ -898,11 +931,11 @@ const handleSaveOrUpdateFlow = async () => {
     const newZoomUnbounded = zoomLevel * (1 + delta);
     const newZoom = Math.max(MIN_ZOOM, Math.min(newZoomUnbounded, MAX_ZOOM));
 
-    if (newZoom === zoomLevel) return; 
+    if (newZoom === zoomLevel) return;
 
     const worldX = (mouseX + canvas.scrollLeft) / zoomLevel;
     const worldY = (mouseY + canvas.scrollTop) / zoomLevel;
-    
+
     setZoomLevel(newZoom);
 
     const newScrollLeft = (worldX * newZoom) - mouseX;
@@ -917,7 +950,7 @@ const handleSaveOrUpdateFlow = async () => {
 
   useEffect(() => {
     const canvasElement = canvasRef.current;
-    if (canvasElement && !isMobile) { 
+    if (canvasElement && !isMobile) {
       canvasElement.addEventListener('wheel', handleWheelZoom, { passive: false });
       return () => {
         canvasElement.removeEventListener('wheel', handleWheelZoom);
@@ -954,7 +987,7 @@ const handleSaveOrUpdateFlow = async () => {
     setInitialPreviewStepId(firstStepId);
     setIsPreviewing(true);
   };
-  
+
   const handleClosePreview = () => {
     setIsPreviewing(false);
     setInitialPreviewStepId(null);
@@ -967,13 +1000,13 @@ const handleSaveOrUpdateFlow = async () => {
     const lines: ConnectionLine[] = [];
     flowSteps.forEach(sourceStep => {
       const sourceCardEl = document.getElementById(`step-card-${sourceStep.id}`);
-      if (!sourceCardEl) return; 
-      
+      if (!sourceCardEl) return;
+
       const sourceCardRect = {
         x: sourceStep.position.x,
         y: sourceStep.position.y,
-        width: sourceCardEl.offsetWidth, 
-        height: sourceCardEl.offsetHeight, 
+        width: sourceCardEl.offsetWidth,
+        height: sourceCardEl.offsetHeight,
       };
 
       if (sourceStep.config.defaultNextStepId) {
@@ -983,10 +1016,10 @@ const handleSaveOrUpdateFlow = async () => {
           const targetCardRect = { x: targetStep.position.x, y: targetStep.position.y, width: targetCardEl.offsetWidth, height: targetCardEl.offsetHeight };
           lines.push({
             id: `${sourceStep.id}-default-${targetStep.id}`,
-            startX: sourceCardRect.x + sourceCardRect.width, 
-            startY: sourceCardRect.y + sourceCardRect.height - 20, 
-            endX: targetCardRect.x, 
-            endY: targetCardRect.y + targetCardRect.height / 2, 
+            startX: sourceCardRect.x + sourceCardRect.width,
+            startY: sourceCardRect.y + sourceCardRect.height - 20, // Near the "Próxima Etapa" text
+            endX: targetCardRect.x,
+            endY: targetCardRect.y + targetCardRect.height / 2,
             type: 'default',
             sourceStepId: sourceStep.id,
             targetStepId: targetStep.id,
@@ -1001,23 +1034,23 @@ const handleSaveOrUpdateFlow = async () => {
 
           if (targetStep && targetCardEl) {
             const targetCardRect = { x: targetStep.position.x, y: targetStep.position.y, width: targetCardEl.offsetWidth, height: targetCardEl.offsetHeight };
-            
-            const baseHeaderHeight = 40; 
-            const outputVarHeight = sourceStep.config.setOutputVariable ? 22 : 0; 
-            const textContentHeight = sourceStep.config.text ? 20 : 0; 
-            const optionsSectionPadding = 8; 
-            const optionItemHeightWithSpacing = 38; 
+
+            const baseHeaderHeight = 40;
+            const outputVarHeight = sourceStep.config.setOutputVariable ? 22 : 0;
+            const textContentHeight = sourceStep.config.text ? 20 : 0;
+            const optionsSectionPadding = 8;
+            const optionItemHeightWithSpacing = 38;
 
             let startYForOptions = sourceCardRect.y + baseHeaderHeight + outputVarHeight + textContentHeight + optionsSectionPadding;
-            
+
             const optionCenterY = startYForOptions + (index * optionItemHeightWithSpacing) + (optionItemHeightWithSpacing / 2);
 
             lines.push({
               id: `${sourceStep.id}-option-${option.value}-${targetStep.id}`,
-              startX: sourceCardRect.x + sourceCardRect.width, 
-              startY: Math.min(optionCenterY, sourceCardRect.y + sourceCardRect.height - 10), 
-              endX: targetCardRect.x, 
-              endY: targetCardRect.y + targetCardRect.height / 2, 
+              startX: sourceCardRect.x + sourceCardRect.width,
+              startY: Math.min(optionCenterY, sourceCardRect.y + sourceCardRect.height - 10),
+              endX: targetCardRect.x,
+              endY: targetCardRect.y + targetCardRect.height / 2,
               type: 'option',
               sourceStepId: sourceStep.id,
               targetStepId: targetStep.id,
@@ -1028,12 +1061,12 @@ const handleSaveOrUpdateFlow = async () => {
       });
     });
     return lines;
-  }, [flowSteps, zoomLevel, hoveredConnectionId]); 
+  }, [flowSteps, zoomLevel, hoveredConnectionId]); // Added zoomLevel and hoveredConnectionId to dependencies
 
 
   const getPathDefinition = (startX: number, startY: number, endX: number, endY: number) => {
       const dx = endX - startX;
-      const controlOffset = Math.max(20, Math.min(Math.abs(dx) * 0.3, 75)); 
+      const controlOffset = Math.max(20, Math.min(Math.abs(dx) * 0.3, 75));
       const c1x = startX + controlOffset;
       const c1y = startY;
       const c2x = endX - controlOffset;
@@ -1060,7 +1093,7 @@ const handleSaveOrUpdateFlow = async () => {
 
 
   return (
-    <div className="flex flex-col h-full bg-muted/30 p-2"> 
+    <div className="flex flex-col h-full bg-muted/30 p-2">
       <div className="flex justify-between items-center p-3 border-b bg-card shadow-sm sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <Workflow className="h-6 w-6 text-primary" />
@@ -1079,36 +1112,36 @@ const handleSaveOrUpdateFlow = async () => {
          </div>
       </div>
 
-      <div className="p-2 border-b bg-card shadow-sm flex space-x-2 overflow-x-auto sticky top-[61px] z-30"> 
+      <div className="p-2 border-b bg-card shadow-sm flex space-x-2 overflow-x-auto sticky top-[61px] z-30">
         {toolPalette.map(tool => (
           <Button
             key={tool.type}
-            draggable={!isMobile} 
+            draggable={!isMobile}
             onDragStart={!isMobile ? (e) => handleDragStartTool(e, tool.type) : undefined}
             onTouchStart={isMobile ? (e) => handleToolTouchStart(e) : undefined}
             onTouchEnd={isMobile ? (e) => handleToolTouchEndOnButton(e, tool) : undefined}
-            onClick={(e) => { 
-                if (!isMobile && e.detail > 0) { 
+            onClick={(e) => {
+                if (!isMobile && e.detail > 0) {
                     e.preventDefault();
                 }
             }}
             variant="outline"
             size="icon"
-            className="flex-shrink-0 cursor-grab touch-manipulation" 
-            title={tool.label} 
+            className="flex-shrink-0 cursor-grab touch-manipulation"
+            title={tool.label}
           >
             <tool.icon className="h-5 w-5" />
           </Button>
         ))}
       </div>
-      
-      <div className="flex-1 flex overflow-hidden relative"> 
+
+      <div className="flex-1 flex overflow-hidden relative">
         <div
           ref={canvasRef}
           onDragOver={handleDragOverCanvas}
           onDrop={handleDropOnCanvas}
           className={cn(
-            "flex-1 relative overflow-auto dot-grid-background", 
+            "flex-1 relative overflow-auto dot-grid-background",
             connectingState ? "cursor-crosshair" : (draggingStepId ? "cursor-grabbing" : "cursor-grab")
           )}
            onClick={(e) => {
@@ -1120,8 +1153,8 @@ const handleSaveOrUpdateFlow = async () => {
         >
           <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left', width: `calc(100% / ${zoomLevel})`, height: `calc(100% / ${zoomLevel})`}} className="relative h-full w-full">
             <svg
-              className="absolute top-0 left-0 w-full h-full pointer-events-none z-0" 
-              style={{ overflow: 'visible' }} 
+              className="absolute top-0 left-0 w-full h-full pointer-events-none z-0"
+              style={{ overflow: 'visible' }}
             >
               <defs>
                 <marker id="arrowhead-default" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
@@ -1144,7 +1177,7 @@ const handleSaveOrUpdateFlow = async () => {
                    onMouseLeave={() => setHoveredConnectionId(null)}
                    onClick={() => handleLineClick(line)}
                    className="cursor-pointer"
-                   style={{ pointerEvents: 'all' }} 
+                   style={{ pointerEvents: 'all' }}
                 >
                     <path
                         d={getPathDefinition(line.startX, line.startY, line.endX, line.endY)}
@@ -1155,40 +1188,40 @@ const handleSaveOrUpdateFlow = async () => {
                         markerEnd={line.type === 'default' ? "url(#arrowhead-default)" : "url(#arrowhead-option)"}
                         style={{ transition: 'stroke-width 0.2s' }}
                     />
-                    <path 
+                    <path
                         d={getPathDefinition(line.startX, line.startY, line.endX, line.endY)}
                         stroke="transparent"
-                        strokeWidth="15" 
+                        strokeWidth="15"
                         fill="none"
                     />
                     {hoveredConnectionId === line.id && (
                         <circle
-                            cx={(line.startX + line.endX) / 2 + (line.endY - line.startY > 0 ? -15 : 15) * Math.sin(Math.atan2(line.endY - line.startY, line.endX - line.startX))} 
+                            cx={(line.startX + line.endX) / 2 + (line.endY - line.startY > 0 ? -15 : 15) * Math.sin(Math.atan2(line.endY - line.startY, line.endX - line.startX))}
                             cy={(line.startY + line.endY) / 2 + (line.endX - line.startX > 0 ? 15 : -15) * Math.cos(Math.atan2(line.endY - line.startY, line.endX - line.startX))}
                             r="10"
                             fill="hsl(var(--destructive))"
-                            className="pointer-events-auto" 
+                            className="pointer-events-auto"
                         >
-                           <title>Desconectar</title> 
+                           <title>Desconectar</title>
                         </circle>
                     )}
-                     {hoveredConnectionId === line.id && ( 
+                     {hoveredConnectionId === line.id && (
                          <text
-                            x={(line.startX + line.endX) / 2 + (line.endY - line.startY > 0 ? -15 : 15) * Math.sin(Math.atan2(line.endY - line.startY, line.endX - line.startX))} 
+                            x={(line.startX + line.endX) / 2 + (line.endY - line.startY > 0 ? -15 : 15) * Math.sin(Math.atan2(line.endY - line.startY, line.endX - line.startX))}
                             y={(line.startY + line.endY) / 2 + (line.endX - line.startX > 0 ? 15 : -15) * Math.cos(Math.atan2(line.endY - line.startY, line.endX - line.startX))}
                             fill="white"
                             fontSize="12"
                             textAnchor="middle"
-                            dy=".3em" 
-                            className="pointer-events-none" 
+                            dy=".3em"
+                            className="pointer-events-none"
                          >
-                            &#x2715; 
+                            &#x2715;
                          </text>
                      )}
                 </g>
               ))}
             </svg>
-            
+
             {flowSteps.map(step => (
             <FlowStepCardComponent
                 key={step.id}
@@ -1200,14 +1233,14 @@ const handleSaveOrUpdateFlow = async () => {
                 isConnectingSource={connectingState?.sourceStepId === step.id}
                 isPotentialTarget={!!connectingState && connectingState.sourceStepId !== step.id}
                 onInitiateConnection={handleInitiateConnection}
-                onDisconnect={handleDisconnect} 
+                onDisconnect={handleDisconnect}
                 onHoverConnectionLine={setHoveredConnectionId}
                 onLeaveConnectionLine={() => setHoveredConnectionId(null)}
                 hoveredConnectionId={hoveredConnectionId}
             />
             ))}
-            
-            {flowSteps.length === 0 && ( 
+
+            {flowSteps.length === 0 && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-muted-foreground z-10 pointer-events-none">
                     <Move className="h-16 w-16 mb-4 opacity-50" />
                     <p className="text-lg">Arraste uma ferramenta da barra superior para adicionar a primeira etapa.</p>
@@ -1229,14 +1262,14 @@ const handleSaveOrUpdateFlow = async () => {
 
       {currentStepToEdit && (
         <Dialog open={isEditPropertiesPopupOpen} onOpenChange={setIsEditPropertiesPopupOpen}>
-          <DialogContent className="sm:max-w-xl max-h-[85vh]"> 
+          <DialogContent className="sm:max-w-xl max-h-[85vh]">
             <DialogHeader>
               <DialogTitle>Editar Etapa: <span className="font-semibold">{currentStepToEdit.title}</span></DialogTitle>
               <DialogDescription>
                 Modifique as configurações da etapa <span className="italic">{toolPalette.find(t => t.type === currentStepToEdit.type)?.label || currentStepToEdit.type}</span> selecionada.
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4"> 
+            <div className="py-4">
               <PropertiesEditor
                 step={currentStepToEdit}
                 onUpdateStep={handleUpdateStep}
@@ -1273,4 +1306,3 @@ const handleSaveOrUpdateFlow = async () => {
     </div>
   );
 }
-
