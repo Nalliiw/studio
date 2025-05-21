@@ -5,17 +5,17 @@ import React, { useState, useEffect, use } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar } from '@/components/ui/calendar'; // Basic calendar for date picking
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Calendar } from '@/components/ui/calendar';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Clock, Workflow, MessageSquare, Award, PlusCircle, Edit, Trash2, ChevronLeft } from 'lucide-react';
-import { format, addDays, parse } from 'date-fns';
+import { CalendarIcon as CalendarIconLucide, Clock, Workflow, MessageSquare, Award, PlusCircle, Edit, Trash2, ChevronLeft, List } from 'lucide-react';
+import { format, addDays, parse, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { Flow, Patient } from '@/types'; // Assuming these types are available
+import type { Flow, Patient } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -34,19 +34,28 @@ type ScheduledItemType = 'flow' | 'reminder' | 'praise';
 interface ScheduledItem {
   id: string;
   type: ScheduledItemType;
-  title: string; // Flow name or custom title for reminder/praise
+  title: string;
   date: Date;
-  time: string; // HH:mm
-  content?: string; // For reminder/praise text, or flow ID for flow type
+  time: string;
+  content?: string;
   recurrence: 'none' | 'daily' | 'weekly' | 'monthly';
 }
 
 const mockScheduledItems: ScheduledItem[] = [
     { id: 'sch1', type: 'flow', title: 'Check-in Diário de Humor', date: new Date(), time: '09:00', content: 'flow1', recurrence: 'daily' },
+    { id: 'sch1_today_later', type: 'reminder', title: 'Lembrete: Preparar lanche saudável', date: new Date(), time: '16:00', content: 'Não esqueça do seu lanche da tarde!', recurrence: 'none' },
     { id: 'sch2', type: 'reminder', title: 'Lembrete: Beber Água', date: addDays(new Date(), 1), time: '10:00', content: 'Não se esqueça de se hidratar bem hoje!', recurrence: 'none' },
     { id: 'sch3', type: 'praise', title: 'Elogio da Semana', date: addDays(new Date(), 3), time: '15:00', content: 'Parabéns por manter o foco nos seus lanches saudáveis esta semana!', recurrence: 'weekly' },
+    { id: 'sch4_past', type: 'flow', title: 'Feedback Consulta Anterior', date: addDays(new Date(), -2), time: '11:00', content: 'flow5', recurrence: 'none' },
 ];
 
+
+const AgendaItemIcon = ({ type }: { type: ScheduledItemType }) => {
+    if (type === 'flow') return <Workflow className="h-5 w-5 text-blue-500" />;
+    if (type === 'reminder') return <MessageSquare className="h-5 w-5 text-orange-500" />;
+    if (type === 'praise') return <Award className="h-5 w-5 text-yellow-500" />;
+    return <CalendarIconLucide className="h-5 w-5" />;
+}
 
 export default function PatientAgendaPage() {
   const paramsFromHook = useParams();
@@ -55,18 +64,19 @@ export default function PatientAgendaPage() {
   const router = useRouter();
   const patientId = params.patientId as string;
 
-  const [patient, setPatient] = useState<Patient | null>(mockPatientDetail); // Fetch patient details in real app
+  const [patient, setPatient] = useState<Patient | null>(mockPatientDetail);
   const [scheduledItems, setScheduledItems] = useState<ScheduledItem[]>(mockScheduledItems);
   const [isSchedulingDialogOpen, setIsSchedulingDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   // Form state for new/editing scheduled item
   const [currentItem, setCurrentItem] = useState<Partial<ScheduledItem>>({});
   const [itemType, setItemType] = useState<ScheduledItemType>('flow');
-  const [itemTitle, setItemTitle] = useState(''); // For reminder/praise
-  const [itemFlowId, setItemFlowId] = useState(''); // For flow
+  const [itemTitle, setItemTitle] = useState('');
+  const [itemFlowId, setItemFlowId] = useState('');
   const [itemDate, setItemDate] = useState<Date | undefined>(new Date());
   const [itemTime, setItemTime] = useState('09:00');
-  const [itemContent, setItemContent] = useState(''); // For reminder/praise
+  const [itemContent, setItemContent] = useState('');
   const [itemRecurrence, setItemRecurrence] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
 
 
@@ -78,22 +88,22 @@ export default function PatientAgendaPage() {
     }
   }, [patientId]);
 
-  const handleOpenScheduleDialog = (item?: ScheduledItem) => {
-    if (item) {
-        setCurrentItem(item);
-        setItemType(item.type);
-        if (item.type === 'flow' && item.content) setItemFlowId(item.content);
-        else setItemTitle(item.title);
-        setItemDate(item.date);
-        setItemTime(item.time);
-        if (item.type !== 'flow') setItemContent(item.content || '');
-        setItemRecurrence(item.recurrence);
+  const handleOpenScheduleDialog = (itemToEdit?: ScheduledItem) => {
+    if (itemToEdit) {
+        setCurrentItem(itemToEdit);
+        setItemType(itemToEdit.type);
+        if (itemToEdit.type === 'flow' && itemToEdit.content) setItemFlowId(itemToEdit.content);
+        else setItemTitle(itemToEdit.title);
+        setItemDate(itemToEdit.date);
+        setItemTime(itemToEdit.time);
+        if (itemToEdit.type !== 'flow') setItemContent(itemToEdit.content || '');
+        setItemRecurrence(itemToEdit.recurrence);
     } else {
         setCurrentItem({ id: Date.now().toString() }); // New item
         setItemType('flow');
         setItemTitle('');
-        setItemFlowId('');
-        setItemDate(new Date());
+        setItemFlowId(mockAvailableFlowsForAgenda[0]?.id || ''); // Default to first flow if available
+        setItemDate(selectedDate || new Date()); // Pre-fill with selected calendar date
         setItemTime('09:00');
         setItemContent('');
         setItemRecurrence('none');
@@ -122,21 +132,17 @@ export default function PatientAgendaPage() {
     const newItem: ScheduledItem = {
         id: currentItem.id || Date.now().toString(),
         type: itemType,
-        title: itemType === 'flow' ? (mockAvailableFlowsForAgenda.find(f => f.id === itemFlowId)?.name || 'Fluxo') : itemTitle,
+        title: itemType === 'flow' ? (mockAvailableFlowsForAgenda.find(f => f.id === itemFlowId)?.name || 'Fluxo Desconhecido') : itemTitle,
         date: itemDate,
         time: itemTime,
         content: itemType === 'flow' ? itemFlowId : itemContent,
         recurrence: itemRecurrence,
     };
 
-    // console.log("Saving scheduled item:", newItem);
-    // In a real app, save to backend
     setScheduledItems(prev => {
         const existing = prev.find(it => it.id === newItem.id);
-        if (existing) {
-            return prev.map(it => it.id === newItem.id ? newItem : it);
-        }
-        return [...prev, newItem].sort((a,b) => a.date.getTime() - b.date.getTime() || a.time.localeCompare(b.time));
+        const updatedItems = existing ? prev.map(it => it.id === newItem.id ? newItem : it) : [...prev, newItem];
+        return updatedItems.sort((a,b) => a.date.getTime() - b.date.getTime() || a.time.localeCompare(b.time));
     });
     toast({ title: "Agendamento Salvo!", description: `${newItem.title} agendado com sucesso.`});
     setIsSchedulingDialogOpen(false);
@@ -147,13 +153,9 @@ export default function PatientAgendaPage() {
     toast({ title: "Item Removido", description: "O agendamento foi removido." });
   };
 
-  const getIconForItemType = (type: ScheduledItemType) => {
-    if (type === 'flow') return <Workflow className="h-5 w-5 text-blue-500" />;
-    if (type === 'reminder') return <MessageSquare className="h-5 w-5 text-orange-500" />;
-    if (type === 'praise') return <Award className="h-5 w-5 text-yellow-500" />;
-    return <CalendarIcon className="h-5 w-5" />;
-  }
-
+  const scheduledItemsForSelectedDate = selectedDate
+    ? scheduledItems.filter(item => isSameDay(item.date, selectedDate))
+    : scheduledItems; // Show all if no date selected, or handle differently
 
   if (!patient) {
     return <div className="flex items-center justify-center h-full"><p>Carregando dados do paciente...</p></div>;
@@ -161,73 +163,105 @@ export default function PatientAgendaPage() {
 
   return (
     <div className="space-y-6 h-full flex flex-col">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" onClick={() => router.back()} aria-label="Voltar">
-            <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <div>
-            <h1 className="text-3xl font-bold tracking-tight">Agenda de {patient.name}</h1>
-            <p className="text-muted-foreground">Planeje e visualize fluxos, lembretes e elogios.</p>
+      <div className="flex flex-wrap justify-between items-center gap-4">
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" onClick={() => router.back()} aria-label="Voltar">
+                <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Agenda de {patient.name}</h1>
+                <p className="text-muted-foreground text-sm sm:text-base">Planeje e visualize fluxos, lembretes e elogios.</p>
+            </div>
         </div>
-      </div>
-
-      <div className="flex justify-end">
-        <Button onClick={() => handleOpenScheduleDialog()}>
+        <Button onClick={() => handleOpenScheduleDialog()} className="shrink-0">
             <PlusCircle className="mr-2 h-4 w-4" /> Agendar Novo Item
         </Button>
       </div>
 
-      {/* Simplified Agenda Display - A full calendar is complex */}
-      <Card className="shadow-md flex-grow overflow-y-auto">
-        <CardHeader>
-            <CardTitle>Itens Agendados</CardTitle>
-            <CardDescription>Lista de próximos eventos para {patient.name}.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            {scheduledItems.length > 0 ? (
-                <div className="space-y-4">
-                    {scheduledItems.map(item => (
-                        <Card key={item.id} className="bg-muted/50">
-                            <CardHeader className="pb-3">
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-3">
-                                        {getIconForItemType(item.type)}
-                                        <div>
-                                            <CardTitle className="text-lg">{item.title}</CardTitle>
-                                            <CardDescription>
-                                                {format(item.date, "PPP", { locale: ptBR })} às {item.time}
-                                                {item.recurrence !== 'none' && ` (${item.recurrence === 'daily' ? 'Diário' : item.recurrence === 'weekly' ? 'Semanal' : 'Mensal'})`}
-                                            </CardDescription>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-1 sm:gap-2">
-                                        <Button variant="ghost" size="icon" onClick={() => handleOpenScheduleDialog(item)}><Edit className="h-4 w-4" /></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteScheduledItem(item.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                                    </div>
+      <div className="grid gap-6 md:grid-cols-3 flex-grow min-h-0">
+        <Card className="md:col-span-1 shadow-md flex flex-col">
+          <CardHeader>
+            <CardTitle>Calendário</CardTitle>
+            <CardDescription>Selecione uma data para ver os eventos.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center flex-grow items-center">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              className="rounded-md border p-0 sm:p-3" // adjusted padding
+              locale={ptBR}
+              modifiers={{
+                scheduled: scheduledItems.map(item => item.date)
+              }}
+              modifiersStyles={{
+                scheduled: { fontWeight: 'bold', textDecoration: 'underline', textDecorationColor: 'hsl(var(--primary))', textUnderlineOffset: '0.2em' }
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-2 shadow-md flex flex-col">
+          <CardHeader>
+            <CardTitle>
+              Eventos para {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : 'Todas as Datas'}
+            </CardTitle>
+            <CardDescription>
+              {selectedDate 
+                ? (scheduledItemsForSelectedDate.length > 0
+                    ? `Encontrado(s) ${scheduledItemsForSelectedDate.length} item(ns) para este dia.`
+                    : 'Nenhum evento para este dia.')
+                : `Mostrando todos os ${scheduledItems.length} eventos agendados.`
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 flex-grow overflow-y-auto pr-2"> {/* Added pr for scrollbar space */}
+            {scheduledItemsForSelectedDate.length > 0 ? (
+              scheduledItemsForSelectedDate.sort((a,b) => (a.time || "00:00").localeCompare(b.time || "00:00")).map(item => (
+                <Card key={item.id} className="bg-muted/50 hover:shadow-md transition-shadow">
+                    <CardContent className="p-3">
+                        <div className="flex items-start gap-3">
+                            <div className="pt-0.5"><AgendaItemIcon type={item.type} /></div>
+                            <div className="flex-grow">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="font-semibold">{item.title}</h3>
+                                    <p className="text-xs text-muted-foreground"><Clock className="inline h-3 w-3 mr-1" />{item.time}</p>
                                 </div>
-                            </CardHeader>
-                            {item.type !== 'flow' && item.content && (
-                                <CardContent>
-                                    <p className="text-sm text-foreground italic">"{item.content}"</p>
-                                </CardContent>
-                            )}
-                        </Card>
-                    ))}
-                </div>
+                                {item.recurrence !== 'none' && (
+                                    <p className="text-xs text-muted-foreground capitalize">
+                                        Recorrência: {item.recurrence === 'daily' ? 'Diário' : item.recurrence === 'weekly' ? 'Semanal' : 'Mensal'}
+                                    </p>
+                                )}
+                                {(item.type === 'reminder' || item.type === 'praise') && item.content && (
+                                    <p className="text-sm text-foreground mt-1 italic">"{item.content}"</p>
+                                )}
+                                {item.type === 'flow' && item.content && (
+                                     <p className="text-xs text-muted-foreground mt-0.5">Fluxo ID: {item.content}</p>
+                                )}
+                            </div>
+                            <div className="flex flex-col sm:flex-row items-center gap-1 shrink-0">
+                                <Button variant="ghost" size="icon" onClick={() => handleOpenScheduleDialog(item)} className="h-7 w-7 sm:h-8 sm:w-8"><Edit className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleDeleteScheduledItem(item.id)} className="text-destructive hover:text-destructive h-7 w-7 sm:h-8 sm:w-8"><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+              ))
             ) : (
-                <div className="text-center py-10 text-muted-foreground">
-                    <CalendarIcon className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                    <p>Nenhum item agendado para {patient.name}.</p>
-                </div>
+              <div className="text-center py-10 text-muted-foreground flex flex-col items-center justify-center h-full">
+                <List className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                <p>Nenhum evento agendado {selectedDate ? "para esta data" : "ainda"}.</p>
+              </div>
             )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Dialog for Scheduling Item */}
       <Dialog open={isSchedulingDialogOpen} onOpenChange={setIsSchedulingDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{currentItem.id && !currentItem.id.startsWith('opt_') ? 'Editar Item Agendado' : 'Agendar Novo Item'}</DialogTitle>
+            <DialogTitle>{currentItem.id && !currentItem.id.startsWith('opt_') && scheduledItems.find(si => si.id === currentItem.id) ? 'Editar Item Agendado' : 'Agendar Novo Item'}</DialogTitle>
             <DialogDescription>
               Configure o fluxo, lembrete ou elogio para o paciente.
             </DialogDescription>
@@ -282,7 +316,7 @@ export default function PatientAgendaPage() {
                         !itemDate && "text-muted-foreground"
                         )}
                     >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        <CalendarIconLucide className="mr-2 h-4 w-4" />
                         {itemDate ? format(itemDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
                     </Button>
                     </PopoverTrigger>
@@ -336,3 +370,6 @@ export default function PatientAgendaPage() {
     </div>
   );
 }
+
+
+    
