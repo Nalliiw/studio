@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -35,7 +36,7 @@ export default function DashboardGeralPage() {
   const activePatients = 1250;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4"> {/* Reduced from space-y-6 */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard Geral</h1>
@@ -48,7 +49,7 @@ export default function DashboardGeralPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"> {/* Reduced gap from gap-6 */}
         <Card className="shadow-md hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Empresas Ativas</CardTitle>
@@ -86,7 +87,7 @@ export default function DashboardGeralPage() {
           <CardTitle>Taxa de Engajamento (Formulários)</CardTitle>
           <CardDescription>Respostas de formulários nos últimos 6 meses.</CardDescription>
         </CardHeader>
-        <CardContent className="h-[350px] w-full p-0 pr-6">
+        <CardContent className="h-[300px] w-full p-0 pr-6"> {/* Reduced height from h-[350px] */}
           <ChartContainer config={chartConfig} className="h-full w-full">
             <RechartsBarChart data={engagementData} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
               <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
