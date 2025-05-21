@@ -609,6 +609,9 @@ export default function FlowBuilderPage() {
 
 
   const handleToolTouchStart = (event: React.TouchEvent<HTMLButtonElement>) => {
+    // For mobile, prevent default to stop potential page scroll/zoom when initiating touch on tool buttons
+    // if (isMobile) event.preventDefault();
+
     if (!isMobile) return;
   
     if (tapTimeoutRef.current) {
@@ -642,7 +645,7 @@ export default function FlowBuilderPage() {
     } else { 
       lastTapRef.current = currentTime;
       tapTimeoutRef.current = setTimeout(() => {
-         toast({ title: tool.label, duration: 1500, description: "Toque duas vezes para adicionar." });
+         toast({ title: tool.label, duration: 2000, description: "Toque duas vezes para adicionar." }); // Increased duration
         tapTimeoutRef.current = null;
       }, 300); 
     }
@@ -795,7 +798,7 @@ export default function FlowBuilderPage() {
     );
   };
 
-  const handleSaveOrUpdateFlow = async () => {
+const handleSaveOrUpdateFlow = async () => {
     if (!user) {
       toast({ title: "Erro de Autenticação", description: "Você precisa estar logado para salvar um fluxo.", variant: "destructive" });
       return;
@@ -813,32 +816,42 @@ export default function FlowBuilderPage() {
     const flowPayload = {
       name: flowName,
       steps: flowSteps,
-      nutritionistId: user.id, // Assuming user.id is the nutritionistId
-      status: 'draft' as 'draft' | 'active' | 'archived', // Default to draft, or fetch current status if editing
+      nutritionistId: user.id, 
+      status: 'draft' as 'draft' | 'active' | 'archived', 
     };
 
     try {
       let response;
+      let errorMessage = `Falha ao ${isEditing ? 'atualizar' : 'salvar'} fluxo.`;
+
       if (isEditing && flowIdToEdit) {
         response = await fetch(`/api/flows/${flowIdToEdit}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: flowPayload.name, steps: flowPayload.steps }), // Only send updatable fields
+          body: JSON.stringify({ name: flowPayload.name, steps: flowPayload.steps }),
         });
-        if (!response.ok) throw new Error('Falha ao atualizar fluxo.');
-        toast({ title: "Fluxo Atualizado!", description: `O fluxo "${flowName}" foi atualizado com sucesso.` });
       } else {
         response = await fetch('/api/flows', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(flowPayload),
         });
-        if (!response.ok) throw new Error('Falha ao salvar fluxo.');
-        toast({ title: "Fluxo Salvo!", description: `O fluxo "${flowName}" foi salvo com sucesso.` });
       }
+
+      if (!response.ok) {
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.details?.message || errorMessage;
+        } catch (parseError) {
+          // If parsing JSON fails, use the original generic error.
+        }
+        throw new Error(errorMessage);
+      }
+
+      toast({ title: `Fluxo ${isEditing ? 'Atualizado' : 'Salvo'}!`, description: `O fluxo "${flowName}" foi ${isEditing ? 'atualizado' : 'salvo'} com sucesso.` });
       router.push('/flowbuilder/meus-fluxos');
     } catch (error) {
-      console.error("Erro ao salvar/atualizar fluxo:", error);
+      console.error(`Erro ao ${isEditing ? 'atualizar' : 'salvar'} fluxo:`, error);
       toast({ title: `Erro ao ${isEditing ? 'Atualizar' : 'Salvar'} Fluxo`, description: (error as Error).message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
@@ -1198,7 +1211,7 @@ export default function FlowBuilderPage() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-muted-foreground z-10 pointer-events-none">
                     <Move className="h-16 w-16 mb-4 opacity-50" />
                     <p className="text-lg">Arraste uma ferramenta da barra superior para adicionar a primeira etapa.</p>
-                    <p className="text-sm">No mobile: toque duas vezes.</p>
+                     <p className="text-sm">No mobile: toque duas vezes.</p>
                 </div>
             )}
           </div>
@@ -1260,3 +1273,4 @@ export default function FlowBuilderPage() {
     </div>
   );
 }
+
