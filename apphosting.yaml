@@ -1,49 +1,48 @@
 # apphosting.yaml
 # Este arquivo configura o seu backend "studio" no Firebase App Hosting.
 
-# Especifica o ambiente de runtime para sua aplicação Next.js
-# Certifique-se de que a versão do Node.js é compatível com sua versão do Next.js
-# Node.js 18 ou 20 são geralmente boas escolhas para Next.js moderno.
 runtime: nodejs20 # Ou nodejs18
 
-# Variáveis de ambiente que estarão disponíveis para sua aplicação
-# tanto no momento do build quanto em tempo de execução.
-# Variáveis prefixadas com NEXT_PUBLIC_ são expostas ao cliente.
 env:
+  # Variáveis para o Projeto Firebase Principal (Project A - onde este app está hospedado)
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "SUA_API_KEY_PROJETO_A_AQUI"
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "SEU_AUTH_DOMAIN_PROJETO_A_AQUI"
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "nutritrack-lite-x6ffb" # ID do seu projeto principal
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "SEU_STORAGE_BUCKET_PROJETO_A_AQUI"
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "SEU_MESSAGING_SENDER_ID_PROJETO_A_AQUI"
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:235653291259:web:35955c0ef9c8311dd3645e" # App ID do seu projeto principal
+
+  # Variáveis para o SEGUNDO Projeto Firebase (Project B - o outro projeto ao qual você quer se conectar)
+  # Substitua pelos valores reais do SEU SEGUNDO PROJETO FIREBASE
+  - variable: NEXT_PUBLIC_PROJECT_B_API_KEY
+    value: "API_KEY_DO_PROJETO_B_AQUI"
+  - variable: NEXT_PUBLIC_PROJECT_B_AUTH_DOMAIN
+    value: "AUTH_DOMAIN_DO_PROJETO_B_AQUI"
+  - variable: NEXT_PUBLIC_PROJECT_B_PROJECT_ID
+    value: "PROJECT_ID_DO_PROJETO_B_AQUI"
+  - variable: NEXT_PUBLIC_PROJECT_B_STORAGE_BUCKET
+    value: "STORAGE_BUCKET_DO_PROJETO_B_AQUI"
+  - variable: NEXT_PUBLIC_PROJECT_B_MESSAGING_SENDER_ID
+    value: "MESSAGING_SENDER_ID_DO_PROJETO_B_AQUI"
+  - variable: NEXT_PUBLIC_PROJECT_B_APP_ID
+    value: "APP_ID_DO_PROJETO_B_AQUI"
+
+  # Variável para a URL do seu backend separado (se diferente do Project B)
   - variable: NEXT_PUBLIC_BACKEND_API_URL
-    value: "SUA_URL_REAL_DO_BACKEND_AQUI" # IMPORTANTE: Substitua pela URL real do seu serviço de backend
+    value: "SUA_URL_REAL_DO_BACKEND_AQUI"
 
 # Configurações de build para sua aplicação Next.js
 # O Firebase App Hosting geralmente infere os passos de build para projetos Next.js padrão.
-# Se você tiver um setup customizado, pode precisar especificar comandos.
 build:
   # Se seu package.json e next.config.js não estão na raiz, especifique workspaceDir.
   # workspaceDir: /
 
-  # App Hosting geralmente lida bem com variáveis NEXT_PUBLIC_ definidas na seção 'env' acima
-  # para o build do Next.js. Se você tiver problemas, pode ser necessário usar
-  # passEnvironmentVariables para variáveis que SÓ são necessárias no build,
-  # mas para NEXT_PUBLIC_ a seção 'env' deve ser suficiente.
-
 # Configurações de como servir sua aplicação Next.js
-# Para um projeto Next.js padrão (com 'next build' e 'next start', ou output standalone),
-# o App Hosting geralmente consegue inferir o comando do servidor.
-# Se você estiver usando output: 'standalone' no seu next.config.js,
-# o serverCommand será algo como 'node server.js' (ou o entrypoint gerado).
-# Exemplo para um Next.js que usa 'npm start' para servir:
+# Para um projeto Next.js padrão, o App Hosting geralmente consegue inferir o comando.
 # serverCommand: npm run start
-# Se o App Hosting não inferir corretamente, você precisará especificar o serverCommand.
-# Consulte a documentação do Firebase App Hosting para mais detalhes sobre a configuração
-# específica para sua estrutura de output do Next.js.
-
-# Exemplo de cabeçalhos personalizados (opcional)
-# headers:
-#   - path: "/**"
-#     headers:
-#       - key: "Cache-Control"
-#         value: "public, max-age=3600"
-
-# Para um app Next.js com App Router e output padrão, muitas vezes
-# nenhuma configuração de build ou serverCommand explícita é necessária aqui,
-# pois o App Hosting tentará detectá-las.
-# Garanta que seu `scripts` no `package.json` ("build", "start") estejam corretos.
