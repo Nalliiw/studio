@@ -24,10 +24,11 @@ const clinicConfigSchema = z.object({
 type ClinicConfigFormValues = z.infer<typeof clinicConfigSchema>;
 
 // Mock data para fallback caso a empresa não exista NO Firestore.
+// Usado se a API retornar 404 na busca inicial.
 const placeholderCompanyData: Company = {
-  id: 'new_clinic_placeholder',
+  id: 'new_clinic_placeholder', // Este ID não será salvo, o companyId do usuário será usado
   name: 'Nova Clínica (Preencha o Nome)',
-  cnpj: '00.000.000/0000-00',
+  cnpj: '00.000.000/0000-00', // CNPJ padrão para nova clínica
   nutritionistCount: 0,
   status: 'active',
   createdAt: new Date().toISOString(),
@@ -72,9 +73,9 @@ export default function ConfiguracoesClinicaPage() {
             }
 
             if (errorText) {
-              const errorData = JSON.parse(errorText);
-              const detailMessage = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null);
-              errorMessage = detailMessage || errorData.error || errorData.message || errorText;
+              const errorData = JSON.parse(errorText); // API is expected to return JSON for errors
+              const detailMessage = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null) || errorData.error || errorData.message;
+              errorMessage = detailMessage || errorText;
             }
           } catch (e) {
             console.error("Failed to parse error response or read text (fetchCompanyData):", e);
@@ -82,29 +83,34 @@ export default function ConfiguracoesClinicaPage() {
 
           if (response.status === 404) {
             console.warn("Empresa não encontrada no Firestore. Usando dados de placeholder para novo cadastro.");
-            setCompanyData(placeholderCompanyData);
+            setCompanyData({ ...placeholderCompanyData, id: user.companyId }); // Use user's companyId
             form.reset({ name: placeholderCompanyData.name });
             errorForState = "Clínica não encontrada. Preencha o nome para cadastrá-la.";
           } else {
-            // For other errors, throw to be caught by the outer catch which sets the toast
-            throw new Error(errorMessage);
+            toast({
+                title: "Erro ao Carregar Dados da Clínica",
+                description: errorMessage,
+                variant: "destructive"
+            });
           }
-          setError(errorForState); // Set error for UI display, but don't throw for 404
+          setError(errorForState);
         } else {
             const data: Company = await response.json();
             setCompanyData(data);
             form.reset({ name: data.name });
-            setError(null); // Clear any previous "not found" error if data is successfully fetched
+            setError(null); 
         }
       } catch (err) {
         console.error("Erro ao buscar dados da clínica:", err);
         const displayError = err instanceof Error ? err.message : 'Ocorreu um erro inesperado ao buscar dados da clínica.';
         setError(displayError);
-        toast({
-            title: "Erro ao Carregar Dados da Clínica",
-            description: displayError,
-            variant: "destructive"
-        });
+        if (!displayError.includes("Clínica não encontrada")) { // Don't toast for 404 as UI handles it
+            toast({
+                title: "Erro ao Carregar Dados da Clínica",
+                description: displayError,
+                variant: "destructive"
+            });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -113,8 +119,7 @@ export default function ConfiguracoesClinicaPage() {
     if (user) {
       fetchCompanyData();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); 
+  }, [user, form]); // form added to dependency array as form.reset is used
 
   const onSubmit: SubmitHandler<ClinicConfigFormValues> = async (data) => {
     if (!user?.companyId) {
@@ -122,49 +127,49 @@ export default function ConfiguracoesClinicaPage() {
       return;
     }
     
+    const payload = {
+      name: data.name,
+      cnpj: companyData?.cnpj, // Pass the current CNPJ (from placeholder or fetched data)
+    };
+
     try {
       const response = await fetch(`/api/companies/${user.companyId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: data.name }),
+        body: JSON.stringify(payload),
       });
       
       if (!response.ok) {
-        let errorMessage = `Falha ao atualizar dados da clínica. Status: ${response.status}`; // Default
+        let errorMessage = `Falha ao atualizar dados da clínica. Status: ${response.status}`;
         try {
             const errorText = await response.text();
             console.error("Raw error response from API (onSubmit):", errorText);
             if (errorText) {
                 try {
                     const errorData = JSON.parse(errorText);
-                    const specificDetail = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null);
-                    const generalError = errorData.error || errorData.message;
-
-                    if (specificDetail) {
-                        errorMessage = specificDetail; 
-                    } else if (generalError) {
-                        errorMessage = generalError;
-                    } else if (errorText.length < 200 && !errorText.trim().startsWith('<')) { 
-                        errorMessage = errorText; // Use raw text if it's short and not HTML
-                    }
-                    // If still the default, it means no useful message was extracted, status already included
+                    // Prioritize details, then error, then message
+                    const specificDetail = (typeof errorData.details === 'string' ? errorData.details : errorData.details?.message);
+                    errorMessage = specificDetail || errorData.error || errorData.message || (errorText.length < 200 && !errorText.trim().startsWith('<') ? errorText : `Erro ${response.status}`);
                 } catch (jsonParseError) {
-                    // JSON parsing failed. errorMessage remains the default with status or short raw text
                      if (errorText.length < 200 && !errorText.trim().startsWith('<')) {
                         errorMessage = errorText;
+                    } else {
+                         errorMessage = `Erro ${response.status}: Falha ao processar resposta do servidor.`;
                     }
                 }
             }
         } catch (e) {
             console.error("Failed to read/parse error response (onSubmit):", e);
+            errorMessage = `Erro ${response.status}: Falha ao ler resposta do servidor.`;
         }
         throw new Error(errorMessage);
       }
-      // Assuming API returns the updated company or a success message
-      // For simplicity, we're just showing a success toast and updating local state
+      
+      const updatedCompany: Company = await response.json(); // API should return the updated/created company
       toast({ title: "Sucesso!", description: "Nome da clínica atualizado." });
-      setCompanyData(prev => prev ? { ...prev, name: data.name, id: user.companyId! } : { ...placeholderCompanyData, id: user.companyId!, name: data.name });
-      setError(null); // Clear "not found" error after successful save
+      setCompanyData(updatedCompany); // Update local state with the full data from API
+      form.reset({ name: updatedCompany.name }); // Reset form with new name
+      setError(null); 
     } catch (error) {
       console.error("Erro ao atualizar clínica:", error);
       toast({
@@ -184,7 +189,8 @@ export default function ConfiguracoesClinicaPage() {
     );
   }
   
-  const displayCompany = companyData || (error && !isLoading && error.includes("Clínica não encontrada") ? placeholderCompanyData : null);
+  // Use companyData for display, which could be fetched data or placeholder data if 404 occurred
+  const displayCompany = companyData;
 
 
   return (
@@ -197,18 +203,18 @@ export default function ConfiguracoesClinicaPage() {
         <p className="text-muted-foreground">Gerencie as informações e preferências da sua clínica.</p>
       </div>
 
-      {error && !error.includes("Clínica não encontrada") && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-5 w-5" />
-          <AlertTitle>Erro ao Carregar Dados</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-       {error && error.includes("Clínica não encontrada") && (
+      {error && error.includes("Clínica não encontrada") && (
          <Alert variant="default" className="border-primary/50 text-primary bg-primary/10">
           <AlertTriangle className="h-5 w-5 !text-primary" />
           <AlertTitle>Nova Clínica</AlertTitle>
           <AlertDescription>{error} Salve as alterações para registrar.</AlertDescription>
+        </Alert>
+      )}
+      {error && !error.includes("Clínica não encontrada") && (
+         <Alert variant="destructive">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle>Erro ao Carregar Dados</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
@@ -271,4 +277,3 @@ export default function ConfiguracoesClinicaPage() {
     </div>
   );
 }
-

@@ -9,7 +9,8 @@ import { z } from 'zod';
 const FIRESTORE_UNINITIALIZED_ERROR_MESSAGE = 'Serviço Indisponível: Backend (Firebase) não conectado ou configurado corretamente.';
 
 const updateCompanySchema = z.object({
-  name: z.string().min(3, { message: 'O nome da clínica deve ter pelo menos 3 caracteres.' }),
+  name: z.string().min(3, { message: 'O nome da clínica deve ter no mínimo 3 caracteres.' }),
+  cnpj: z.string().regex(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, { message: 'CNPJ inválido. Formato esperado: XX.XXX.XXX/XXXX-XX' }).optional(),
 });
 
 export async function GET(
@@ -39,7 +40,6 @@ export async function GET(
     if (errorMessage.includes('Firestore (db) não está inicializado')) {
       return NextResponse.json({ error: FIRESTORE_UNINITIALIZED_ERROR_MESSAGE, details: errorMessage }, { status: 503 });
     }
-    // Firebase permission errors might be caught here by the service
     if (errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permissions')) {
       return NextResponse.json({ error: 'Falha ao buscar empresa.', details: 'Permissões insuficientes no Firestore.' }, { status: 403 });
     }
@@ -68,21 +68,32 @@ export async function PUT(
       return NextResponse.json({ error: 'Dados de entrada inválidos para atualizar empresa', details: parsedData.error.flatten() }, { status: 400 });
     }
     
-    const { name } = parsedData.data;
+    const { name, cnpj } = parsedData.data;
 
-    console.log(`API PUT /api/companies/${companyId} - Chamando companyService.updateCompany.`);
-    await updateCompany(companyId, { name });
-    console.log(`API PUT /api/companies/${companyId} - Empresa atualizada com sucesso.`);
-    return NextResponse.json({ message: 'Empresa atualizada com sucesso' }, { status: 200 });
+    console.log(`API PUT /api/companies/${companyId} - Chamando companyService.updateCompany com nome: ${name} e cnpj: ${cnpj}.`);
+    await updateCompany(companyId, { name, cnpj }); // Pass cnpj to the service
+    console.log(`API PUT /api/companies/${companyId} - Empresa atualizada/criada com sucesso.`);
+    
+    // Fetch the updated/created company data to return to the client
+    const updatedCompany = await getCompanyById(companyId);
+    if (!updatedCompany) {
+        // This case should ideally not happen if updateCompany was successful
+        console.error(`API PUT /api/companies/${companyId} - Empresa não encontrada após atualização/criação bem-sucedida.`);
+        return NextResponse.json({ error: 'Empresa atualizada/criada, mas não pôde ser recuperada.' }, { status: 500 });
+    }
+    return NextResponse.json(updatedCompany, { status: 200 });
+
   } catch (error) {
     console.error(`API PUT /api/companies/${companyId} - Erro:`, error);
     const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
     if (errorMessage.includes('Firestore (db) não está inicializado')) {
       return NextResponse.json({ error: FIRESTORE_UNINITIALIZED_ERROR_MESSAGE, details: errorMessage }, { status: 503 });
     }
-     // Firebase permission errors might be caught here by the service
     if (errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permissions')) {
       return NextResponse.json({ error: 'Falha ao atualizar empresa.', details: 'Permissões insuficientes no Firestore.' }, { status: 403 });
+    }
+    if (errorMessage.includes("CNPJ é obrigatório para criar uma nova clínica")) {
+      return NextResponse.json({ error: 'Falha ao atualizar empresa.', details: errorMessage }, { status: 400 });
     }
     return NextResponse.json({ error: 'Falha ao atualizar empresa.', details: errorMessage }, { status: 500 });
   }

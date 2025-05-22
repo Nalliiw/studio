@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, serverTimestamp, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, serverTimestamp, doc, getDoc, updateDoc, Timestamp, setDoc } from 'firebase/firestore';
 import type { Company } from '@/types';
 
 const COMPANIES_COLLECTION = 'companies';
@@ -12,20 +12,22 @@ export async function createCompany(companyData: { name: string; cnpj: string })
     console.error("companyService.createCompany:", FIRESTORE_UNINITIALIZED_ERROR);
     throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
+  console.log("companyService.createCompany - Chamado com:", companyData);
   try {
     const docRef = await addDoc(collection(db, COMPANIES_COLLECTION), {
       ...companyData,
-      nutritionistCount: 0, // Considerar renomear para memberCount ou specialistCount
+      nutritionistCount: 0,
       status: 'active',
       createdAt: serverTimestamp(),
       lastModified: serverTimestamp(),
     });
+    console.log("companyService.createCompany - Empresa criada com ID:", docRef.id);
     return {
       id: docRef.id,
       ...companyData,
       nutritionistCount: 0,
       status: 'active',
-      createdAt: new Date().toISOString(), 
+      createdAt: new Date().toISOString(),
       lastModified: new Date().toISOString(),
     };
   } catch (error) {
@@ -42,6 +44,7 @@ export async function getCompanies(): Promise<Company[]> {
     console.error("companyService.getCompanies:", FIRESTORE_UNINITIALIZED_ERROR);
     throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
+  console.log("companyService.getCompanies - Chamado.");
   try {
     const querySnapshot = await getDocs(collection(db, COMPANIES_COLLECTION));
     const companies: Company[] = [];
@@ -57,6 +60,7 @@ export async function getCompanies(): Promise<Company[]> {
         lastModified: data.lastModified instanceof Timestamp ? data.lastModified.toDate().toISOString() : data.lastModified,
       } as Company);
     });
+    console.log("companyService.getCompanies - Empresas encontradas:", companies.length);
     return companies;
   } catch (error) {
     console.error('Erro ao buscar empresas do Firestore:', error);
@@ -72,8 +76,8 @@ export async function getCompanyById(companyId: string): Promise<Company | null>
     console.error(`companyService.getCompanyById (${companyId}):`, FIRESTORE_UNINITIALIZED_ERROR);
     throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
+  console.log(`companyService: Tentando buscar empresa com ID: ${companyId}`);
   try {
-    console.log(`companyService: Tentando buscar empresa com ID: ${companyId}`);
     const companyDocRef = doc(db, COMPANIES_COLLECTION, companyId);
     const companySnap = await getDoc(companyDocRef);
     if (companySnap.exists()) {
@@ -101,21 +105,41 @@ export async function getCompanyById(companyId: string): Promise<Company | null>
   }
 }
 
-export async function updateCompany(companyId: string, data: { name: string }): Promise<void> {
+export async function updateCompany(companyId: string, data: { name: string; cnpj?: string }): Promise<void> {
   if (!db) {
     console.error(`companyService.updateCompany (${companyId}):`, FIRESTORE_UNINITIALIZED_ERROR);
     throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
   try {
-    console.log(`companyService: Tentando atualizar empresa com ID: ${companyId}, Dados:`, data);
+    console.log(`companyService: Tentando atualizar/criar empresa com ID: ${companyId}, Dados:`, data);
     const companyDocRef = doc(db, COMPANIES_COLLECTION, companyId);
-    await updateDoc(companyDocRef, {
-      name: data.name,
-      lastModified: serverTimestamp(),
-    });
-    console.log(`companyService: Empresa ${companyId} atualizada com sucesso.`);
+    const docSnap = await getDoc(companyDocRef);
+
+    if (!docSnap.exists()) {
+      // Document doesn't exist, create it.
+      if (!data.cnpj) {
+        console.error("companyService.updateCompany - Tentativa de criar empresa sem CNPJ. ID:", companyId, "Dados:", data);
+        throw new Error("CNPJ é obrigatório para criar uma nova clínica.");
+      }
+      await setDoc(companyDocRef, {
+        name: data.name,
+        cnpj: data.cnpj,
+        nutritionistCount: 0,
+        status: 'active',
+        createdAt: serverTimestamp(),
+        lastModified: serverTimestamp(),
+      });
+      console.log(`companyService: Empresa ${companyId} CRIADA com sucesso.`);
+    } else {
+      // Document exists, update it.
+      await updateDoc(companyDocRef, {
+        name: data.name,
+        lastModified: serverTimestamp(),
+      });
+      console.log(`companyService: Empresa ${companyId} ATUALIZADA com sucesso.`);
+    }
   } catch (error) {
-    console.error(`Erro ao atualizar empresa (${companyId}) no Firestore:`, error);
+    console.error(`Erro ao atualizar/criar empresa (${companyId}) no Firestore:`, error);
     if (error instanceof Error) {
       throw new Error(`Falha ao atualizar empresa: ${error.message}`);
     }
