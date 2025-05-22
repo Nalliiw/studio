@@ -38,6 +38,7 @@ import {
   Moon,
   Sparkles,
   CalendarDays, 
+  UsersRound, // Ícone para Equipe
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -57,14 +58,15 @@ interface NavItem {
 const navItems: NavItem[] = [
   // Admin Supremo
   { href: '/dashboard-geral', label: 'Dashboard Geral', icon: LayoutDashboard, roles: [UserRole.ADMIN_SUPREMO] },
-  { href: '/empresas', label: 'Empresas (Clínicas)', icon: Building, roles: [UserRole.ADMIN_SUPREMO] }, // Label atualizado
+  { href: '/empresas', label: 'Empresas (Clínicas)', icon: Building, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/relatorios-gerais', label: 'Relatórios Gerais', icon: BarChart3, roles: [UserRole.ADMIN_SUPREMO] },
-  // Especialista da Clínica (anteriormente Nutricionista)
+  // Especialista da Clínica
   { href: '/dashboard-especialista', label: 'Painel do Especialista', icon: LayoutDashboard, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/pacientes', label: 'Pacientes', icon: Users, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/flowbuilder/meus-fluxos', label: 'Meus Fluxos', icon: Workflow, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/biblioteca', label: 'Biblioteca', icon: Library, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/agenda-especialista', label: 'Agenda do Especialista', icon: CalendarDays, roles: [UserRole.CLINIC_SPECIALIST] },
+  { href: '/equipe', label: 'Equipe', icon: UsersRound, roles: [UserRole.CLINIC_SPECIALIST] }, // Novo item
   // Paciente
   { href: '/inicio', label: 'Início', icon: Home, roles: [UserRole.PATIENT] },
   { href: '/formulario', label: 'Formulários', icon: ClipboardList, roles: [UserRole.PATIENT] },
@@ -91,13 +93,23 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
 
-  if (!clientHasMounted || !user) { 
+  if (!clientHasMounted) { 
     return (
         <div className="flex h-screen items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
     );
   }
+   if (!user) {
+    // AuthContext deve lidar com o redirecionamento para /login se o usuário não estiver autenticado e não estiver em uma página de login.
+    // Retornar null aqui evita que o AppShell tente renderizar sem um usuário, o que pode causar erros.
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+    );
+   }
+
 
   const userNavItems = navItems.filter(item => item.roles.includes(user.role));
   const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
@@ -124,7 +136,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
           <SidebarContent className="p-2">
             <SidebarMenu>
               {userNavItems.map((item) => {
-                const isActive = pathname === item.href || (item.href !== '/' && !item.href.includes('dashboard') && !item.href.includes('inicio') && pathname.startsWith(item.href));
+                const isActive = pathname === item.href || (item.href !== '/' && !item.href.startsWith('/dashboard') && !item.href.startsWith('/inicio') && pathname.startsWith(item.href));
                 
                 return (
                   <SidebarMenuItem key={item.href}>
@@ -180,7 +192,8 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                        toggleTheme();
                      }
                      if (sidebarState === "expanded" || isMobile) {
-                       if (sidebarState === "expanded") e.preventDefault();
+                       // Prevent default action for the div itself if it's expanded to avoid conflicts with switch
+                       if (e.target === e.currentTarget && sidebarState === "expanded") e.preventDefault();
                      }
                    }}
                 >
@@ -218,12 +231,10 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
           </SidebarFooter>
         </Sidebar>
       )}
-
-      {/* No top bar for mobile anymore */}
       
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto", 
-          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" 
+          isMobile ? "px-4 pt-4 pb-20" : "p-6" // Adjusted desktop padding to match original p-6
         )}>
           {children}
       </SidebarInset>
@@ -261,3 +272,4 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </TooltipProvider>
   );
 }
+

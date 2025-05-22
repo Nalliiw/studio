@@ -3,9 +3,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, ClipboardCheck, Library, PlusCircle, WorkflowIcon, Activity } from 'lucide-react';
+import { Users, ClipboardCheck, Library, PlusCircle, WorkflowIcon, UsersRound } from 'lucide-react'; // Adicionado UsersRound
 import Link from 'next/link';
-import { ResponsiveContainer, LineChart, XAxis, YAxis, Tooltip, Legend, Line, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, XAxis, YAxis, Tooltip, Line, PieChart, Pie, Cell } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 
 
@@ -55,7 +55,7 @@ export default function DashboardEspecialistaPage() {
       <div className="flex flex-wrap justify-between items-center gap-4"> 
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Painel do Especialista</h1> 
-            <p className="text-muted-foreground">Gerencie seus pacientes, fluxos e conteúdos.</p>
+            <p className="text-muted-foreground">Gerencie seus pacientes, fluxos, equipe e conteúdos.</p>
         </div>
         <div className="flex flex-wrap gap-2 sm:gap-4"> 
             <Link href="/pacientes/novo" passHref>
@@ -67,7 +67,7 @@ export default function DashboardEspecialistaPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="shadow-md hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pacientes Ativos</CardTitle>
@@ -86,6 +86,21 @@ export default function DashboardEspecialistaPage() {
           <CardContent>
             <div className="text-2xl font-bold">{formsRespondedPercentage}%</div>
             <p className="text-xs text-muted-foreground">Taxa de resposta geral</p>
+          </CardContent>
+        </Card>
+         <Card className="shadow-md hover:shadow-lg transition-shadow lg:col-span-1 md:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Membros da Equipe</CardTitle>
+            <UsersRound className="h-5 w-5 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">5</div> {/* Mock data */}
+            <p className="text-xs text-muted-foreground">+1 esta semana</p>
+            <Link href="/equipe" passHref className="mt-3 block">
+                <Button variant="outline" size="sm" className="w-full">
+                    Gerenciar Equipe
+                </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
@@ -135,3 +150,4 @@ export default function DashboardEspecialistaPage() {
     </div>
   );
 }
+

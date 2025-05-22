@@ -17,15 +17,22 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { UserCircle, Settings, LogOut, Moon, Sun, X, CalendarDays } from 'lucide-react'; 
+import { UserCircle, Settings, LogOut, Moon, Sun, CalendarDays, UsersRound } from 'lucide-react'; 
 import { UserRole } from '@/types'; 
 
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  roles: UserRole[];
+}
 interface MobileMoreOptionsSheetProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  additionalNavItems?: NavItem[];
 }
 
-export default function MobileMoreOptionsSheet({ isOpen, onOpenChange }: MobileMoreOptionsSheetProps) {
+export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additionalNavItems = [] }: MobileMoreOptionsSheetProps) {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -40,8 +47,6 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange }: MobileM
     onOpenChange(false); 
   };
   
-  const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
-
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-auto max-h-[70vh] flex flex-col rounded-t-lg p-0">
@@ -49,62 +54,71 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange }: MobileM
           <SheetTitle className="text-lg text-center">Mais Opções</SheetTitle>
         </SheetHeader>
         
-        <div className="flex-grow overflow-y-auto p-4 space-y-3">
+        <div className="flex-grow overflow-y-auto p-4 space-y-1"> {/* Reduced space-y */}
             {user && (
-                <div 
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted cursor-pointer"
+                <Button
+                    variant="ghost"
+                    className="w-full justify-start text-base py-3 h-auto gap-3"
                     onClick={() => handleNavigate('/perfil')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && handleNavigate('/perfil')}
                 >
-                    <UserCircle className="h-6 w-6 text-primary" />
-                    <div className="flex flex-col">
-                        <span className="font-medium">{user.name}</span>
-                        <span className="text-xs text-muted-foreground">Ver Perfil</span>
-                    </div>
-                </div>
+                    <UserCircle className="h-5 w-5" />
+                    Ver Perfil
+                </Button>
             )}
-            <Separator />
+            
+            {additionalNavItems.map(item => (
+                 item.roles.includes(user?.role as UserRole) && ( // Ensure user role matches
+                    <Button
+                        key={item.href}
+                        variant="ghost"
+                        className="w-full justify-start text-base py-3 h-auto gap-3"
+                        onClick={() => handleNavigate(item.href)}
+                    >
+                        <item.icon className="h-5 w-5" />
+                        {item.label}
+                    </Button>
+                 )
+            ))}
+
+            <Separator className="my-2"/>
+
             <Button
                 variant="ghost"
-                className="w-full justify-start text-base py-3 h-auto"
+                className="w-full justify-start text-base py-3 h-auto gap-3"
                 onClick={() => handleNavigate('/configuracoes')}
             >
-                <Settings className="mr-3 h-5 w-5" />
+                <Settings className="h-5 w-5" />
                 Configurações
             </Button>
 
-            {user?.role === UserRole.CLINIC_SPECIALIST && ( // Verificação atualizada para CLINIC_SPECIALIST
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-base py-3 h-auto"
-                onClick={() => handleNavigate('/agenda-especialista')} // Link atualizado
-              >
-                <CalendarDays className="mr-3 h-5 w-5" />
-                Agenda do Especialista
-              </Button>
-            )}
-
-            <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted">
-                <Label htmlFor="dark-mode-toggle-sheet" className="flex items-center text-base cursor-pointer">
-                {theme === 'dark' ? <Sun className="mr-3 h-5 w-5" /> : <Moon className="mr-3 h-5 w-5" />}
-                {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
-                </Label>
+            <div 
+                className="flex items-center justify-between p-3 rounded-lg hover:bg-muted text-base h-auto cursor-pointer gap-3"
+                onClick={toggleTheme}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && toggleTheme()}
+            >
+                <div className="flex items-center gap-3">
+                 {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                 <Label htmlFor="dark-mode-toggle-sheet" className="cursor-pointer">
+                    {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+                 </Label>
+                </div>
                 <Switch
-                id="dark-mode-toggle-sheet"
-                checked={theme === 'dark'}
-                onCheckedChange={toggleTheme}
-                aria-label="Alternar tema"
+                    id="dark-mode-toggle-sheet"
+                    checked={theme === 'dark'}
+                    onCheckedChange={toggleTheme}
+                    aria-label="Alternar tema"
+                    onClick={(e) => e.stopPropagation()} // Prevent triggering div's onClick
                 />
             </div>
-             <Separator />
+             <Separator className="my-2"/>
             <Button
                 variant="ghost"
-                className="w-full justify-start text-base py-3 h-auto text-destructive hover:text-destructive"
+                className="w-full justify-start text-base py-3 h-auto text-destructive hover:text-destructive gap-3"
                 onClick={handleLogout}
             >
-                <LogOut className="mr-3 h-5 w-5" />
+                <LogOut className="h-5 w-5" />
                 Sair
             </Button>
         </div>
@@ -112,3 +126,4 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange }: MobileM
     </Sheet>
   );
 }
+
