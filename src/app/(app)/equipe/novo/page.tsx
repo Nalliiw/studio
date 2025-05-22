@@ -35,6 +35,7 @@ export default function NovoMembroEquipePage() {
     defaultValues: {
       name: '',
       email: '',
+      // accessType is not set by default, user must select.
     },
   });
 
@@ -46,7 +47,7 @@ export default function NovoMembroEquipePage() {
       title: "Membro Adicionado!",
       description: `O membro ${data.name} foi adicionado à equipe com acesso de ${data.accessType === 'administrador_clinica' ? 'Administrador da Clínica' : 'Especialista'}.`,
     });
-    router.push('/equipe');
+    router.push('/equipe'); // Redireciona para a página de listagem da equipe
   };
   
   return (
@@ -117,9 +118,6 @@ export default function NovoMembroEquipePage() {
                         <SelectItem value="especialista_padrao">Especialista</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormDescription>
-                      Administradores podem gerenciar outros membros. Especialistas têm acesso padrão.
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -128,7 +126,7 @@ export default function NovoMembroEquipePage() {
             <CardFooter className="border-t pt-6">
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? (
-                    <span className="animate-spin mr-2">◌</span>
+                    <span className="animate-spin mr-2">◌</span> // Simple spinner
                 ) : (
                     <Save className="mr-2 h-4 w-4" />
                 )}
