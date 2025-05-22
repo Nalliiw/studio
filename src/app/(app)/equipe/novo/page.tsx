@@ -4,50 +4,92 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Não usado diretamente, mas bom manter para consistência com FormLabel
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Save, UserPlus2 } from 'lucide-react';
+import { ArrowLeft, Save, UserPlus2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth'; // Para obter clinicId e addedBy
+import type { ClinicAccessType } from '@/types';
 
-// Definindo os tipos de acesso possíveis dentro da clínica
-const clinicAccessTypes = ['administrador_clinica', 'especialista_padrao'] as const;
-type ClinicAccessType = typeof clinicAccessTypes[number];
+const clinicAccessTypesForForm = ['administrador_clinica', 'especialista_padrao'] as const;
 
 const newTeamMemberSchema = z.object({
   name: z.string().min(3, { message: 'Nome do membro deve ter no mínimo 3 caracteres.' }),
   email: z.string().email({ message: 'Email inválido.' }),
-  accessType: z.enum(clinicAccessTypes, { errorMap: () => ({ message: "Selecione um tipo de acesso."}) }),
+  accessType: z.enum(clinicAccessTypesForForm, { errorMap: () => ({ message: "Selecione um tipo de acesso."}) }),
+  specialtiesRaw: z.string().optional(), // String de especialidades separadas por vírgula
 });
 
 type NewTeamMemberFormValues = z.infer<typeof newTeamMemberSchema>;
 
 export default function NovoMembroEquipePage() {
   const router = useRouter();
+  const { user } = useAuth(); // Usuário logado (admin da clínica)
+
   const form = useForm<NewTeamMemberFormValues>({
     resolver: zodResolver(newTeamMemberSchema),
     defaultValues: {
       name: '',
       email: '',
-      // accessType is not set by default, user must select.
+      specialtiesRaw: '',
+      // accessType não é definido por padrão, o usuário deve selecionar.
     },
   });
 
   const onSubmit: SubmitHandler<NewTeamMemberFormValues> = async (data) => {
-    console.log('Novo Membro da Equipe Data:', data);
-    // Simular chamada de API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast({
-      title: "Membro Adicionado!",
-      description: `O membro ${data.name} foi adicionado à equipe com acesso de ${data.accessType === 'administrador_clinica' ? 'Administrador da Clínica' : 'Especialista'}.`,
-    });
-    router.push('/equipe'); // Redireciona para a página de listagem da equipe
+    if (!user || !user.companyId) {
+      toast({
+        title: "Erro de Autenticação",
+        description: "Você precisa estar logado como administrador de uma clínica para adicionar membros.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const payload = {
+      ...data,
+      clinicId: user.companyId,
+      addedBy: user.id,
+    };
+    
+    console.log('Enviando dados para API /api/team:', payload);
+
+    try {
+      const response = await fetch('/api/team', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        console.error("Erro da API ao adicionar membro:", responseData);
+        throw new Error(responseData.error || responseData.details?.message || 'Falha ao adicionar membro da equipe.');
+      }
+
+      toast({
+        title: "Membro Adicionado!",
+        description: `O membro ${responseData.name} foi adicionado à equipe.`,
+      });
+      router.push('/equipe');
+    } catch (error) {
+      console.error('Erro ao submeter novo membro:', error);
+      toast({
+        title: "Erro ao Adicionar Membro",
+        description: error instanceof Error ? error.message : 'Ocorreu um erro inesperado.',
+        variant: "destructive",
+      });
+    }
   };
   
   return (
@@ -107,7 +149,7 @@ export default function NovoMembroEquipePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo de Acesso na Clínica</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange as (value: ClinicAccessType) => void} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o tipo de acesso" />
@@ -122,11 +164,27 @@ export default function NovoMembroEquipePage() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="specialtiesRaw"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Especialidades (separadas por vírgula)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: Nutrição Esportiva, Pediatria" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Informe as especialidades do membro, separadas por vírgula.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
             <CardFooter className="border-t pt-6">
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? (
-                    <span className="animate-spin mr-2">◌</span> // Simple spinner
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                     <Save className="mr-2 h-4 w-4" />
                 )}

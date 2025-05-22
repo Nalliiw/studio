@@ -1,6 +1,7 @@
+
 export enum UserRole {
   ADMIN_SUPREMO = 'administrador_supremo',
-  CLINIC_SPECIALIST = 'clinic_specialist', // Alterado de NUTRITIONIST_WHITE_LABEL
+  CLINIC_SPECIALIST = 'clinic_specialist',
   PATIENT = 'paciente',
 }
 
@@ -9,14 +10,15 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  companyId?: string; // Para especialistas e pacientes associados a uma clínica/empresa
+  companyId?: string; // ID da Clínica/Empresa à qual o especialista ou paciente está associado
+  specialties?: string[]; // Para especialistas da clínica
 }
 
 export interface Company {
   id: string;
   name: string; // Nome da Clínica/Empresa
   cnpj: string;
-  nutritionistCount: number; // Contagem de especialistas na clínica
+  nutritionistCount: number; // Renomear para specialistCount no futuro
   status: 'active' | 'inactive';
 }
 
@@ -44,39 +46,38 @@ export type FlowStepType =
   | 'display_video';
 
 export interface FlowStepOption {
-  value: string; // Internal value/ID of the option, can be same as label for simplicity
-  label: string; // Display label for the option
-  nextStepId?: string; // If this option is chosen, go to this step ID
+  value: string;
+  label: string;
+  nextStepId?: string;
 }
 
 export interface FlowStepConfig {
-  text?: string; // For prompts, instructions, content titles
-  options?: FlowStepOption[]; // For multiple_choice, single_choice
-  url?: string; // For display_pdf, display_image, display_audio, display_video
-  placeholder?: string; // For text_input
-  maxEmojis?: number; // For emoji_rating
-  setOutputVariable?: string; // Name of the variable this step's result will be stored in
-  defaultNextStepId?: string; // Default next step for non-branching steps or fallback
+  text?: string;
+  options?: FlowStepOption[];
+  url?: string;
+  placeholder?: string;
+  maxEmojis?: number;
+  setOutputVariable?: string;
+  defaultNextStepId?: string;
 }
 
 export interface FlowStep {
   id: string;
   type: FlowStepType;
-  // User-defined title for this step in the builder, displayed on the card
   title: string;
   config: FlowStepConfig;
-  position: { x: number; y: number }; // Position on the canvas
+  position: { x: number; y: number };
 }
 
 export interface Flow {
   id: string;
   name: string;
   steps: FlowStep[];
-  nutritionistId: string; // ID do especialista que criou o fluxo (manter nome do campo por ora)
-  createdAt?: any; // Firebase Timestamp or string
-  lastModified?: any; // Firebase Timestamp or string
+  nutritionistId: string; // ID do especialista que criou o fluxo
+  createdAt?: any;
+  lastModified?: any;
   status?: 'draft' | 'active' | 'archived';
-  patientAssignments?: number; 
+  patientAssignments?: number;
 }
 
 export interface Content {
@@ -85,22 +86,38 @@ export interface Content {
   title: string;
   url: string;
   category: string;
-  nutritionistId: string; // ID do especialista que fez o upload (manter nome do campo por ora)
+  nutritionistId: string; // ID do especialista
 }
 
 export interface Praise {
   id: string;
   type: 'text' | 'audio' | 'video';
-  content: string; // URL for audio/video, text for text
+  content: string;
   date: string; // ISO date string
   patientId: string;
 }
 
 export interface FormResponse {
   id: string;
-  formId: string; // Corresponds to Flow id
+  formId: string;
   patientId: string;
-  answers: { stepId: string; answer: any }[]; // Corresponds to FlowStep id
+  answers: { stepId: string; answer: any }[];
   status: 'pending' | 'completed';
-  submittedAt?: string; // ISO date string
+  submittedAt?: string;
+}
+
+// Novo tipo para Membros da Equipe
+export type ClinicAccessType = 'administrador_clinica' | 'especialista_padrao';
+
+export interface TeamMember {
+  id: string;
+  clinicId: string; // ID da clínica/empresa à qual o membro pertence
+  name: string;
+  email: string;
+  accessType: ClinicAccessType;
+  specialties?: string[]; // Array de especialidades
+  userId?: string; // ID do usuário Firebase associado, se houver
+  status: 'active' | 'pending_invitation' | 'inactive';
+  createdAt: any; // Firebase Timestamp or string
+  addedBy: string; // ID do usuário que adicionou este membro
 }
