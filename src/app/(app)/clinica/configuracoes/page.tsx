@@ -47,18 +47,33 @@ export default function ConfiguracoesClinicaPage() {
       try {
         const response = await fetch(`/api/companies/${user.companyId}`);
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Falha ao buscar dados da clínica.');
+          let errorMessage = 'Falha ao buscar dados da clínica.';
+          try {
+            const errorText = await response.text(); // Read as text first
+            console.error("Raw error response from API (fetchCompanyData):", errorText); // Log raw response
+            if (errorText) {
+              const errorData = JSON.parse(errorText); // Try to parse
+              errorMessage = errorData.error || errorData.message || (typeof errorData.details === 'string' ? errorData.details : errorData.details?.message) || errorText || `Erro ${response.status}`;
+            } else {
+              errorMessage = `Erro ${response.status}: ${response.statusText || 'Resposta vazia do servidor'}`;
+            }
+          } catch (e) {
+            // If JSON.parse fails or response.text() fails
+            console.error("Failed to parse error response or read text (fetchCompanyData):", e);
+            errorMessage = `Erro ${response.status}: ${response.statusText || 'Não foi possível processar a resposta de erro do servidor.'}`;
+          }
+          throw new Error(errorMessage);
         }
         const data: Company = await response.json();
         setCompanyData(data);
         form.reset({ name: data.name });
       } catch (err) {
         console.error("Erro ao buscar dados da clínica:", err);
-        setError(err instanceof Error ? err.message : 'Ocorreu um erro inesperado.');
+        const displayError = err instanceof Error ? err.message : 'Ocorreu um erro inesperado ao buscar dados da clínica.';
+        setError(displayError);
         toast({
           title: "Erro ao Carregar Dados da Clínica",
-          description: err instanceof Error ? err.message : 'Ocorreu um erro inesperado.',
+          description: displayError,
           variant: "destructive"
         });
       } finally {
@@ -76,16 +91,32 @@ export default function ConfiguracoesClinicaPage() {
       toast({ title: "Erro", description: "ID da clínica não encontrado.", variant: "destructive" });
       return;
     }
+    form.formState.isSubmitting; // Access isSubmitting to ensure react-hook-form tracks it
     try {
       const response = await fetch(`/api/companies/${user.companyId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: data.name }),
       });
-      const responseData = await response.json();
+      
       if (!response.ok) {
-        throw new Error(responseData.error || 'Falha ao atualizar dados da clínica.');
+        let errorMessage = 'Falha ao atualizar dados da clínica.';
+        try {
+            const errorText = await response.text();
+            console.error("Raw error response from API (onSubmit):", errorText); // Log raw response
+            if (errorText) {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.error || errorData.message || (typeof errorData.details === 'string' ? errorData.details : errorData.details?.message) || errorText || `Erro ${response.status}`;
+            } else {
+                 errorMessage = `Erro ${response.status}: ${response.statusText || 'Resposta vazia do servidor'}`;
+            }
+        } catch (e) {
+            console.error("Failed to parse error response or read text (onSubmit):", e);
+            errorMessage = `Erro ${response.status}: ${response.statusText || 'Não foi possível processar a resposta de erro do servidor.'}`;
+        }
+        throw new Error(errorMessage);
       }
+      // No need to parse response.json() if it's just a success message with no body or status 200/204
       toast({ title: "Sucesso!", description: "Nome da clínica atualizado." });
       setCompanyData(prev => prev ? { ...prev, name: data.name } : null);
     } catch (error) {
@@ -185,3 +216,5 @@ export default function ConfiguracoesClinicaPage() {
     </div>
   );
 }
+    
+    
