@@ -21,7 +21,6 @@ import { useTheme } from '@/hooks/useTheme';
 const loginSchema = z.object({
   email: z.string().email({ message: 'Endereço de email inválido.' }),
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
-  // For this main login, Admin Supremo is the primary focus. Others will be redirected.
   role: z.nativeEnum(UserRole, { errorMap: () => ({ message: "Por favor, selecione um perfil."}) }),
 });
 
@@ -29,7 +28,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const mockUsers: Record<UserRole, User> = {
   [UserRole.ADMIN_SUPREMO]: { id: 'admin01', name: 'Admin Supremo', email: 'admin@nutritrack.com', role: UserRole.ADMIN_SUPREMO },
-  [UserRole.NUTRITIONIST_WHITE_LABEL]: { id: 'nutri01', name: 'Dr. Nutri', email: 'nutri@nutritrack.com', role: UserRole.NUTRITIONIST_WHITE_LABEL, companyId: 'comp01' },
+  [UserRole.CLINIC_SPECIALIST]: { id: 'specialist01', name: 'Dr. Especialista Exemplo', email: 'especialista@nutritrack.com', role: UserRole.CLINIC_SPECIALIST, companyId: 'comp01' },
   [UserRole.PATIENT]: { id: 'patient01', name: 'Paciente Exemplo', email: 'patient@nutritrack.com', role: UserRole.PATIENT, companyId: 'comp01' },
 };
 
@@ -60,11 +59,9 @@ export default function LoginPage() {
         case UserRole.ADMIN_SUPREMO:
           router.push('/dashboard-geral');
           break;
-        // Redirect other roles to the user-specific login if they land here by mistake
-        // or prefer to use the user-specific login for their roles.
-        case UserRole.NUTRITIONIST_WHITE_LABEL:
+        case UserRole.CLINIC_SPECIALIST:
         case UserRole.PATIENT:
-          router.push('/login-user'); // Or directly to their dashboards if preferred
+          router.push('/login-user'); 
           break;
         default:
           router.push('/login'); 
@@ -92,7 +89,7 @@ export default function LoginPage() {
             <ShieldCheck className="h-8 w-8" />
         </div>
         <CardTitle className="text-3xl font-bold">NutriTrack Lite</CardTitle>
-        <CardDescription>Bem-vindo! Faça login para continuar.</CardDescription>
+        <CardDescription>Bem-vindo! Faça login para continuar (Acesso Principal).</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -137,7 +134,7 @@ export default function LoginPage() {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value={UserRole.ADMIN_SUPREMO}>Administrador Supremo</SelectItem>
-                      <SelectItem value={UserRole.NUTRITIONIST_WHITE_LABEL}>Nutricionista</SelectItem>
+                      <SelectItem value={UserRole.CLINIC_SPECIALIST}>Especialista (Clínica)</SelectItem>
                       <SelectItem value={UserRole.PATIENT}>Paciente</SelectItem>
                     </SelectContent>
                   </Select>
@@ -161,7 +158,7 @@ export default function LoginPage() {
         <Link href="/login-user" passHref>
           <Button variant="outline" className="w-full">
             <UserCheck className="mr-2 h-4 w-4" />
-            Acessar como Nutricionista ou Paciente
+            Acessar como Especialista ou Paciente
           </Button>
         </Link>
       </CardFooter>

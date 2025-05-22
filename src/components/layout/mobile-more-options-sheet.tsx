@@ -10,7 +10,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  // SheetClose, // Will rely on default SheetContent close button
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -18,8 +17,8 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { UserCircle, Settings, LogOut, Moon, Sun, X, CalendarDays } from 'lucide-react'; // Added CalendarDays
-import { UserRole } from '@/types'; // Added UserRole
+import { UserCircle, Settings, LogOut, Moon, Sun, X, CalendarDays } from 'lucide-react'; 
+import { UserRole } from '@/types'; 
 
 interface MobileMoreOptionsSheetProps {
   isOpen: boolean;
@@ -33,12 +32,12 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange }: MobileM
 
   const handleNavigate = (path: string) => {
     router.push(path);
-    onOpenChange(false); // Close sheet after navigation
+    onOpenChange(false); 
   };
 
   const handleLogout = () => {
     logout();
-    onOpenChange(false); // Close sheet after logout
+    onOpenChange(false); 
   };
   
   const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
@@ -46,10 +45,8 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange }: MobileM
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-auto max-h-[70vh] flex flex-col rounded-t-lg p-0">
-        {/* SheetContent includes a default X close button, so explicit SheetClose is not needed here unless for custom positioning */}
         <SheetHeader className="p-4 border-b sticky top-0 bg-background z-10">
           <SheetTitle className="text-lg text-center">Mais Opções</SheetTitle>
-          {/* The default X button from SheetContent will be used. If it's not appearing or is styled incorrectly by default, this is where we might need to add an explicit SheetClose. */}
         </SheetHeader>
         
         <div className="flex-grow overflow-y-auto p-4 space-y-3">
@@ -78,14 +75,14 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange }: MobileM
                 Configurações
             </Button>
 
-            {user?.role === UserRole.NUTRITIONIST_WHITE_LABEL && (
+            {user?.role === UserRole.CLINIC_SPECIALIST && ( // Verificação atualizada para CLINIC_SPECIALIST
               <Button
                 variant="ghost"
                 className="w-full justify-start text-base py-3 h-auto"
-                onClick={() => handleNavigate('/agenda-geral-nutricionista')}
+                onClick={() => handleNavigate('/agenda-especialista')} // Link atualizado
               >
                 <CalendarDays className="mr-3 h-5 w-5" />
-                Agenda Geral
+                Agenda do Especialista
               </Button>
             )}
 

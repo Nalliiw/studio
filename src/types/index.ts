@@ -1,6 +1,6 @@
 export enum UserRole {
   ADMIN_SUPREMO = 'administrador_supremo',
-  NUTRITIONIST_WHITE_LABEL = 'nutricionista_white_label',
+  CLINIC_SPECIALIST = 'clinic_specialist', // Alterado de NUTRITIONIST_WHITE_LABEL
   PATIENT = 'paciente',
 }
 
@@ -9,14 +9,14 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  companyId?: string; // For nutritionists and patients associated with a company
+  companyId?: string; // Para especialistas e pacientes associados a uma clínica/empresa
 }
 
 export interface Company {
   id: string;
-  name: string;
+  name: string; // Nome da Clínica/Empresa
   cnpj: string;
-  nutritionistCount: number;
+  nutritionistCount: number; // Contagem de especialistas na clínica
   status: 'active' | 'inactive';
 }
 
@@ -25,8 +25,8 @@ export interface Patient {
   name: string;
   email: string;
   lastAccess: string; // ISO date string
-  companyId: string;
-  nutritionistId: string;
+  companyId: string; // ID da clínica à qual o paciente pertence
+  nutritionistId: string; // ID do especialista principal atribuído (manter nome do campo por ora)
 }
 
 export type FlowStepType =
@@ -72,11 +72,11 @@ export interface Flow {
   id: string;
   name: string;
   steps: FlowStep[];
-  nutritionistId: string;
+  nutritionistId: string; // ID do especialista que criou o fluxo (manter nome do campo por ora)
   createdAt?: any; // Firebase Timestamp or string
   lastModified?: any; // Firebase Timestamp or string
   status?: 'draft' | 'active' | 'archived';
-  patientAssignments?: number; // Primarily for frontend display logic based on mock data, backend might calculate this differently
+  patientAssignments?: number; 
 }
 
 export interface Content {
@@ -85,7 +85,7 @@ export interface Content {
   title: string;
   url: string;
   category: string;
-  nutritionistId: string;
+  nutritionistId: string; // ID do especialista que fez o upload (manter nome do campo por ora)
 }
 
 export interface Praise {

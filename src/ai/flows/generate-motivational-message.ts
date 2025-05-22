@@ -15,7 +15,7 @@ import {z} from 'genkit';
 const GenerateMotivationalMessageInputSchema = z.object({
   patientName: z.string().describe('The name of the patient.'),
   patientGoal: z.string().describe('The patient\u2019s health and wellness goal.'),
-  nutritionistName: z.string().describe('The name of the nutritionist.'),
+  specialistName: z.string().describe('The name of the clinic specialist.'), // Alterado de nutritionistName
 });
 
 export type GenerateMotivationalMessageInput = z.infer<
@@ -42,11 +42,11 @@ const generateMotivationalMessagePrompt = ai.definePrompt({
   output: {schema: GenerateMotivationalMessageOutputSchema},
   prompt: `You are a helpful AI assistant that generates motivational messages for patients.
 
-  Given the patient's name, their goals, and the nutritionist's name, create a personalized motivational message.
+  Given the patient's name, their goals, and the specialist's name, create a personalized motivational message.
 
   Patient Name: {{{patientName}}}
   Patient Goal: {{{patientGoal}}}
-  Nutritionist Name: {{{nutritionistName}}}
+  Specialist Name: {{{specialistName}}}
 
   Motivational Message:`,
 });

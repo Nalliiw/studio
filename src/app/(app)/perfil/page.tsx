@@ -21,7 +21,7 @@ export default function PerfilPage() {
   
   const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
   const roleName = user.role === UserRole.ADMIN_SUPREMO ? "Administrador Supremo" :
-                   user.role === UserRole.NUTRITIONIST_WHITE_LABEL ? "Nutricionista" :
+                   user.role === UserRole.CLINIC_SPECIALIST ? "Especialista da Clínica" : // Rótulo atualizado
                    "Paciente";
 
   return (
@@ -47,7 +47,7 @@ export default function PerfilPage() {
             </div>
             {user.companyId && (
                 <div className="flex justify-between items-center border-b pb-2">
-                    <span className="text-sm text-muted-foreground">ID da Empresa:</span>
+                    <span className="text-sm text-muted-foreground">ID da Clínica/Empresa:</span>
                     <span className="font-medium">{user.companyId}</span>
                 </div>
             )}
@@ -65,4 +65,3 @@ export default function PerfilPage() {
     </div>
   );
 }
-

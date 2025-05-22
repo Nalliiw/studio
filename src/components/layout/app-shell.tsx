@@ -14,7 +14,6 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  // SidebarTrigger, // No longer used as top bar is removed on mobile
   SidebarRail,
   useSidebar, 
 } from '@/components/ui/sidebar';
@@ -35,12 +34,10 @@ import {
   Award,
   LogOut,
   Settings,
-  // Menu, // No longer used
   Sun,
   Moon,
   Sparkles,
-  CalendarDays, // Ícone para a nova Agenda Geral
-  // SlidersHorizontal, // Moved to BottomNavigation
+  CalendarDays, 
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -60,14 +57,14 @@ interface NavItem {
 const navItems: NavItem[] = [
   // Admin Supremo
   { href: '/dashboard-geral', label: 'Dashboard Geral', icon: LayoutDashboard, roles: [UserRole.ADMIN_SUPREMO] },
-  { href: '/empresas', label: 'Empresas', icon: Building, roles: [UserRole.ADMIN_SUPREMO] },
+  { href: '/empresas', label: 'Empresas (Clínicas)', icon: Building, roles: [UserRole.ADMIN_SUPREMO] }, // Label atualizado
   { href: '/relatorios-gerais', label: 'Relatórios Gerais', icon: BarChart3, roles: [UserRole.ADMIN_SUPREMO] },
-  // Nutricionista
-  { href: '/dashboard-nutricionista', label: 'Dashboard Nutri', icon: LayoutDashboard, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] },
-  { href: '/pacientes', label: 'Pacientes', icon: Users, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] },
-  { href: '/flowbuilder/meus-fluxos', label: 'Meus Fluxos', icon: Workflow, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] },
-  { href: '/biblioteca', label: 'Biblioteca', icon: Library, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] },
-  { href: '/agenda-geral-nutricionista', label: 'Agenda Geral', icon: CalendarDays, roles: [UserRole.NUTRITIONIST_WHITE_LABEL] }, // Novo item
+  // Especialista da Clínica (anteriormente Nutricionista)
+  { href: '/dashboard-especialista', label: 'Painel do Especialista', icon: LayoutDashboard, roles: [UserRole.CLINIC_SPECIALIST] },
+  { href: '/pacientes', label: 'Pacientes', icon: Users, roles: [UserRole.CLINIC_SPECIALIST] },
+  { href: '/flowbuilder/meus-fluxos', label: 'Meus Fluxos', icon: Workflow, roles: [UserRole.CLINIC_SPECIALIST] },
+  { href: '/biblioteca', label: 'Biblioteca', icon: Library, roles: [UserRole.CLINIC_SPECIALIST] },
+  { href: '/agenda-especialista', label: 'Agenda do Especialista', icon: CalendarDays, roles: [UserRole.CLINIC_SPECIALIST] },
   // Paciente
   { href: '/inicio', label: 'Início', icon: Home, roles: [UserRole.PATIENT] },
   { href: '/formulario', label: 'Formulários', icon: ClipboardList, roles: [UserRole.PATIENT] },
@@ -127,7 +124,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
           <SidebarContent className="p-2">
             <SidebarMenu>
               {userNavItems.map((item) => {
-                const isActive = pathname === item.href || (item.href !== '/' && item.href !== '/dashboard-geral' && item.href !== '/dashboard-nutricionista' && item.href !== '/inicio' && pathname.startsWith(item.href));
+                const isActive = pathname === item.href || (item.href !== '/' && !item.href.includes('dashboard') && !item.href.includes('inicio') && pathname.startsWith(item.href));
                 
                 return (
                   <SidebarMenuItem key={item.href}>
@@ -174,7 +171,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
               <SidebarMenuItem>
                 <div
                   className={cn(
-                     "flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 h-8",
+                    "flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 h-8",
                     "group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 justify-between group-data-[collapsible=icon]:justify-center cursor-default"
                   )}
                   title={sidebarState === "collapsed" && !isMobile ? (theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro') : undefined}
@@ -183,8 +180,6 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                        toggleTheme();
                      }
                      if (sidebarState === "expanded" || isMobile) {
-                       // Prevent click from propagating if expanded, as Switch handles its own click
-                       // Allow click if collapsed and not mobile to trigger theme toggle
                        if (sidebarState === "expanded") e.preventDefault();
                      }
                    }}
@@ -208,7 +203,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                     onCheckedChange={toggleTheme}
                     aria-label="Alternar tema"
                     className="ml-auto group-data-[collapsible=icon]:hidden shrink-0"
-                    onClick={(e) => e.stopPropagation()} // Prevent outer div click when switch is clicked
+                    onClick={(e) => e.stopPropagation()} 
                   />
                 </div>
               </SidebarMenuItem>
@@ -224,11 +219,11 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
         </Sidebar>
       )}
 
-      {/* No top bar for mobile */}
-
+      {/* No top bar for mobile anymore */}
+      
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto", 
-           isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" // Increased mobile bottom padding
+          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" 
         )}>
           {children}
       </SidebarInset>
@@ -266,4 +261,3 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </TooltipProvider>
   );
 }
-

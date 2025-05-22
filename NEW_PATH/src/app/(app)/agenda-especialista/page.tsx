@@ -11,7 +11,6 @@ import { format, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils'; 
 
-// Definindo o tipo para os itens da agenda do especialista
 interface EspecialistaScheduledItem {
   id: string;
   type: 'appointment' | 'patient_flow' | 'personal_reminder' | 'meeting';
@@ -19,16 +18,15 @@ interface EspecialistaScheduledItem {
   date: string; // ISO String
   time?: string; // HH:mm
   description?: string;
-  patientName?: string; // Para consultas e fluxos de pacientes
+  patientName?: string; 
   patientId?: string;
   status?: 'scheduled' | 'completed' | 'cancelled';
 }
 
-// Mock data para a agenda geral do especialista
 const mockEspecialistaAgenda: EspecialistaScheduledItem[] = [
   { id: 'n_sch1', type: 'appointment', title: 'Consulta - Ana Silva', date: new Date().toISOString(), time: '10:00', patientName: 'Ana Silva', patientId: 'p1', description: 'Consulta de acompanhamento.', status: 'scheduled' },
   { id: 'n_sch2', type: 'patient_flow', title: 'Fluxo: Check-in Semanal', date: new Date().toISOString(), time: '11:00', patientName: 'Bruno Costa', patientId: 'p2', description: 'Verificar respostas do fluxo semanal.', status: 'scheduled' },
-  { id: 'n_sch3', type: 'personal_reminder', title: 'Preparar material para workshop', date: new Date().toISOString(), time: '14:00', description: 'Revisar slides e anotações.', status: 'scheduled' },
+  { id: 'n_sch3', type: 'personal_reminder', title: 'Preparar material para workshop da clínica', date: new Date().toISOString(), time: '14:00', description: 'Revisar slides e anotações.', status: 'scheduled' },
   { id: 'n_sch4', type: 'appointment', title: 'Consulta - Carlos Lima', date: format(new Date(new Date().setDate(new Date().getDate() + 1)), 'yyyy-MM-dd\'T\'HH:mm:ss.SSSxxx'), time: '09:00', patientName: 'Carlos Lima', patientId: 'p3', description: 'Primeira consulta.', status: 'scheduled' },
   { id: 'n_sch5', type: 'meeting', title: 'Reunião de equipe da clínica', date: format(new Date(new Date().setDate(new Date().getDate() + 1)), 'yyyy-MM-dd\'T\'HH:mm:ss.SSSxxx'), time: '16:00', description: 'Alinhamento semanal da equipe.', status: 'scheduled' },
   { id: 'n_sch6', type: 'patient_flow', title: 'Fluxo: Diário Alimentar', date: format(new Date(new Date().setDate(new Date().getDate() - 1)), 'yyyy-MM-dd\'T\'HH:mm:ss.SSSxxx'), time: '00:00', patientName: 'Daniela Souza', patientId: 'p4', description: 'Fluxo atribuído para preenchimento.', status: 'completed' },
@@ -62,7 +60,7 @@ const getStatusText = (status?: EspecialistaScheduledItem['status']) => {
     }
 };
 
-export default function AgendaEspecialistaPage() { // Nome da função atualizado
+export default function AgendaEspecialistaPage() { 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   const scheduledItemsForSelectedDate = selectedDate
@@ -155,4 +153,3 @@ export default function AgendaEspecialistaPage() { // Nome da função atualizad
     </div>
   );
 }
-

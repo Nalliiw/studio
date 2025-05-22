@@ -21,14 +21,14 @@ import { useTheme } from '@/hooks/useTheme';
 const loginUserSchema = z.object({
   email: z.string().email({ message: 'Endereço de email inválido.' }),
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
-  role: z.enum([UserRole.NUTRITIONIST_WHITE_LABEL, UserRole.PATIENT], { errorMap: () => ({ message: "Por favor, selecione um perfil."}) }),
+  role: z.enum([UserRole.CLINIC_SPECIALIST, UserRole.PATIENT], { errorMap: () => ({ message: "Por favor, selecione um perfil."}) }),
 });
 
 type LoginUserFormValues = z.infer<typeof loginUserSchema>;
 
 // Mock users for demonstration (excluding Admin Supremo)
 const mockUsers: Partial<Record<UserRole, User>> = {
-  [UserRole.NUTRITIONIST_WHITE_LABEL]: { id: 'nutri01', name: 'Dr. Nutri', email: 'nutri@nutritrack.com', role: UserRole.NUTRITIONIST_WHITE_LABEL, companyId: 'comp01' },
+  [UserRole.CLINIC_SPECIALIST]: { id: 'specialist01', name: 'Dr. Especialista Exemplo', email: 'especialista@nutritrack.com', role: UserRole.CLINIC_SPECIALIST, companyId: 'comp01' },
   [UserRole.PATIENT]: { id: 'patient01', name: 'Paciente Exemplo', email: 'patient@nutritrack.com', role: UserRole.PATIENT, companyId: 'comp01' },
 };
 
@@ -53,11 +53,11 @@ export default function LoginUserPage() {
     const userToLogin = mockUsers[data.role];
     
     if (userToLogin && userToLogin.email?.split('@')[0] === data.email.split('@')[0]) {
-      login(userToLogin as User); // Store user in context/localStorage
+      login(userToLogin as User); 
 
       switch (data.role) {
-        case UserRole.NUTRITIONIST_WHITE_LABEL:
-          router.push('/dashboard-nutricionista');
+        case UserRole.CLINIC_SPECIALIST:
+          router.push('/dashboard-especialista'); // Rota atualizada
           break;
         case UserRole.PATIENT:
           router.push('/inicio');
@@ -87,8 +87,8 @@ export default function LoginUserPage() {
         <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 text-primary w-fit">
             <UserCheck className="h-8 w-8" />
         </div>
-        <CardTitle className="text-3xl font-bold">Acesso Nutri/Paciente</CardTitle>
-        <CardDescription>Faça login com seu perfil de nutricionista ou paciente.</CardDescription>
+        <CardTitle className="text-3xl font-bold">Acesso Especialista/Paciente</CardTitle>
+        <CardDescription>Faça login com seu perfil de especialista ou paciente.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -132,7 +132,7 @@ export default function LoginUserPage() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value={UserRole.NUTRITIONIST_WHITE_LABEL}>Nutricionista</SelectItem>
+                      <SelectItem value={UserRole.CLINIC_SPECIALIST}>Especialista (Clínica)</SelectItem>
                       <SelectItem value={UserRole.PATIENT}>Paciente</SelectItem>
                     </SelectContent>
                   </Select>

@@ -45,7 +45,7 @@ const chartConfigForms = {
 } satisfies import("@/components/ui/chart").ChartConfig;
 
 
-export default function DashboardEspecialistaPage() { // Nome da função atualizado
+export default function DashboardEspecialistaPage() { 
   // Mock data
   const totalActivePatients = 40;
   const formsRespondedPercentage = 75;

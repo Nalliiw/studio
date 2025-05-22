@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Sparkles, RefreshCw } from 'lucide-react';
 import { generateMotivationalMessage } from '@/ai/flows/generate-motivational-message';
-import type { User } from '@/types'; // Assuming User type is available
-import { useAuth } from '@/hooks/useAuth'; // To get patient name
+import type { User } from '@/types'; 
+import { useAuth } from '@/hooks/useAuth'; 
 
 export default function MotivationalMessageCard() {
   const { user } = useAuth();
@@ -21,20 +22,19 @@ export default function MotivationalMessageCard() {
     setError('');
     try {
       const patientName = user.name || 'Paciente';
-      // Mock data for now, ideally this would come from patient profile or context
       const patientGoal = 'manter uma alimentação saudável e equilibrada'; 
-      const nutritionistName = 'seu nutricionista';
+      const specialistName = 'seu especialista da clínica'; // Texto atualizado
 
       const result = await generateMotivationalMessage({
         patientName,
         patientGoal,
-        nutritionistName,
+        specialistName, // Campo atualizado
       });
       setMessage(result.motivationalMessage);
     } catch (err) {
       console.error('Failed to generate motivational message:', err);
       setError('Não foi possível gerar uma mensagem no momento. Tente novamente.');
-      setMessage(''); // Clear previous message on error
+      setMessage(''); 
     } finally {
       setIsLoading(false);
     }
@@ -42,7 +42,7 @@ export default function MotivationalMessageCard() {
 
   useEffect(() => {
     fetchMotivationalMessage();
-  }, [user]); // Fetch on initial load or when user changes
+  }, [user]); 
 
   return (
     <Card className="w-full shadow-lg bg-gradient-to-br from-primary/10 to-background">

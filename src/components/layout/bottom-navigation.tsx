@@ -6,16 +6,15 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { UserRole } from '@/types'; // Imported UserRole
-import { SlidersHorizontal, Home, ClipboardList, PlaySquare, Award, LayoutDashboard, Users, Workflow, Library, Sparkles } from 'lucide-react';
+import { UserRole } from '@/types'; 
+import { SlidersHorizontal, Home, ClipboardList, PlaySquare, Award, LayoutDashboard, Users, Workflow, Library, Sparkles, CalendarDays } from 'lucide-react';
 import MobileMoreOptionsSheet from './mobile-more-options-sheet';
 import { useAuth } from '@/hooks/useAuth';
 
-// Mirrored from app-shell.tsx for consistency
 interface NavItem {
   href: string;
   label: string;
-  icon: React.ElementType; // Lucide icons are React.ElementType
+  icon: React.ElementType; 
   roles: UserRole[];
   subItems?: NavItem[];
 }
@@ -24,21 +23,22 @@ interface BottomNavigationProps {
   userNavItems: NavItem[];
 }
 
-// Define a mapping for icons if not directly on item
 const iconMap: Record<string, React.ElementType> = {
     '/inicio': Home,
     '/formulario': ClipboardList,
     '/conteudos': PlaySquare,
     '/conquistas': Award,
     '/dashboard-geral': LayoutDashboard,
-    '/dashboard-nutricionista': LayoutDashboard, // Can reuse or use specific
+    '/dashboard-especialista': LayoutDashboard, 
     '/pacientes': Users,
     '/flowbuilder/meus-fluxos': Workflow,
     '/biblioteca': Library,
+    '/minha-agenda': CalendarDays,
+    '/agenda-especialista': CalendarDays,
 };
 
 const NutriTrackIcon = ({ className }: { className?: string }) => (
-    <Sparkles className={cn("h-6 w-6 text-primary", className)} /> // Adjusted size for bottom bar
+    <Sparkles className={cn("h-6 w-6 text-primary", className)} /> 
 );
 
 
@@ -53,24 +53,20 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
   }, []);
 
   if (!clientHasMounted || !user) {
-    // Render nothing or a placeholder until client has mounted and user is available
-    // to avoid mismatches or errors during SSR/hydration if user/role is client-side.
     return null;
   }
 
   const homePath = user?.role === UserRole.PATIENT ? "/inicio" :
-                   user?.role === UserRole.NUTRITIONIST_WHITE_LABEL ? "/dashboard-nutricionista" :
+                   user?.role === UserRole.CLINIC_SPECIALIST ? "/dashboard-especialista" :
                    (user?.role === UserRole.ADMIN_SUPREMO ? "/dashboard-geral" : "/login");
 
-  // Display up to 3 main navigation items in the center, plus Logo and More button
   const numNavItemsToDisplay = 3;
   const mainDisplayItems = userNavItems.slice(0, numNavItemsToDisplay);
-  const showMoreButton = true; // Always show "More" for Profile, Settings etc.
+  const showMoreButton = true; 
 
   return (
     <>
       <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-stretch justify-between border-t bg-card px-1 shadow-[0_-2px_5px_-1px_rgba(0,0,0,0.05),0_-1px_3px_-1px_rgba(0,0,0,0.03)] dark:shadow-[0_-2px_5px_-1px_rgba(255,255,255,0.03),0_-1px_3px_-1px_rgba(255,255,255,0.02)]">
-        {/* Logo on the left */}
         <Link
             href={homePath}
             className="flex flex-none flex-col items-center justify-center p-1 text-xs text-muted-foreground hover:bg-muted/50 w-1/5 max-w-[70px]"
@@ -80,7 +76,6 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
             <span className="truncate text-[10px] leading-tight mt-0.5">Início</span>
         </Link>
 
-        {/* Navigation items in the center, taking remaining space */}
         <div className="flex flex-1 items-stretch justify-around">
             {mainDisplayItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && !item.href.includes('dashboard') && !item.href.includes('inicio') && pathname.startsWith(item.href));
@@ -103,7 +98,6 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
             })}
         </div>
 
-        {/* "More" button on the right */}
         {showMoreButton && (
           <button
             onClick={() => setIsMoreSheetOpen(true)}
