@@ -55,7 +55,7 @@ export async function getCompanies(): Promise<Company[]> {
         status: data.status,
         createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt,
         lastModified: data.lastModified instanceof Timestamp ? data.lastModified.toDate().toISOString() : data.lastModified,
-      } as Company); 
+      } as Company);
     });
     return companies;
   } catch (error) {

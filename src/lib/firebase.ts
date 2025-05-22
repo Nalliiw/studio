@@ -10,7 +10,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyAxzIqz02q90ja_Z-b5nL_O2VoNo30sLT0",
   authDomain: "nutritrack-lite-x6ffb.firebaseapp.com",
   projectId: "nutritrack-lite-x6ffb",
-  storageBucket: "nutritrack-lite-x6ffb.appspot.com", // Corrigido para .appspot.com, ajuste se necessário
+  storageBucket: "nutritrack-lite-x6ffb.appspot.com", // Corrigido para .appspot.com, ajuste se o seu for diferente
   messagingSenderId: "235653291259",
   appId: "1:235653291259:web:83efefa74e5670b7d3645e"
 };
@@ -28,10 +28,10 @@ if (!getApps().length) {
     console.log("Firebase inicializado com sucesso.");
   } catch (error) {
     console.error("Erro ao inicializar Firebase com a configuração fornecida:", error);
-    app = null; // Ensure app is null if initialization fails
+    app = null; // Garante que app seja null se a inicialização falhar
   }
 } else {
-  app = getApps()[0]; // Use the already initialized app
+  app = getApps()[0]; // Usa o app já inicializado
   console.log("Firebase já estava inicializado.");
 }
 
@@ -41,10 +41,10 @@ if (app) {
     console.log("Instância do Firestore obtida com sucesso.");
   } catch (error) {
     console.error("Erro ao obter instância do Firestore:", error);
-    db = null; // Ensure db is null if getting instance fails
+    db = null; // Garante que db seja null se a obtenção da instância falhar
   }
 } else {
-    db = null; 
+    db = null;
     console.warn("App Firebase não foi inicializado, a instância do Firestore não pode ser criada.");
 }
 
