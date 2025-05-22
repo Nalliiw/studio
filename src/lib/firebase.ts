@@ -26,6 +26,7 @@ if (!getApps().length) {
   try {
     // Validate essential config keys before attempting to initialize
     if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+      console.error("Configuração essencial do Firebase (apiKey ou projectId) está faltando. Firebase NÃO será inicializado.");
       throw new Error("Configuração essencial do Firebase (apiKey ou projectId) está faltando.");
     }
     app = initializeApp(firebaseConfig);

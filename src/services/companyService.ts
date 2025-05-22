@@ -9,13 +9,13 @@ const FIRESTORE_UNINITIALIZED_ERROR = 'Firestore (db) não está inicializado. V
 
 export async function createCompany(companyData: { name: string; cnpj: string }): Promise<Company> {
   if (!db) {
-    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    console.error("companyService.createCompany:", FIRESTORE_UNINITIALIZED_ERROR);
     throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
   try {
     const docRef = await addDoc(collection(db, COMPANIES_COLLECTION), {
       ...companyData,
-      nutritionistCount: 0,
+      nutritionistCount: 0, // Considerar renomear para memberCount ou specialistCount
       status: 'active',
       createdAt: serverTimestamp(),
       lastModified: serverTimestamp(),
@@ -25,8 +25,8 @@ export async function createCompany(companyData: { name: string; cnpj: string })
       ...companyData,
       nutritionistCount: 0,
       status: 'active',
-      createdAt: new Date().toISOString(), // Approximate, actual value is server-side
-      lastModified: new Date().toISOString(), // Approximate
+      createdAt: new Date().toISOString(), 
+      lastModified: new Date().toISOString(),
     };
   } catch (error) {
     console.error('Erro ao criar empresa no Firestore:', error);
@@ -39,7 +39,7 @@ export async function createCompany(companyData: { name: string; cnpj: string })
 
 export async function getCompanies(): Promise<Company[]> {
   if (!db) {
-    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    console.error("companyService.getCompanies:", FIRESTORE_UNINITIALIZED_ERROR);
     throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
   try {
@@ -69,14 +69,16 @@ export async function getCompanies(): Promise<Company[]> {
 
 export async function getCompanyById(companyId: string): Promise<Company | null> {
   if (!db) {
-    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    console.error(`companyService.getCompanyById (${companyId}):`, FIRESTORE_UNINITIALIZED_ERROR);
     throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
   try {
+    console.log(`companyService: Tentando buscar empresa com ID: ${companyId}`);
     const companyDocRef = doc(db, COMPANIES_COLLECTION, companyId);
     const companySnap = await getDoc(companyDocRef);
     if (companySnap.exists()) {
       const data = companySnap.data();
+      console.log(`companyService: Empresa encontrada:`, data);
       return {
         id: companySnap.id,
         name: data.name,
@@ -87,11 +89,11 @@ export async function getCompanyById(companyId: string): Promise<Company | null>
         lastModified: data.lastModified instanceof Timestamp ? data.lastModified.toDate().toISOString() : data.lastModified,
       } as Company;
     } else {
-      console.log("Nenhuma empresa encontrada com o ID:", companyId);
+      console.warn(`companyService: Nenhuma empresa encontrada com o ID: ${companyId}`);
       return null;
     }
   } catch (error) {
-    console.error('Erro ao buscar empresa por ID:', error);
+    console.error(`Erro ao buscar empresa por ID (${companyId}) no Firestore:`, error);
     if (error instanceof Error) {
       throw new Error(`Falha ao buscar empresa por ID: ${error.message}`);
     }
@@ -101,17 +103,19 @@ export async function getCompanyById(companyId: string): Promise<Company | null>
 
 export async function updateCompany(companyId: string, data: { name: string }): Promise<void> {
   if (!db) {
-    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    console.error(`companyService.updateCompany (${companyId}):`, FIRESTORE_UNINITIALIZED_ERROR);
     throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
   try {
+    console.log(`companyService: Tentando atualizar empresa com ID: ${companyId}, Dados:`, data);
     const companyDocRef = doc(db, COMPANIES_COLLECTION, companyId);
     await updateDoc(companyDocRef, {
       name: data.name,
       lastModified: serverTimestamp(),
     });
+    console.log(`companyService: Empresa ${companyId} atualizada com sucesso.`);
   } catch (error) {
-    console.error('Erro ao atualizar empresa no Firestore:', error);
+    console.error(`Erro ao atualizar empresa (${companyId}) no Firestore:`, error);
     if (error instanceof Error) {
       throw new Error(`Falha ao atualizar empresa: ${error.message}`);
     }
