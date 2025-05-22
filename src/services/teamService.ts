@@ -14,8 +14,9 @@ interface CreateTeamMemberData {
   name: string;
   email: string;
   accessType: ClinicAccessType;
-  specialtiesRaw?: string; // String de especialidades separadas por vírgula
-  addedBy: string; // ID do usuário (administrador da clínica) que está adicionando
+  specialtiesRaw?: string;
+  addedBy: string;
+  userId?: string; // Opcional, para futura associação com Firebase Auth user
 }
 
 export async function addTeamMember(memberData: CreateTeamMemberData): Promise<TeamMember> {
@@ -28,25 +29,30 @@ export async function addTeamMember(memberData: CreateTeamMemberData): Promise<T
       ? memberData.specialtiesRaw.split(',').map(s => s.trim()).filter(s => s)
       : [];
 
-    const newMemberDoc = {
+    const newMemberDoc: Omit<TeamMember, 'id' | 'createdAt'> & { createdAt: any } = {
       clinicId: memberData.clinicId,
       name: memberData.name,
       email: memberData.email,
       accessType: memberData.accessType,
       specialties: specialtiesArray,
-      status: 'active' as const, // Ou 'pending_invitation' se for implementar convites
-      createdAt: serverTimestamp(),
+      status: 'pending_invitation' as const, // Default to pending, admin can change or invite flow handles this
       addedBy: memberData.addedBy,
+      createdAt: serverTimestamp(),
     };
+    if (memberData.userId) {
+      newMemberDoc.userId = memberData.userId;
+    }
+
 
     const docRef = await addDoc(collection(db, TEAM_MEMBERS_COLLECTION), newMemberDoc);
     
     return {
       id: docRef.id,
       ...newMemberDoc,
-      createdAt: new Date().toISOString(), // Aproximação, Firestore atualizará com serverTimestamp
-      specialties: specialtiesArray, // Garantir que specialties seja um array
-    };
+      createdAt: new Date().toISOString(), // Aproximação, Firestore atualizará
+      specialties: specialtiesArray,
+      status: 'pending_invitation', // ensure status is part of the returned type
+    } as TeamMember;
   } catch (error) {
     console.error('Erro ao adicionar membro da equipe no Firestore:', error);
     if (error instanceof Error) {
@@ -74,10 +80,10 @@ export async function getTeamMembers(clinicId: string): Promise<TeamMember[]> {
         email: data.email,
         accessType: data.accessType,
         specialties: data.specialties || [],
-        status: data.status || 'active',
+        userId: data.userId, // Incluir userId
+        status: data.status || 'pending_invitation',
         createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
         addedBy: data.addedBy,
-        userId: data.userId,
       } as TeamMember);
     });
     return members.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

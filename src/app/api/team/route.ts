@@ -5,10 +5,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { addTeamMember, getTeamMembers } from '@/services/teamService';
 import { z } from 'zod';
-import { UserRole } from '@/types'; // Import UserRole
-// Assumindo que você terá uma forma de obter o usuário autenticado e seu clinicId
-// Para este exemplo, vamos simular que o clinicId e addedBy viriam do corpo da requisição
-// ou de um middleware de autenticação.
+import { UserRole } from '@/types';
 
 const clinicAccessTypesForValidation = ['administrador_clinica', 'especialista_padrao'] as const;
 
@@ -16,9 +13,10 @@ const createTeamMemberSchema = z.object({
   name: z.string().min(3, { message: 'Nome do membro deve ter no mínimo 3 caracteres.' }),
   email: z.string().email({ message: 'Email inválido.' }),
   accessType: z.enum(clinicAccessTypesForValidation, { errorMap: () => ({ message: "Selecione um tipo de acesso válido."}) }),
-  specialtiesRaw: z.string().optional(), // String de especialidades separadas por vírgula
-  clinicId: z.string().min(1, { message: 'ID da clínica é obrigatório.' }), // Enviado pelo frontend
-  addedBy: z.string().min(1, { message: 'ID do adicionador é obrigatório.' }), // Enviado pelo frontend (ID do admin da clínica logado)
+  specialtiesRaw: z.string().optional(),
+  clinicId: z.string().min(1, { message: 'ID da clínica é obrigatório.' }),
+  addedBy: z.string().min(1, { message: 'ID do adicionador é obrigatório.' }),
+  userId: z.string().optional(), // Opcional, para futura associação com Firebase Auth user
 });
 
 export async function POST(request: NextRequest) {
@@ -33,10 +31,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Dados de entrada inválidos para criar membro da equipe', details: parsedData.error.flatten() }, { status: 400 });
     }
 
-    const { name, email, accessType, specialtiesRaw, clinicId, addedBy } = parsedData.data;
+    const { name, email, accessType, specialtiesRaw, clinicId, addedBy, userId } = parsedData.data;
     
-    console.log("Chamando teamService.addTeamMember com:", { clinicId, name, email, accessType, specialtiesRaw, addedBy });
-    const newMember = await addTeamMember({ clinicId, name, email, accessType, specialtiesRaw, addedBy });
+    console.log("Chamando teamService.addTeamMember com:", { clinicId, name, email, accessType, specialtiesRaw, addedBy, userId });
+    // Pass specialtiesRaw as it's named in CreateTeamMemberData in the service
+    const newMember = await addTeamMember({ clinicId, name, email, accessType, specialtiesRaw, addedBy, userId });
     console.log("Membro da equipe criado com sucesso:", newMember);
     return NextResponse.json(newMember, { status: 201 });
 

@@ -28,7 +28,7 @@ export interface Patient {
   email: string;
   lastAccess: string; // ISO date string
   companyId: string; // ID da clínica à qual o paciente pertence
-  nutritionistId: string; // ID do especialista principal atribuído (manter nome do campo por ora)
+  nutritionistId: string; // ID do especialista principal atribuído
 }
 
 export type FlowStepType =
@@ -106,18 +106,17 @@ export interface FormResponse {
   submittedAt?: string;
 }
 
-// Novo tipo para Membros da Equipe
 export type ClinicAccessType = 'administrador_clinica' | 'especialista_padrao';
 
 export interface TeamMember {
   id: string;
-  clinicId: string; // ID da clínica/empresa à qual o membro pertence
+  clinicId: string;
   name: string;
   email: string;
   accessType: ClinicAccessType;
-  specialties?: string[]; // Array de especialidades
-  userId?: string; // ID do usuário Firebase associado, se houver
+  specialties?: string[];
+  userId?: string; // ID do usuário Firebase Authentication associado
   status: 'active' | 'pending_invitation' | 'inactive';
-  createdAt: any; // Firebase Timestamp or string
-  addedBy: string; // ID do usuário que adicionou este membro
+  createdAt: any;
+  addedBy: string;
 }
