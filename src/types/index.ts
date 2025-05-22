@@ -18,8 +18,10 @@ export interface Company {
   id: string;
   name: string; // Nome da Clínica/Empresa
   cnpj: string;
-  nutritionistCount: number;
+  nutritionistCount: number; // Considerar renomear para memberCount ou specialistCount no futuro
   status: 'active' | 'inactive';
+  createdAt?: any; // Firestore Timestamp or string ISO
+  lastModified?: any; // Firestore Timestamp or string ISO
 }
 
 export interface Patient {
@@ -123,3 +125,4 @@ export interface TeamMember {
 
 // Partial type for updating a team member, making most fields optional
 export type UpdateTeamMemberData = Partial<Omit<TeamMember, 'id' | 'clinicId' | 'createdAt' | 'addedBy'>>;
+

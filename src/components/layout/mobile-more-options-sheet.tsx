@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { UserCircle, Settings, LogOut, Moon, Sun, CalendarDays, UsersRound } from 'lucide-react'; 
+import { UserCircle, Settings, LogOut, Moon, Sun, Building, Settings2 } from 'lucide-react'; 
 import { UserRole } from '@/types'; 
 
 interface NavItem {
@@ -54,7 +54,7 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
           <SheetTitle className="text-lg text-center">Mais Opções</SheetTitle>
         </SheetHeader>
         
-        <div className="flex-grow overflow-y-auto p-4 space-y-1"> {/* Reduced space-y */}
+        <div className="flex-grow overflow-y-auto p-4 space-y-1">
             {user && (
                 <Button
                     variant="ghost"
@@ -67,7 +67,7 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
             )}
             
             {additionalNavItems.map(item => (
-                 item.roles.includes(user?.role as UserRole) && ( // Ensure user role matches
+                 item.roles.includes(user?.role as UserRole) && ( 
                     <Button
                         key={item.href}
                         variant="ghost"
@@ -88,7 +88,7 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
                 onClick={() => handleNavigate('/configuracoes')}
             >
                 <Settings className="h-5 w-5" />
-                Configurações
+                Config. da Conta
             </Button>
 
             <div 
@@ -109,7 +109,7 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
                     checked={theme === 'dark'}
                     onCheckedChange={toggleTheme}
                     aria-label="Alternar tema"
-                    onClick={(e) => e.stopPropagation()} // Prevent triggering div's onClick
+                    onClick={(e) => e.stopPropagation()} 
                 />
             </div>
              <Separator className="my-2"/>
@@ -126,4 +126,3 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
     </Sheet>
   );
 }
-

@@ -1,15 +1,16 @@
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, serverTimestamp, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import type { Company } from '@/types';
 
 const COMPANIES_COLLECTION = 'companies';
+const FIRESTORE_UNINITIALIZED_ERROR = 'Firestore (db) não está inicializado. Verifique a configuração do Firebase e se o backend está conectado.';
+
 
 export async function createCompany(companyData: { name: string; cnpj: string }): Promise<Company> {
   if (!db) {
-    const errorMessage = 'Firestore (db) não está inicializado. Verifique a configuração do Firebase e se o backend está conectado.';
-    console.error(errorMessage);
-    throw new Error(errorMessage);
+    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
   try {
     const docRef = await addDoc(collection(db, COMPANIES_COLLECTION), {
@@ -17,12 +18,15 @@ export async function createCompany(companyData: { name: string; cnpj: string })
       nutritionistCount: 0,
       status: 'active',
       createdAt: serverTimestamp(),
+      lastModified: serverTimestamp(),
     });
     return {
       id: docRef.id,
       ...companyData,
       nutritionistCount: 0,
       status: 'active',
+      createdAt: new Date().toISOString(), // Approximate, actual value is server-side
+      lastModified: new Date().toISOString(), // Approximate
     };
   } catch (error) {
     console.error('Erro ao criar empresa no Firestore:', error);
@@ -35,13 +39,8 @@ export async function createCompany(companyData: { name: string; cnpj: string })
 
 export async function getCompanies(): Promise<Company[]> {
   if (!db) {
-    console.warn('Firestore (db) não está inicializado. Retornando array vazio. Verifique a configuração do Firebase e se o backend está conectado.');
-    // Lançar erro aqui também para ser pego pela API route, ou a API route deve checar se o array está vazio e inferir o problema.
-    // Por consistência com createCompany, vamos lançar o erro.
-    const errorMessage = 'Firestore (db) não está inicializado. Verifique a configuração do Firebase e se o backend está conectado.';
-    console.error(errorMessage);
-    throw new Error(errorMessage);
-    // return []; // Alternativamente, retornar array vazio e a API lida com isso.
+    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
   }
   try {
     const querySnapshot = await getDocs(collection(db, COMPANIES_COLLECTION));
@@ -54,6 +53,8 @@ export async function getCompanies(): Promise<Company[]> {
         cnpj: data.cnpj,
         nutritionistCount: data.nutritionistCount,
         status: data.status,
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt,
+        lastModified: data.lastModified instanceof Timestamp ? data.lastModified.toDate().toISOString() : data.lastModified,
       } as Company); 
     });
     return companies;
@@ -63,5 +64,57 @@ export async function getCompanies(): Promise<Company[]> {
         throw new Error(`Falha ao buscar empresas: ${error.message}`);
     }
     throw new Error('Falha ao buscar empresas.');
+  }
+}
+
+export async function getCompanyById(companyId: string): Promise<Company | null> {
+  if (!db) {
+    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
+  }
+  try {
+    const companyDocRef = doc(db, COMPANIES_COLLECTION, companyId);
+    const companySnap = await getDoc(companyDocRef);
+    if (companySnap.exists()) {
+      const data = companySnap.data();
+      return {
+        id: companySnap.id,
+        name: data.name,
+        cnpj: data.cnpj,
+        nutritionistCount: data.nutritionistCount,
+        status: data.status,
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt,
+        lastModified: data.lastModified instanceof Timestamp ? data.lastModified.toDate().toISOString() : data.lastModified,
+      } as Company;
+    } else {
+      console.log("Nenhuma empresa encontrada com o ID:", companyId);
+      return null;
+    }
+  } catch (error) {
+    console.error('Erro ao buscar empresa por ID:', error);
+    if (error instanceof Error) {
+      throw new Error(`Falha ao buscar empresa por ID: ${error.message}`);
+    }
+    throw new Error('Falha ao buscar empresa por ID.');
+  }
+}
+
+export async function updateCompany(companyId: string, data: { name: string }): Promise<void> {
+  if (!db) {
+    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
+  }
+  try {
+    const companyDocRef = doc(db, COMPANIES_COLLECTION, companyId);
+    await updateDoc(companyDocRef, {
+      name: data.name,
+      lastModified: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar empresa no Firestore:', error);
+    if (error instanceof Error) {
+      throw new Error(`Falha ao atualizar empresa: ${error.message}`);
+    }
+    throw new Error('Falha ao atualizar empresa.');
   }
 }

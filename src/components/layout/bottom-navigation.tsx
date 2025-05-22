@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { UserRole } from '@/types'; 
-import { SlidersHorizontal, Home, ClipboardList, PlaySquare, Award, LayoutDashboard, Users, Workflow, Library, Sparkles, CalendarDays, UsersRound } from 'lucide-react';
+import { SlidersHorizontal, Home, ClipboardList, PlaySquare, Award, LayoutDashboard, Users, Workflow, Library, Sparkles, CalendarDays, UsersRound, Settings2 } from 'lucide-react';
 import MobileMoreOptionsSheet from './mobile-more-options-sheet';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -24,8 +24,8 @@ interface BottomNavigationProps {
 }
 
 // Main nav items that might appear directly on the bottom bar
-const mainBottomNavLinksPatient: string[] = ['/inicio', '/formulario', '/conteudos', '/minha-agenda', '/conquistas'];
-const mainBottomNavLinksSpecialist: string[] = ['/dashboard-especialista', '/pacientes', '/flowbuilder/meus-fluxos', '/biblioteca', '/agenda-especialista', '/equipe']; // Added /equipe
+const mainBottomNavLinksPatient: string[] = ['/inicio', '/formulario', '/conteudos', '/minha-agenda']; // Removed '/conquistas' to make space
+const mainBottomNavLinksSpecialist: string[] = ['/dashboard-especialista', '/pacientes', '/flowbuilder/meus-fluxos', '/agenda-especialista']; // Removed '/biblioteca' and '/equipe'
 const mainBottomNavLinksAdmin: string[] = ['/dashboard-geral', '/empresas', '/relatorios-gerais'];
 
 
@@ -48,22 +48,29 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
                    (user?.role === UserRole.ADMIN_SUPREMO ? "/dashboard-geral" : "/login");
 
   let relevantMainLinks: string[];
+  let allRoleSpecificNavItems: NavItem[];
+
   switch (user.role) {
     case UserRole.PATIENT:
       relevantMainLinks = mainBottomNavLinksPatient;
+      allRoleSpecificNavItems = userNavItems.filter(item => item.roles.includes(UserRole.PATIENT));
       break;
     case UserRole.CLINIC_SPECIALIST:
       relevantMainLinks = mainBottomNavLinksSpecialist;
+      allRoleSpecificNavItems = userNavItems.filter(item => item.roles.includes(UserRole.CLINIC_SPECIALIST));
       break;
     case UserRole.ADMIN_SUPREMO:
       relevantMainLinks = mainBottomNavLinksAdmin;
+      allRoleSpecificNavItems = userNavItems.filter(item => item.roles.includes(UserRole.ADMIN_SUPREMO));
       break;
     default:
       relevantMainLinks = [];
+      allRoleSpecificNavItems = [];
   }
   
-  const displayItems = userNavItems.filter(item => relevantMainLinks.includes(item.href)).slice(0, 3);
-  const moreSheetItems = userNavItems.filter(item => !relevantMainLinks.includes(item.href) || !displayItems.includes(item));
+  const displayItems = allRoleSpecificNavItems.filter(item => relevantMainLinks.includes(item.href)).slice(0, 3);
+  // Items for "More" sheet are all role-specific items NOT already in displayItems
+  const moreSheetItems = allRoleSpecificNavItems.filter(item => !displayItems.find(displayed => displayed.href === item.href));
 
 
   return (
@@ -80,7 +87,7 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
 
         <div className="flex flex-1 items-stretch justify-around">
             {displayItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== '/' && !item.href.includes('dashboard') && !item.href.includes('inicio') && pathname.startsWith(item.href));
+            const isActive = pathname === item.href || (item.href !== '/' && !item.href.includes('dashboard') && !item.href.includes('inicio') && !item.href.includes('clinica') && pathname.startsWith(item.href)) || (item.href.includes('clinica') && pathname.startsWith(item.href));
             const IconComponent = item.icon;
 
             return (
@@ -100,7 +107,7 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
             })}
         </div>
 
-        {(moreSheetItems.length > 0 || user) && ( // Show "More" if there are other nav items or always if user is logged in for Profile/Settings
+        {(moreSheetItems.length > 0 || user) && (
           <button
             onClick={() => setIsMoreSheetOpen(true)}
             className={cn(
@@ -122,4 +129,3 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
     </>
   );
 }
-

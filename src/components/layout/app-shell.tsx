@@ -34,11 +34,12 @@ import {
   Award,
   LogOut,
   Settings,
+  Settings2, // Ícone para Configurações da Clínica
   Sun,
   Moon,
   Sparkles,
   CalendarDays, 
-  UsersRound, // Ícone para Equipe
+  UsersRound,
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -66,7 +67,8 @@ const navItems: NavItem[] = [
   { href: '/flowbuilder/meus-fluxos', label: 'Meus Fluxos', icon: Workflow, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/biblioteca', label: 'Biblioteca', icon: Library, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/agenda-especialista', label: 'Agenda do Especialista', icon: CalendarDays, roles: [UserRole.CLINIC_SPECIALIST] },
-  { href: '/equipe', label: 'Equipe', icon: UsersRound, roles: [UserRole.CLINIC_SPECIALIST] }, // Novo item
+  { href: '/equipe', label: 'Equipe', icon: UsersRound, roles: [UserRole.CLINIC_SPECIALIST] },
+  { href: '/clinica/configuracoes', label: 'Config. Clínica', icon: Settings2, roles: [UserRole.CLINIC_SPECIALIST] },
   // Paciente
   { href: '/inicio', label: 'Início', icon: Home, roles: [UserRole.PATIENT] },
   { href: '/formulario', label: 'Formulários', icon: ClipboardList, roles: [UserRole.PATIENT] },
@@ -93,23 +95,13 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
 
-  if (!clientHasMounted) { 
+  if (!clientHasMounted || !user) { 
     return (
         <div className="flex h-screen items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
     );
   }
-   if (!user) {
-    // AuthContext deve lidar com o redirecionamento para /login se o usuário não estiver autenticado e não estiver em uma página de login.
-    // Retornar null aqui evita que o AppShell tente renderizar sem um usuário, o que pode causar erros.
-    return (
-        <div className="flex h-screen items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-    );
-   }
-
 
   const userNavItems = navItems.filter(item => item.roles.includes(user.role));
   const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
@@ -136,7 +128,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
           <SidebarContent className="p-2">
             <SidebarMenu>
               {userNavItems.map((item) => {
-                const isActive = pathname === item.href || (item.href !== '/' && !item.href.startsWith('/dashboard') && !item.href.startsWith('/inicio') && pathname.startsWith(item.href));
+                const isActive = pathname === item.href || (item.href !== '/' && !item.href.startsWith('/dashboard') && !item.href.startsWith('/inicio') && !item.href.startsWith('/clinica') && pathname.startsWith(item.href)) || (item.href.startsWith('/clinica') && pathname.startsWith(item.href));
                 
                 return (
                   <SidebarMenuItem key={item.href}>
@@ -174,9 +166,9 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                   </SidebarMenuButton>
                </SidebarMenuItem>
               <SidebarMenuItem>
-                  <SidebarMenuButton isActive={pathname === '/configuracoes'} tooltip="Configurações" onClick={handleSettingsClick}  className={cn(pathname === '/configuracoes' && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90")}>
+                  <SidebarMenuButton isActive={pathname === '/configuracoes'} tooltip="Configurações da Conta" onClick={handleSettingsClick}  className={cn(pathname === '/configuracoes' && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90")}>
                       <Settings />
-                      <span>Configurações</span>
+                      <span>Config. da Conta</span>
                   </SidebarMenuButton>
               </SidebarMenuItem>
 
@@ -192,7 +184,6 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                        toggleTheme();
                      }
                      if (sidebarState === "expanded" || isMobile) {
-                       // Prevent default action for the div itself if it's expanded to avoid conflicts with switch
                        if (e.target === e.currentTarget && sidebarState === "expanded") e.preventDefault();
                      }
                    }}
@@ -234,7 +225,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
       
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto", 
-          isMobile ? "px-4 pt-4 pb-20" : "p-6" // Adjusted desktop padding to match original p-6
+          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" // Consistent pt-6 for desktop
         )}>
           {children}
       </SidebarInset>
@@ -272,4 +263,3 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </TooltipProvider>
   );
 }
-
