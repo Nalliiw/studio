@@ -1,7 +1,8 @@
+
 // src/app/(auth)/login-user/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Added useEffect
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, SubmitHandler } from 'react-hook-form';
@@ -37,14 +38,11 @@ export default function LoginUserPage() {
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-  const form = useForm<LoginUserFormValues>({
-    resolver: zodResolver(loginUserSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const onSubmit: SubmitHandler<LoginUserFormValues> = async (data) => {
     setIsLoading(true);
@@ -72,18 +70,28 @@ export default function LoginUserPage() {
     setIsLoading(false);
   };
 
+  const form = useForm<LoginUserFormValues>({
+    resolver: zodResolver(loginUserSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
+
   return (
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="text-center relative">
-        <Button
+        {mounted && (
+          <Button
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
             className="absolute top-4 right-4"
             title={theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
-        >
+          >
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-        </Button>
+          </Button>
+        )}
         <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 text-primary w-fit">
             <UserCheck className="h-8 w-8" />
         </div>
