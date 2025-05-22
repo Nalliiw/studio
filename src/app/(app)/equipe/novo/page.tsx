@@ -4,12 +4,11 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Não usado diretamente, mas bom manter para consistência com FormLabel
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Save, UserPlus2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -25,6 +24,7 @@ const newTeamMemberSchema = z.object({
   email: z.string().email({ message: 'Email inválido.' }),
   accessType: z.enum(clinicAccessTypesForForm, { errorMap: () => ({ message: "Selecione um tipo de acesso."}) }),
   specialtiesRaw: z.string().optional(), // String de especialidades separadas por vírgula
+  // userId: z.string().optional(), // Campo para futuro UID do Firebase Auth
 });
 
 type NewTeamMemberFormValues = z.infer<typeof newTeamMemberSchema>;
@@ -55,8 +55,8 @@ export default function NovoMembroEquipePage() {
 
     const payload = {
       ...data,
-      clinicId: user.companyId,
-      addedBy: user.id,
+      clinicId: user.companyId, // ID da clínica do admin logado
+      addedBy: user.id, // ID do admin que está adicionando
     };
     
     console.log('Enviando dados para API /api/team:', payload);
@@ -74,7 +74,8 @@ export default function NovoMembroEquipePage() {
 
       if (!response.ok) {
         console.error("Erro da API ao adicionar membro:", responseData);
-        throw new Error(responseData.error || responseData.details?.message || 'Falha ao adicionar membro da equipe.');
+        const errorMessage = responseData.error || responseData.details?.message || responseData.message || 'Falha ao adicionar membro da equipe.';
+        throw new Error(errorMessage);
       }
 
       toast({
@@ -197,3 +198,4 @@ export default function NovoMembroEquipePage() {
     </div>
   );
 }
+

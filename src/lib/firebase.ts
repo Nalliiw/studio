@@ -10,7 +10,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyAxzIqz02q90ja_Z-b5nL_O2VoNo30sLT0",
   authDomain: "nutritrack-lite-x6ffb.firebaseapp.com",
   projectId: "nutritrack-lite-x6ffb",
-  storageBucket: "nutritrack-lite-x6ffb.firebasestorage.app", // Using user-provided value
+  storageBucket: "nutritrack-lite-x6ffb.appspot.com", // Corrigido para .appspot.com, ajuste se necessário
   messagingSenderId: "235653291259",
   appId: "1:235653291259:web:83efefa74e5670b7d3645e"
 };
@@ -18,32 +18,34 @@ const firebaseConfig = {
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
 
+console.log("Tentando inicializar Firebase com config:", firebaseConfig);
+
 // Initialize Firebase
 // Check if Firebase has already been initialized
 if (!getApps().length) {
   try {
-    console.log("Attempting to initialize Firebase with provided config:", firebaseConfig);
     app = initializeApp(firebaseConfig);
-    console.log("Firebase initialized successfully with provided config.");
+    console.log("Firebase inicializado com sucesso.");
   } catch (error) {
-    console.error("Error initializing Firebase with provided config:", error);
+    console.error("Erro ao inicializar Firebase com a configuração fornecida:", error);
     app = null; // Ensure app is null if initialization fails
   }
 } else {
   app = getApps()[0]; // Use the already initialized app
-  console.log("Firebase was already initialized.");
+  console.log("Firebase já estava inicializado.");
 }
 
 if (app) {
   try {
     db = getFirestore(app);
+    console.log("Instância do Firestore obtida com sucesso.");
   } catch (error) {
-    console.error("Error getting Firestore instance:", error);
+    console.error("Erro ao obter instância do Firestore:", error);
     db = null; // Ensure db is null if getting instance fails
   }
 } else {
     db = null; 
-    console.warn("Firebase app was not initialized, Firestore instance cannot be created.");
+    console.warn("App Firebase não foi inicializado, a instância do Firestore não pode ser criada.");
 }
 
 // Export the Firebase app instance and Firestore instance

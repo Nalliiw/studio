@@ -20,20 +20,25 @@ export default function EquipePage() {
   useEffect(() => {
     const fetchTeamMembers = async () => {
       if (!user?.companyId) {
-        setError("ID da clínica não encontrado. Faça login como administrador de uma clínica.");
+        setError("ID da clínica não encontrado. Faça login como administrador de uma clínica para gerenciar a equipe.");
         setIsLoading(false);
+        toast({
+          title: "Acesso Negado",
+          description: "Você precisa estar logado como administrador de uma clínica para ver a equipe.",
+          variant: "destructive",
+        });
         return;
       }
       setIsLoading(true);
       setError(null);
       try {
         const response = await fetch(`/api/team?clinicId=${user.companyId}`);
+        const responseData = await response.json();
+
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Falha ao buscar membros da equipe.');
+          throw new Error(responseData.error || 'Falha ao buscar membros da equipe.');
         }
-        const data: TeamMember[] = await response.json();
-        setTeamMembers(data);
+        setTeamMembers(responseData);
       } catch (err) {
         console.error("Erro ao buscar membros da equipe:", err);
         const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro inesperado.';
@@ -51,10 +56,8 @@ export default function EquipePage() {
     if (user) {
       fetchTeamMembers();
     } else {
-      // Se o usuário não estiver disponível imediatamente, podemos aguardar ou lidar com isso.
-      // Por agora, vamos apenas não buscar se não houver ID de usuário.
-      setIsLoading(false);
-      setError("Usuário não autenticado.");
+      setIsLoading(false); 
+      // Usuário pode não estar carregado ainda, AuthContext pode redirecionar
     }
   }, [user]);
 
@@ -64,6 +67,13 @@ export default function EquipePage() {
     return 'Desconhecido';
   };
   
+  const getStatusText = (status: TeamMember['status']) => {
+    if (status === 'active') return 'Ativo';
+    if (status === 'pending_invitation') return 'Convite Pendente';
+    if (status === 'inactive') return 'Inativo';
+    return 'Desconhecido';
+  }
+
   // Placeholder para futuras ações de editar/excluir
   const handleEditMember = (memberId: string) => {
     toast({ title: "Ação Indisponível", description: `Editar membro ${memberId} ainda não implementado.`});
@@ -109,6 +119,12 @@ export default function EquipePage() {
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
               <p>Carregando membros da equipe...</p>
             </div>
+          ) : error && !user?.companyId ? ( // Specific message if clinicId is missing for the request
+             <div className="h-40 flex flex-col items-center justify-center text-destructive text-center">
+                <AlertTriangle className="h-10 w-10 mb-3" />
+                <p className="font-semibold mb-1">Acesso Negado</p>
+                <p className="text-sm">{error}</p>
+            </div>
           ) : error ? (
              <div className="h-40 flex flex-col items-center justify-center text-destructive text-center">
                 <AlertTriangle className="h-10 w-10 mb-3" />
@@ -125,16 +141,21 @@ export default function EquipePage() {
                   <div className="flex-grow">
                     <h3 className="font-semibold text-lg">{member.name}</h3>
                     <p className="text-sm text-muted-foreground">{member.email}</p>
-                    <p className="text-xs bg-secondary text-secondary-foreground inline-block px-2 py-0.5 rounded-full mt-1 mr-2">
-                      {getAccessTypeText(member.accessType)}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-xs bg-secondary text-secondary-foreground inline-block px-2 py-0.5 rounded-full">
+                        {getAccessTypeText(member.accessType)}
+                        </span>
+                        <span className="text-xs bg-blue-100 text-blue-700 border border-blue-300 inline-block px-2 py-0.5 rounded-full">
+                            Status: {getStatusText(member.status)}
+                        </span>
+                    </div>
                     {member.specialties && member.specialties.length > 0 && (
-                      <span className="text-xs text-primary mt-1">
+                      <p className="text-xs text-primary mt-1.5">
                         Especialidades: {member.specialties.join(', ')}
-                      </span>
+                      </p>
                     )}
                   </div>
-                  <div className="flex gap-2 self-start sm:self-center shrink-0">
+                  <div className="flex gap-2 self-start sm:self-center shrink-0 mt-2 sm:mt-0">
                     <Button variant="outline" size="sm" onClick={() => handleEditMember(member.id)}>
                         <Edit className="h-3 w-3 sm:mr-1.5" />
                         <span className="hidden sm:inline">Editar</span>
@@ -159,3 +180,4 @@ export default function EquipePage() {
     </div>
   );
 }
+
