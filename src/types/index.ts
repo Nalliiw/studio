@@ -11,14 +11,14 @@ export interface User {
   email: string;
   role: UserRole;
   companyId?: string; // ID da Clínica/Empresa à qual o especialista ou paciente está associado
-  specialties?: string[]; // Para especialistas da clínica
+  specialties?: string[];
 }
 
 export interface Company {
   id: string;
   name: string; // Nome da Clínica/Empresa
   cnpj: string;
-  nutritionistCount: number; // Renomear para specialistCount no futuro
+  nutritionistCount: number;
   status: 'active' | 'inactive';
 }
 
@@ -117,6 +117,9 @@ export interface TeamMember {
   specialties?: string[];
   userId?: string; // ID do usuário Firebase Authentication associado
   status: 'active' | 'pending_invitation' | 'inactive';
-  createdAt: any;
-  addedBy: string;
+  createdAt: any; // Firestore Timestamp or string ISO
+  addedBy: string; // User ID of who added this member
 }
+
+// Partial type for updating a team member, making most fields optional
+export type UpdateTeamMemberData = Partial<Omit<TeamMember, 'id' | 'clinicId' | 'createdAt' | 'addedBy'>>;

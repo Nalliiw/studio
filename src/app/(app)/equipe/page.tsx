@@ -12,9 +12,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 export default function EquipePage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,11 +26,13 @@ export default function EquipePage() {
       if (!user?.companyId) {
         setError("ID da clínica não encontrado. Faça login como administrador de uma clínica para gerenciar a equipe.");
         setIsLoading(false);
-        toast({
-          title: "Acesso Negado",
-          description: "Você precisa estar logado como administrador de uma clínica para ver a equipe.",
-          variant: "destructive",
-        });
+        if (user) { // Only toast if user is loaded but no companyId
+            toast({
+              title: "Acesso Negado",
+              description: "Você precisa estar logado como administrador de uma clínica para ver a equipe.",
+              variant: "destructive",
+            });
+        }
         return;
       }
       setIsLoading(true);
@@ -55,11 +59,13 @@ export default function EquipePage() {
       }
     };
 
-    if (user) {
+    if (user) { // Check if user object is available
       fetchTeamMembers();
     } else {
+      // If user is not yet available (e.g. still loading from AuthContext),
+      // we can choose to show loading or wait. For now, setting isLoading to false
+      // if user is null, AuthContext might redirect or page will show relevant message.
       setIsLoading(false); 
-      // Usuário pode não estar carregado ainda, AuthContext pode redirecionar
     }
   }, [user]);
 
@@ -78,22 +84,21 @@ export default function EquipePage() {
 
   const getStatusBadgeVariant = (status?: TeamMember['status']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
-        case 'active': return 'default'; // Usually primary or green
-        case 'pending_invitation': return 'secondary'; // Yellowish or grayish
-        case 'inactive': return 'outline'; // Grayish, less prominent
+        case 'active': return 'default';
+        case 'pending_invitation': return 'secondary';
+        case 'inactive': return 'outline';
         default: return 'outline';
     }
   };
 
+  const handleEditMember = (memberId: string) => {
+    router.push(`/equipe/${memberId}/editar`);
+  };
 
-  // Placeholder para futuras ações de editar/excluir
-  const handleEditMember = (memberId: string, memberName: string) => {
-    toast({ title: "Ação Indisponível", description: `Editar membro "${memberName}" (ID: ${memberId}) ainda não implementado.`});
-  }
   const handleDeleteMember = (memberId: string, memberName: string) => {
-    // Aqui futuramente teremos um AlertDialog de confirmação
+    // TODO: Implement AlertDialog for confirmation before deleting
     toast({ title: "Ação Indisponível", description: `Excluir membro "${memberName}" (ID: ${memberId}) ainda não implementado.`, variant: "destructive"});
-  }
+  };
 
 
   return (
@@ -127,7 +132,12 @@ export default function EquipePage() {
           {!isLoading && error && <CardDescription className="text-destructive">Erro: {error}</CardDescription>}
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isLoading && !user ? ( // Initial loading state before user context is resolved
+            <div className="h-40 flex flex-col items-center justify-center text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+              <p>Carregando dados do usuário...</p>
+            </div>
+          ) : isLoading ? (
             <div className="h-40 flex flex-col items-center justify-center text-muted-foreground">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
               <p>Carregando membros da equipe...</p>
@@ -177,7 +187,7 @@ export default function EquipePage() {
                     )}
                   </div>
                   <div className="flex gap-2 self-start sm:self-center shrink-0 mt-2 sm:mt-0">
-                    <Button variant="outline" size="sm" onClick={() => handleEditMember(member.id, member.name)}>
+                    <Button variant="outline" size="sm" onClick={() => handleEditMember(member.id)}>
                         <Edit className="h-3 w-3 sm:mr-1.5" />
                         <span className="hidden sm:inline">Editar</span>
                     </Button>
@@ -201,4 +211,3 @@ export default function EquipePage() {
     </div>
   );
 }
-
