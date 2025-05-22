@@ -10,6 +10,8 @@ import Link from 'next/link';
 import type { TeamMember } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 export default function EquipePage() {
   const { user } = useAuth();
@@ -67,19 +69,30 @@ export default function EquipePage() {
     return 'Desconhecido';
   };
   
-  const getStatusText = (status: TeamMember['status']) => {
+  const getStatusText = (status?: TeamMember['status']) => {
     if (status === 'active') return 'Ativo';
     if (status === 'pending_invitation') return 'Convite Pendente';
     if (status === 'inactive') return 'Inativo';
     return 'Desconhecido';
-  }
+  };
+
+  const getStatusBadgeVariant = (status?: TeamMember['status']): "default" | "secondary" | "destructive" | "outline" => {
+    switch (status) {
+        case 'active': return 'default'; // Usually primary or green
+        case 'pending_invitation': return 'secondary'; // Yellowish or grayish
+        case 'inactive': return 'outline'; // Grayish, less prominent
+        default: return 'outline';
+    }
+  };
+
 
   // Placeholder para futuras ações de editar/excluir
-  const handleEditMember = (memberId: string) => {
-    toast({ title: "Ação Indisponível", description: `Editar membro ${memberId} ainda não implementado.`});
+  const handleEditMember = (memberId: string, memberName: string) => {
+    toast({ title: "Ação Indisponível", description: `Editar membro "${memberName}" (ID: ${memberId}) ainda não implementado.`});
   }
   const handleDeleteMember = (memberId: string, memberName: string) => {
-    toast({ title: "Ação Indisponível", description: `Excluir membro ${memberName} ainda não implementado.`});
+    // Aqui futuramente teremos um AlertDialog de confirmação
+    toast({ title: "Ação Indisponível", description: `Excluir membro "${memberName}" (ID: ${memberId}) ainda não implementado.`, variant: "destructive"});
   }
 
 
@@ -119,7 +132,7 @@ export default function EquipePage() {
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
               <p>Carregando membros da equipe...</p>
             </div>
-          ) : error && !user?.companyId ? ( // Specific message if clinicId is missing for the request
+          ) : error && !user?.companyId ? ( 
              <div className="h-40 flex flex-col items-center justify-center text-destructive text-center">
                 <AlertTriangle className="h-10 w-10 mb-3" />
                 <p className="font-semibold mb-1">Acesso Negado</p>
@@ -137,17 +150,25 @@ export default function EquipePage() {
           ) : teamMembers.length > 0 ? (
             <ul className="space-y-4">
               {teamMembers.map((member) => (
-                <li key={member.id} className="p-4 border rounded-lg hover:shadow-sm transition-shadow flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                <li key={member.id} className="p-4 border rounded-lg hover:shadow-sm transition-shadow flex flex-col sm:flex-row justify-between sm:items-start gap-3">
                   <div className="flex-grow">
                     <h3 className="font-semibold text-lg">{member.name}</h3>
                     <p className="text-sm text-muted-foreground">{member.email}</p>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-xs bg-secondary text-secondary-foreground inline-block px-2 py-0.5 rounded-full">
-                        {getAccessTypeText(member.accessType)}
-                        </span>
-                        <span className="text-xs bg-blue-100 text-blue-700 border border-blue-300 inline-block px-2 py-0.5 rounded-full">
-                            Status: {getStatusText(member.status)}
-                        </span>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <Badge variant="outline" className="text-xs">
+                            {getAccessTypeText(member.accessType)}
+                        </Badge>
+                        <Badge 
+                            variant={getStatusBadgeVariant(member.status)} 
+                            className={cn(
+                                "text-xs",
+                                member.status === 'active' && 'bg-green-100 text-green-700 border-green-300',
+                                member.status === 'pending_invitation' && 'bg-yellow-100 text-yellow-700 border-yellow-300',
+                                member.status === 'inactive' && 'bg-slate-100 text-slate-600 border-slate-300'
+                            )}
+                        >
+                            {getStatusText(member.status)}
+                        </Badge>
                     </div>
                     {member.specialties && member.specialties.length > 0 && (
                       <p className="text-xs text-primary mt-1.5">
@@ -156,7 +177,7 @@ export default function EquipePage() {
                     )}
                   </div>
                   <div className="flex gap-2 self-start sm:self-center shrink-0 mt-2 sm:mt-0">
-                    <Button variant="outline" size="sm" onClick={() => handleEditMember(member.id)}>
+                    <Button variant="outline" size="sm" onClick={() => handleEditMember(member.id, member.name)}>
                         <Edit className="h-3 w-3 sm:mr-1.5" />
                         <span className="hidden sm:inline">Editar</span>
                     </Button>
