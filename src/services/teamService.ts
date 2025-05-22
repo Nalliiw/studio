@@ -3,7 +3,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, query, where, serverTimestamp, Timestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, serverTimestamp, Timestamp, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import type { TeamMember, ClinicAccessType, UpdateTeamMemberData } from '@/types';
 
 const TEAM_MEMBERS_COLLECTION = 'teamMembers';
@@ -35,7 +35,7 @@ export async function addTeamMember(memberData: CreateTeamMemberPayload): Promis
       email: memberData.email,
       accessType: memberData.accessType,
       specialties: specialtiesArray,
-      status: 'pending_invitation' as const,
+      status: 'pending_invitation' as const, // Default status
       addedBy: memberData.addedBy,
       createdAt: serverTimestamp(),
       ...(memberData.userId && { userId: memberData.userId }),
@@ -46,9 +46,9 @@ export async function addTeamMember(memberData: CreateTeamMemberPayload): Promis
     return {
       id: docRef.id,
       ...newMemberDocData,
-      createdAt: new Date().toISOString(), // Approximation, Firestore will set the actual server timestamp
+      createdAt: new Date().toISOString(), 
       status: 'pending_invitation',
-    } as TeamMember; // Cast to TeamMember, assuming serverTimestamp resolves appropriately
+    } as TeamMember; 
   } catch (error) {
     console.error('Erro ao adicionar membro da equipe no Firestore:', error);
     const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
@@ -65,7 +65,7 @@ export async function getTeamMembers(clinicId: string): Promise<TeamMember[]> {
     const q = query(collection(db, TEAM_MEMBERS_COLLECTION), where('clinicId', '==', clinicId));
     const querySnapshot = await getDocs(q);
     const members: TeamMember[] = [];
-    querySnapshot.forEach((docSnap) => { // Renamed doc to docSnap to avoid conflict
+    querySnapshot.forEach((docSnap) => { 
       const data = docSnap.data();
       members.push({
         id: docSnap.id,
@@ -131,10 +131,9 @@ export async function updateTeamMember(memberId: string, dataToUpdate: UpdateTea
     
     const updatePayload: any = { ...dataToUpdate };
 
-    // If specialtiesRaw is provided, convert it to specialties array
     if (typeof (dataToUpdate as any).specialtiesRaw === 'string') {
       updatePayload.specialties = (dataToUpdate as any).specialtiesRaw.split(',').map((s: string) => s.trim()).filter((s: string) => s);
-      delete updatePayload.specialtiesRaw; // Remove specialtiesRaw as it's not part of TeamMember type
+      delete updatePayload.specialtiesRaw; 
     }
 
 
@@ -146,5 +145,20 @@ export async function updateTeamMember(memberId: string, dataToUpdate: UpdateTea
     console.error('Erro ao atualizar membro da equipe no Firestore:', error);
     const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
     throw new Error(`Falha ao atualizar membro da equipe: ${errorMessage}`);
+  }
+}
+
+export async function deleteTeamMember(memberId: string): Promise<void> {
+  if (!db) {
+    console.error(FIRESTORE_UNINITIALIZED_ERROR);
+    throw new Error(FIRESTORE_UNINITIALIZED_ERROR);
+  }
+  try {
+    const memberDocRef = doc(db, TEAM_MEMBERS_COLLECTION, memberId);
+    await deleteDoc(memberDocRef);
+  } catch (error) {
+    console.error('Erro ao excluir membro da equipe no Firestore:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
+    throw new Error(`Falha ao excluir membro da equipe: ${errorMessage}`);
   }
 }

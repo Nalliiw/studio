@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { PlusCircle, UsersRound, List, Edit, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import type { TeamMember } from '@/types';
@@ -20,13 +21,15 @@ export default function EquipePage() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchTeamMembers = async () => {
       if (!user?.companyId) {
         setError("ID da clínica não encontrado. Faça login como administrador de uma clínica para gerenciar a equipe.");
         setIsLoading(false);
-        if (user) { // Only toast if user is loaded but no companyId
+        if (user) { 
             toast({
               title: "Acesso Negado",
               description: "Você precisa estar logado como administrador de uma clínica para ver a equipe.",
@@ -59,12 +62,9 @@ export default function EquipePage() {
       }
     };
 
-    if (user) { // Check if user object is available
+    if (user) { 
       fetchTeamMembers();
     } else {
-      // If user is not yet available (e.g. still loading from AuthContext),
-      // we can choose to show loading or wait. For now, setting isLoading to false
-      // if user is null, AuthContext might redirect or page will show relevant message.
       setIsLoading(false); 
     }
   }, [user]);
@@ -95,9 +95,31 @@ export default function EquipePage() {
     router.push(`/equipe/${memberId}/editar`);
   };
 
-  const handleDeleteMember = (memberId: string, memberName: string) => {
-    // TODO: Implement AlertDialog for confirmation before deleting
-    toast({ title: "Ação Indisponível", description: `Excluir membro "${memberName}" (ID: ${memberId}) ainda não implementado.`, variant: "destructive"});
+  const confirmDeleteMember = async () => {
+    if (!memberToDelete) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/team/${memberToDelete.id}`, {
+        method: 'DELETE',
+      });
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.error || 'Falha ao excluir membro.');
+      }
+      setTeamMembers(prev => prev.filter(m => m.id !== memberToDelete.id));
+      toast({ title: "Membro Excluído", description: `O membro "${memberToDelete.name}" foi excluído.` });
+    } catch (err) {
+      console.error("Erro ao excluir membro:", err);
+      toast({
+        title: "Erro ao Excluir",
+        description: err instanceof Error ? err.message : "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setMemberToDelete(null);
+    }
   };
 
 
@@ -132,7 +154,7 @@ export default function EquipePage() {
           {!isLoading && error && <CardDescription className="text-destructive">Erro: {error}</CardDescription>}
         </CardHeader>
         <CardContent>
-          {isLoading && !user ? ( // Initial loading state before user context is resolved
+          {isLoading && !user ? ( 
             <div className="h-40 flex flex-col items-center justify-center text-muted-foreground">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
               <p>Carregando dados do usuário...</p>
@@ -191,10 +213,12 @@ export default function EquipePage() {
                         <Edit className="h-3 w-3 sm:mr-1.5" />
                         <span className="hidden sm:inline">Editar</span>
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleDeleteMember(member.id, member.name)}>
-                        <Trash2 className="h-3 w-3 sm:mr-1.5" />
-                         <span className="hidden sm:inline">Excluir</span>
-                    </Button>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm" onClick={() => setMemberToDelete(member)}>
+                            <Trash2 className="h-3 w-3 sm:mr-1.5" />
+                            <span className="hidden sm:inline">Excluir</span>
+                        </Button>
+                    </AlertDialogTrigger>
                   </div>
                 </li>
               ))}
@@ -208,6 +232,28 @@ export default function EquipePage() {
           )}
         </CardContent>
       </Card>
+      
+      <AlertDialog open={!!memberToDelete} onOpenChange={(open) => !open && setMemberToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+                Tem certeza que deseja excluir o membro "{memberToDelete?.name}" da equipe? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setMemberToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+                onClick={confirmDeleteMember}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+                {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                Excluir
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

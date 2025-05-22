@@ -3,7 +3,7 @@
 'use server';
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { getTeamMemberById, updateTeamMember } from '@/services/teamService';
+import { getTeamMemberById, updateTeamMember, deleteTeamMember } from '@/services/teamService';
 import { z } from 'zod';
 import type { ClinicAccessType } from '@/types';
 
@@ -12,12 +12,11 @@ const clinicAccessTypesForValidation = ['administrador_clinica', 'especialista_p
 // Schema for updating a team member, all fields are optional
 const updateTeamMemberSchema = z.object({
   name: z.string().min(3, { message: 'Nome do membro deve ter no mínimo 3 caracteres.' }).optional(),
-  email: z.string().email({ message: 'Email inválido.' }).optional(), // Email usually not changed or needs verification
+  email: z.string().email({ message: 'Email inválido.' }).optional(), 
   accessType: z.enum(clinicAccessTypesForValidation, { errorMap: () => ({ message: "Selecione um tipo de acesso válido."}) }).optional(),
-  specialtiesRaw: z.string().optional(), // Will be converted to array in service
+  specialtiesRaw: z.string().optional(), 
   status: z.enum(['active', 'pending_invitation', 'inactive']).optional(),
-  // userId should typically not be updated via this general edit form.
-}).strict(); // Use strict to prevent extra fields unless they are part of TeamMember
+}).strict(); 
 
 export async function GET(
   request: NextRequest,
@@ -80,5 +79,28 @@ export async function PUT(
       return NextResponse.json({ error: 'Serviço Indisponível: Backend (Firebase) não conectado.', details: errorMessage }, { status: 503 });
     }
     return NextResponse.json({ error: 'Falha ao atualizar membro da equipe.', details: errorMessage }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { memberId: string } }
+) {
+  console.log(`API DELETE /api/team/${params.memberId} atingida`);
+  try {
+    const memberId = params.memberId;
+    if (!memberId) {
+      return NextResponse.json({ error: 'ID do membro não fornecido' }, { status: 400 });
+    }
+    await deleteTeamMember(memberId);
+    console.log("Membro da equipe excluído com sucesso:", memberId);
+    return NextResponse.json({ message: 'Membro da equipe excluído com sucesso.' }, { status: 200 });
+  } catch (error) {
+    console.error('API Error deleting team member:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
+    if (errorMessage.includes('Firestore (db) não está inicializado')) {
+      return NextResponse.json({ error: 'Serviço Indisponível: Backend (Firebase) não conectado.', details: errorMessage }, { status: 503 });
+    }
+    return NextResponse.json({ error: 'Falha ao excluir membro da equipe.', details: errorMessage }, { status: 500 });
   }
 }
