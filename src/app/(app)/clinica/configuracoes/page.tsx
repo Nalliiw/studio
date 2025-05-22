@@ -24,7 +24,6 @@ const clinicConfigSchema = z.object({
 type ClinicConfigFormValues = z.infer<typeof clinicConfigSchema>;
 
 // Mock data para fallback caso a empresa não exista NO Firestore.
-// Não será usado se houver erro de permissão, mas sim se a busca for bem sucedida e não encontrar o doc.
 const placeholderCompanyData: Company = {
   id: 'new_clinic_placeholder',
   name: 'Nova Clínica (Preencha o Nome)',
@@ -62,36 +61,45 @@ export default function ConfiguracoesClinicaPage() {
         const response = await fetch(`/api/companies/${user.companyId}`);
         if (!response.ok) {
           let errorMessage = `Falha ao buscar dados da clínica. Status: ${response.status}`;
+          let errorForState: string | null = errorMessage;
+          
           try {
             const errorText = await response.text();
-            console.error("Raw error response from API (fetchCompanyData):", errorText);
+            if (response.status === 404) {
+                console.warn("Raw error response from API (fetchCompanyData - 404):", errorText);
+            } else {
+                console.error("Raw error response from API (fetchCompanyData):", errorText);
+            }
+
             if (errorText) {
               const errorData = JSON.parse(errorText);
-              errorMessage = errorData.error || errorData.message || (typeof errorData.details === 'string' ? errorData.details : errorData.details?.message) || errorText;
+              const detailMessage = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null);
+              errorMessage = detailMessage || errorData.error || errorData.message || errorText;
             }
           } catch (e) {
             console.error("Failed to parse error response or read text (fetchCompanyData):", e);
           }
-          // Se for 404, a empresa não existe, usamos o placeholder para o usuário criar/definir o nome
+
           if (response.status === 404) {
             console.warn("Empresa não encontrada no Firestore. Usando dados de placeholder para novo cadastro.");
             setCompanyData(placeholderCompanyData);
             form.reset({ name: placeholderCompanyData.name });
-            setError("Clínica não encontrada. Preencha o nome para cadastrá-la."); // Informative error
+            errorForState = "Clínica não encontrada. Preencha o nome para cadastrá-la.";
           } else {
+            // For other errors, throw to be caught by the outer catch which sets the toast
             throw new Error(errorMessage);
           }
+          setError(errorForState); // Set error for UI display, but don't throw for 404
         } else {
             const data: Company = await response.json();
             setCompanyData(data);
             form.reset({ name: data.name });
+            setError(null); // Clear any previous "not found" error if data is successfully fetched
         }
       } catch (err) {
         console.error("Erro ao buscar dados da clínica:", err);
         const displayError = err instanceof Error ? err.message : 'Ocorreu um erro inesperado ao buscar dados da clínica.';
         setError(displayError);
-        // Não preenche com mock em caso de erro genérico, para o usuário ver o erro.
-        // Apenas para 404 preenchemos para permitir a "criação" pelo nome.
         toast({
             title: "Erro ao Carregar Dados da Clínica",
             description: displayError,
@@ -106,7 +114,7 @@ export default function ConfiguracoesClinicaPage() {
       fetchCompanyData();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // form.reset intencionalmente removido das dependências para evitar loops
+  }, [user]); 
 
   const onSubmit: SubmitHandler<ClinicConfigFormValues> = async (data) => {
     if (!user?.companyId) {
@@ -114,36 +122,49 @@ export default function ConfiguracoesClinicaPage() {
       return;
     }
     
-    // Se companyData for o placeholder, significa que estamos "criando" ou definindo o nome pela primeira vez
-    // A API PUT em /api/companies/[companyId] pode precisar lidar com a criação se o doc não existir (upsert)
-    // ou você pode ter uma rota POST separada para criação e PUT apenas para atualização.
-    // Por simplicidade, vamos assumir que a API PUT pode criar se não existir ou que você criará o doc manualmente no Firestore por agora.
-
     try {
       const response = await fetch(`/api/companies/${user.companyId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: data.name }), // Enviando apenas o nome para atualização
+        body: JSON.stringify({ name: data.name }),
       });
       
       if (!response.ok) {
-        let errorMessage = 'Falha ao atualizar dados da clínica.';
+        let errorMessage = `Falha ao atualizar dados da clínica. Status: ${response.status}`; // Default
         try {
             const errorText = await response.text();
             console.error("Raw error response from API (onSubmit):", errorText);
             if (errorText) {
-                const errorData = JSON.parse(errorText);
-                errorMessage = errorData.error || errorData.message || (typeof errorData.details === 'string' ? errorData.details : errorData.details?.message) || errorText;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    const specificDetail = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null);
+                    const generalError = errorData.error || errorData.message;
+
+                    if (specificDetail) {
+                        errorMessage = specificDetail; 
+                    } else if (generalError) {
+                        errorMessage = generalError;
+                    } else if (errorText.length < 200 && !errorText.trim().startsWith('<')) { 
+                        errorMessage = errorText; // Use raw text if it's short and not HTML
+                    }
+                    // If still the default, it means no useful message was extracted, status already included
+                } catch (jsonParseError) {
+                    // JSON parsing failed. errorMessage remains the default with status or short raw text
+                     if (errorText.length < 200 && !errorText.trim().startsWith('<')) {
+                        errorMessage = errorText;
+                    }
+                }
             }
         } catch (e) {
-            console.error("Failed to parse error response or read text (onSubmit):", e);
+            console.error("Failed to read/parse error response (onSubmit):", e);
         }
         throw new Error(errorMessage);
       }
-      const updatedCompany = await response.json(); // A API deve retornar a empresa atualizada ou uma msg de sucesso
+      // Assuming API returns the updated company or a success message
+      // For simplicity, we're just showing a success toast and updating local state
       toast({ title: "Sucesso!", description: "Nome da clínica atualizado." });
       setCompanyData(prev => prev ? { ...prev, name: data.name, id: user.companyId! } : { ...placeholderCompanyData, id: user.companyId!, name: data.name });
-      setError(null); // Limpa erro de "não encontrado" após salvar com sucesso
+      setError(null); // Clear "not found" error after successful save
     } catch (error) {
       console.error("Erro ao atualizar clínica:", error);
       toast({
@@ -163,7 +184,8 @@ export default function ConfiguracoesClinicaPage() {
     );
   }
   
-  const displayCompany = companyData || (error && !isLoading ? placeholderCompanyData : null);
+  const displayCompany = companyData || (error && !isLoading && error.includes("Clínica não encontrada") ? placeholderCompanyData : null);
+
 
   return (
     <div className="space-y-6">
@@ -175,14 +197,14 @@ export default function ConfiguracoesClinicaPage() {
         <p className="text-muted-foreground">Gerencie as informações e preferências da sua clínica.</p>
       </div>
 
-      {error && !companyData?.id.startsWith('new_clinic') && ( // Mostra erro geral, a menos que seja o erro de "clínica não encontrada" (tratado pelo placeholder)
+      {error && !error.includes("Clínica não encontrada") && (
         <Alert variant="destructive">
           <AlertTriangle className="h-5 w-5" />
           <AlertTitle>Erro ao Carregar Dados</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-       {companyData?.id === 'new_clinic_placeholder' && error && (
+       {error && error.includes("Clínica não encontrada") && (
          <Alert variant="default" className="border-primary/50 text-primary bg-primary/10">
           <AlertTriangle className="h-5 w-5 !text-primary" />
           <AlertTitle>Nova Clínica</AlertTitle>
@@ -249,3 +271,4 @@ export default function ConfiguracoesClinicaPage() {
     </div>
   );
 }
+
