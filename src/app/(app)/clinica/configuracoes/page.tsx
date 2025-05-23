@@ -19,19 +19,18 @@ import type { Company } from '@/types';
 
 const clinicConfigSchema = z.object({
   name: z.string().min(3, { message: 'Nome da clínica deve ter no mínimo 3 caracteres.' }),
+  // CNPJ is not part of the form data to be submitted for edit, it's display-only or part of creation payload
 });
 
 type ClinicConfigFormValues = z.infer<typeof clinicConfigSchema>;
 
 // Placeholder data for a new clinic if fetched data is 404
-const placeholderCompanyData: Company = {
+const newClinicPlaceholder: Omit<Company, 'createdAt' | 'lastModified'> = {
   id: 'new_clinic_placeholder', // This will be replaced by user.companyId if creating
   name: 'Nova Clínica (Preencha o Nome)',
   cnpj: '00.000.000/0000-00', // Default CNPJ, assuming it's a new registration
   nutritionistCount: 0,
   status: 'active',
-  createdAt: new Date().toISOString(),
-  lastModified: new Date().toISOString(),
 };
 
 export default function ConfiguracoesClinicaPage() {
@@ -39,6 +38,7 @@ export default function ConfiguracoesClinicaPage() {
   const [companyData, setCompanyData] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isNotFound, setIsNotFound] = useState(false);
   
   const form = useForm<ClinicConfigFormValues>({
     resolver: zodResolver(clinicConfigSchema),
@@ -61,6 +61,7 @@ export default function ConfiguracoesClinicaPage() {
       }
       setIsLoading(true);
       setError(null);
+      setIsNotFound(false);
 
       try {
         console.log(`Fetching company data for companyId: ${user.companyId}`);
@@ -68,55 +69,54 @@ export default function ConfiguracoesClinicaPage() {
         
         if (!response.ok) {
           let errorMessage = `Falha ao buscar dados da clínica. Status: ${response.status}`;
-          let errorForState: string | null = errorMessage; // For the error state variable
-          let toastMessage = errorMessage; // For the toast notification
+          let errorForState: string | null = errorMessage; 
+          let toastMessage = errorMessage; 
 
           try {
             const errorText = await response.text();
             if (response.status === 404) {
                 console.warn("Raw error response from API (fetchCompanyData - 404):", errorText);
             } else {
-                console.error("Raw error response from API (fetchCompanyData):", errorText);
+                console.error("Raw error response from API (fetchCompanyData - other error):", errorText);
             }
 
             if (errorText) {
-              const errorData = JSON.parse(errorText);
+              const errorData = JSON.parse(errorText); // Assume error response is JSON
               const detailMessage = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null) || errorData.error || errorData.message;
               errorMessage = detailMessage || errorText;
-              toastMessage = `Detalhes: ${errorMessage}`; // More specific toast
+              toastMessage = `Detalhes: ${errorMessage}`;
             }
           } catch (e) {
             console.error("Failed to parse error response or read text (fetchCompanyData):", e);
           }
 
           if (response.status === 404) {
-            console.warn("Empresa não encontrada no Firestore. Usando dados de placeholder para novo cadastro.");
-            // Use placeholder data, but ensure ID is the user's companyId
-            setCompanyData({ ...placeholderCompanyData, id: user.companyId }); 
-            form.reset({ name: placeholderCompanyData.name });
+            console.warn("Empresa não encontrada no Firestore. Configurando para novo cadastro.");
+            const placeholderForNew = { ...newClinicPlaceholder, id: user.companyId };
+            setCompanyData(placeholderForNew as Company); // Use as Company for type consistency
+            form.reset({ name: placeholderForNew.name });
+            setIsNotFound(true);
             errorForState = "Clínica não encontrada. Preencha o nome para cadastrá-la.";
-            // No toast for 404 as UI handles it with a specific message.
           } else {
-            // For other errors (500, 403, etc.), show a toast.
             toast({
                 title: "Erro ao Carregar Dados da Clínica",
                 description: toastMessage,
                 variant: "destructive"
             });
+             setError(errorForState);
           }
-          setError(errorForState);
         } else {
             const data: Company = await response.json();
             setCompanyData(data);
             form.reset({ name: data.name });
-            setError(null); // Clear previous errors
+            setIsNotFound(false); 
+            setError(null); 
         }
       } catch (err) {
         console.error("Erro ao buscar dados da clínica:", err);
         const displayError = err instanceof Error ? err.message : 'Ocorreu um erro inesperado ao buscar dados da clínica.';
         setError(displayError);
-        // Avoid toasting again if it's a 404 handled by UI, or if already toasted
-        if (!displayError.includes("Clínica não encontrada") && !displayError.includes("Falha ao buscar dados da clínica")) {
+        if (!displayError.includes("Clínica não encontrada")) { // Avoid double toasting for 404
             toast({
                 title: "Erro de Rede ou Inesperado",
                 description: displayError,
@@ -128,12 +128,13 @@ export default function ConfiguracoesClinicaPage() {
       }
     };
 
-    if (user) { // Only fetch if user is loaded
+    if (user) { 
       fetchCompanyData();
     } else {
-      setIsLoading(false); // If no user, stop loading
+      setIsLoading(false); 
     }
-  }, [user, form]); // form added to dependency array as form.reset is used
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]); // form.reset removed from deps to avoid re-fetch loops
 
   const onSubmit: SubmitHandler<ClinicConfigFormValues> = async (data) => {
     if (!user?.companyId) {
@@ -141,9 +142,12 @@ export default function ConfiguracoesClinicaPage() {
       return;
     }
     
+    // Always include CNPJ from current state (either placeholder or fetched)
+    const currentCnpj = companyData?.cnpj || newClinicPlaceholder.cnpj;
+
     const payload = {
       name: data.name,
-      cnpj: companyData?.cnpj || placeholderCompanyData.cnpj, // Pass current CNPJ (from placeholder or fetched data)
+      cnpj: currentCnpj, 
     };
 
     console.log("Submitting company update/create with payload:", payload, "for companyId:", user.companyId);
@@ -163,10 +167,10 @@ export default function ConfiguracoesClinicaPage() {
             if (errorText) {
                 try {
                     const errorData = JSON.parse(errorText);
-                    const specificDetail = (typeof errorData.details === 'string' ? errorData.details : errorData.details?.message);
-                    errorMessage = specificDetail || errorData.error || errorData.message || (errorText.length < 200 && !errorText.trim().startsWith('<') ? errorText : `Erro ${response.status}`);
+                    const specificDetail = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null) || errorData.error || errorData.message;
+                    errorMessage = specificDetail || (errorText.length < 200 && !errorText.trim().startsWith('<') ? errorText : `Erro ${response.status}`);
                 } catch (jsonParseError) {
-                     if (errorText.length < 200 && !errorText.trim().startsWith('<')) { // Avoid showing HTML error pages as messages
+                     if (errorText.length < 200 && !errorText.trim().startsWith('<')) { 
                         errorMessage = errorText;
                     } else {
                          errorMessage = `Erro ${response.status}: Falha ao processar resposta do servidor.`;
@@ -182,9 +186,10 @@ export default function ConfiguracoesClinicaPage() {
       
       const updatedCompany: Company = await response.json();
       toast({ title: "Sucesso!", description: "Nome da clínica atualizado." });
-      setCompanyData(updatedCompany); // Update local state with the full data from API
-      form.reset({ name: updatedCompany.name }); // Reset form with new name
-      setError(null); // Clear any previous errors (like 'not found')
+      setCompanyData(updatedCompany); 
+      form.reset({ name: updatedCompany.name }); 
+      setIsNotFound(false); // Clinic is now found/created
+      setError(null); 
     } catch (error) {
       console.error("Erro ao atualizar clínica:", error);
       toast({
@@ -195,7 +200,7 @@ export default function ConfiguracoesClinicaPage() {
     }
   };
 
-  if (isLoading && !companyData) { // Show loading only if no data (initial load)
+  if (isLoading && !companyData) { 
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
@@ -204,8 +209,7 @@ export default function ConfiguracoesClinicaPage() {
     );
   }
   
-  // Use companyData for display. This could be fetched data, or placeholder if fetch resulted in 404.
-  const displayCompany = companyData || (error && error.includes("Clínica não encontrada") ? { ...placeholderCompanyData, id: user?.companyId || 'new_clinic_placeholder' } : null);
+  const displayCompanyForForm = companyData || (isNotFound ? { ...newClinicPlaceholder, id: user?.companyId || 'new_clinic_placeholder' } : null);
 
   return (
     <div className="space-y-6">
@@ -217,21 +221,20 @@ export default function ConfiguracoesClinicaPage() {
         <p className="text-muted-foreground">Gerencie as informações e preferências da sua clínica.</p>
       </div>
 
-      {error && error.includes("Clínica não encontrada") && (
+      {isNotFound && (
          <Alert variant="default" className="border-primary/50 text-primary bg-primary/10">
           <AlertTriangle className="h-5 w-5 !text-primary" />
           <AlertTitle>Nova Clínica</AlertTitle>
-          <AlertDescription>{error} Salve as alterações para registrar.</AlertDescription>
+          <AlertDescription>Clínica não encontrada. Preencha o nome abaixo para registrá-la. O CNPJ será o padrão e não pode ser alterado aqui inicialmente.</AlertDescription>
         </Alert>
       )}
-      {error && !error.includes("Clínica não encontrada") && (
+      {error && !isNotFound && (
          <Alert variant="destructive">
           <AlertTriangle className="h-5 w-5" />
           <AlertTitle>Erro ao Carregar Dados</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -247,22 +250,22 @@ export default function ConfiguracoesClinicaPage() {
                   <FormItem>
                     <FormLabel htmlFor="clinicName">Nome da Clínica</FormLabel>
                     <FormControl>
-                      <Input id="clinicName" placeholder="Nome da sua clínica" {...field} />
+                      <Input id="clinicName" placeholder="Nome da sua clínica" {...field} disabled={isLoading && !!companyData && !isNotFound} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              {displayCompany?.cnpj && (
+              {displayCompanyForForm?.cnpj && (
                 <div className="space-y-2">
                   <Label htmlFor="clinicCnpj">CNPJ</Label>
-                  <Input id="clinicCnpj" value={displayCompany.cnpj} disabled />
+                  <Input id="clinicCnpj" value={displayCompanyForForm.cnpj} disabled />
                   <p className="text-xs text-muted-foreground">O CNPJ não pode ser alterado aqui.</p>
                 </div>
               )}
             </CardContent>
             <CardFooter className="border-t pt-6">
-              <Button type="submit" disabled={form.formState.isSubmitting || (isLoading && !!companyData) /* Disable if loading update */}>
+              <Button type="submit" disabled={form.formState.isSubmitting || (isLoading && !!companyData && !isNotFound) }>
                 {form.formState.isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
