@@ -27,11 +27,11 @@ const clinicConfigSchema = z.object({
 
 type ClinicConfigFormValues = z.infer<typeof clinicConfigSchema>;
 
-const newClinicPlaceholder: Omit<Company, 'createdAt' | 'lastModified'> = {
+const placeholderCompanyData: Omit<Company, 'createdAt' | 'lastModified'> = {
   id: 'new_clinic_placeholder',
   name: 'Nova Clínica (Preencha o Nome)',
-  cnpj: '00.000.000/0000-00',
-  logoUrl: undefined, // Added logoUrl
+  cnpj: '00.000.000/0000-00', // Default CNPJ for new clinics
+  logoUrl: undefined,
   nutritionistCount: 0,
   status: 'active',
 };
@@ -96,7 +96,7 @@ export default function ConfiguracoesClinicaPage() {
         }
 
         if (response.status === 404) {
-          const placeholderForNew = { ...newClinicPlaceholder, id: user.companyId };
+          const placeholderForNew = { ...placeholderCompanyData, id: user.companyId };
           setCompanyData(placeholderForNew as Company); 
           form.reset({ name: placeholderForNew.name });
           setImagePreviewUrl(null); // No logo for a new clinic
@@ -151,7 +151,7 @@ export default function ConfiguracoesClinicaPage() {
       return;
     }
     
-    const currentCnpj = companyData?.cnpj || newClinicPlaceholder.cnpj;
+    const currentCnpj = companyData?.cnpj || placeholderCompanyData.cnpj;
 
     const payload: { name: string; cnpj?: string } = {
       name: data.name,
@@ -176,6 +176,7 @@ export default function ConfiguracoesClinicaPage() {
             if (errorText) {
                 try {
                     const errorData = JSON.parse(errorText);
+                    // Prioritize 'details' for more specific backend messages
                     const specificDetail = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null) || errorData.error || errorData.message;
                     errorMessage = specificDetail || (errorText.length < 200 && !errorText.trim().startsWith('<') ? errorText : `Erro ${response.status}`);
                 } catch (jsonParseError) {
@@ -223,7 +224,8 @@ export default function ConfiguracoesClinicaPage() {
 
   const handleSaveLogo = async () => {
     if (!selectedFile || !user?.companyId || !storage) {
-      toast({ title: "Erro", description: "Selecione um arquivo e certifique-se de estar logado.", variant: "destructive" });
+      toast({ title: "Erro", description: "Selecione um arquivo e certifique-se de estar logado. Serviço de storage pode não estar disponível.", variant: "destructive" });
+      if (!storage) console.error("Firebase Storage instance is not available.");
       return;
     }
     setIsUploading(true);
@@ -280,7 +282,7 @@ export default function ConfiguracoesClinicaPage() {
     );
   }
   
-  const displayCompanyForForm = companyData || (isNotFound ? { ...newClinicPlaceholder, id: user?.companyId || 'new_clinic_placeholder' } : null);
+  const displayCompanyForForm = companyData || (isNotFound ? { ...placeholderCompanyData, id: user?.companyId || 'new_clinic_placeholder' } : null);
 
   return (
     <div className="space-y-6">
