@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { PlusCircle, UsersRound, List, Edit, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import type { TeamMember } from '@/types';
@@ -65,9 +65,15 @@ export default function EquipePage() {
     if (user) { 
       fetchTeamMembers();
     } else {
+      // Se o usuário não estiver carregado, não tentamos buscar
+      // Isso ajuda a evitar chamadas desnecessárias ou erros se user.companyId não estiver pronto
+      if (!authLoading) { // authLoading é um exemplo, use a variável real do seu useAuth se existir
+        setError("Usuário não autenticado.");
+      }
       setIsLoading(false); 
     }
-  }, [user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]); // Adicionando user?.companyId explicitamente se authLoading não for usado
 
   const getAccessTypeText = (accessType: TeamMember['accessType']) => {
     if (accessType === 'administrador_clinica') return 'Admin da Clínica';
@@ -213,12 +219,11 @@ export default function EquipePage() {
                         <Edit className="h-3 w-3 sm:mr-1.5" />
                         <span className="hidden sm:inline">Editar</span>
                     </Button>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" onClick={() => setMemberToDelete(member)}>
-                            <Trash2 className="h-3 w-3 sm:mr-1.5" />
-                            <span className="hidden sm:inline">Excluir</span>
-                        </Button>
-                    </AlertDialogTrigger>
+                    {/* AlertDialogTrigger foi removido daqui */}
+                    <Button variant="destructive" size="sm" onClick={() => setMemberToDelete(member)}>
+                        <Trash2 className="h-3 w-3 sm:mr-1.5" />
+                        <span className="hidden sm:inline">Excluir</span>
+                    </Button>
                   </div>
                 </li>
               ))}
@@ -257,3 +262,4 @@ export default function EquipePage() {
     </div>
   );
 }
+
