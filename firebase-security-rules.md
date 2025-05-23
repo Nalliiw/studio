@@ -13,20 +13,21 @@ service cloud.firestore {
 
     // Regras para a coleção 'companies' (clínicas)
     match /companies/{companyId} {
-      // Permite leitura se o usuário estiver autenticado e seu companyId (do token)
-      // corresponder ao ID do documento da empresa que está sendo lido.
-      // Se você não usa custom claims para companyId, simplifique para: if request.auth != null;
-      // e sua API deve garantir que apenas a empresa correta seja retornada.
-      allow read: if request.auth != null && request.auth.token.companyId == companyId;
+      // Permite leitura se o usuário estiver autenticado.
+      // A lógica de qual empresa buscar é controlada pela sua API.
+      allow read: if request.auth != null;
 
       // Permite criação se o usuário estiver autenticado.
-      // Considere restringir quem pode criar empresas (ex: super-admin).
-      // Se um admin de clínica cria sua própria clínica, o companyId no token deve corresponder.
-      allow create: if request.auth != null && request.resource.data.id == request.auth.token.companyId;
+      // RESTRINJA ISSO: Idealmente, apenas usuários específicos (ex: super-admins)
+      // ou um fluxo de criação de clínica validado deveria permitir isso.
+      allow create: if request.auth != null;
 
-      // Permite atualização (ex: nome, logoUrl) se o usuário estiver autenticado
-      // e seu companyId (do token) corresponder ao ID do documento da empresa.
-      allow update: if request.auth != null && request.auth.token.companyId == companyId;
+      // Permite atualização se o usuário estiver autenticado.
+      // RESTRINJA ISSO: Apenas o admin da clínica correspondente deve poder atualizar.
+      // Exemplo mais seguro (requer companyId como custom claim no token):
+      // allow update: if request.auth != null && request.auth.token.companyId == companyId;
+      // Por enquanto, para desbloquear, pode ser:
+      allow update: if request.auth != null;
 
       // Defina regras de exclusão com cuidado. Exemplo: desabilitar por enquanto.
       // allow delete: if false;
@@ -35,11 +36,11 @@ service cloud.firestore {
     // Regras para a coleção 'teamMembers' (membros da equipe da clínica)
     match /teamMembers/{memberId} {
       // Permite leitura se o usuário estiver autenticado e o clinicId do membro
-      // corresponder ao companyId (do token) do usuário (admin da clínica).
+      // corresponder ao companyId (do token) do usuário.
       allow read: if request.auth != null && request.auth.token.companyId == resource.data.clinicId;
 
       // Permite criação se o usuário estiver autenticado e o clinicId do novo membro
-      // corresponder ao companyId (do token) do usuário que está criando.
+      // corresponder ao companyId (do token) do usuário que está criando (admin da clínica).
       allow create: if request.auth != null && request.resource.data.clinicId == request.auth.token.companyId;
 
       // Permite atualização se o usuário estiver autenticado e o clinicId do membro
@@ -74,8 +75,8 @@ service cloud.firestore {
 
 **Nota sobre `request.auth.token.companyId`:**
 Esta condição assume que o `companyId` está disponível como um "Custom Claim" no token de autenticação do Firebase do usuário. Se você não configurou custom claims, você precisará:
-1.  Simplificar as regras (ex: `allow read: if request.auth != null;`) e
-2.  Garantir que suas **API Routes no Next.js** façam a validação de que o usuário autenticado tem permissão para acessar/modificar os dados específicos da clínica. Por exemplo, ao buscar uma empresa, sua API deve usar o `companyId` do perfil do usuário logado e não um `companyId` vindo do cliente.
+1.  Simplificar as regras (ex: `allow read: if request.auth != null;` para a coleção `companies`) e
+2.  Garantir que suas **API Routes no Next.js** façam a validação de que o usuário autenticado tem permissão para acessar/modificar os dados específicos da clínica. Por exemplo, ao buscar uma empresa, sua API deve usar o `companyId` do perfil do usuário logado (se disponível no frontend via `useAuth`) e não um `companyId` vindo diretamente do cliente sem validação.
 
 ---
 
@@ -134,3 +135,4 @@ service firebase.storage {
 
 Após publicar, teste as funcionalidades do seu aplicativo para garantir que as permissões estejam corretas.
     
+
