@@ -16,13 +16,12 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/hooks/use-toast';
 import type { Company } from '@/types';
-import { storage } from '@/lib/firebase'; // Import Firebase storage
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL, type FirebaseStorageError } from "firebase/storage";
 import Image from 'next/image';
 
 const clinicConfigSchema = z.object({
   name: z.string().min(3, { message: 'Nome da clínica deve ter no mínimo 3 caracteres.' }),
-  // CNPJ is not part of the form data to be submitted for edit, it's display-only or part of creation payload
 });
 
 type ClinicConfigFormValues = z.infer<typeof clinicConfigSchema>;
@@ -30,7 +29,7 @@ type ClinicConfigFormValues = z.infer<typeof clinicConfigSchema>;
 const placeholderCompanyData: Omit<Company, 'createdAt' | 'lastModified'> = {
   id: 'new_clinic_placeholder',
   name: 'Nova Clínica (Preencha o Nome)',
-  cnpj: '00.000.000/0000-00', // Default CNPJ for new clinics
+  cnpj: '00.000.000/0000-00',
   logoUrl: undefined,
   nutritionistCount: 0,
   status: 'active',
@@ -71,9 +70,9 @@ export default function ConfiguracoesClinicaPage() {
 
     try {
       const response = await fetch(`/api/companies/${user.companyId}`);
+      let errorMessage = `Falha ao buscar dados da clínica. Status: ${response.status}`;
       
       if (!response.ok) {
-        let errorMessage = `Falha ao buscar dados da clínica. Status: ${response.status}`;
         let errorForState: string | null = errorMessage; 
         let toastMessage = errorMessage; 
 
@@ -96,10 +95,10 @@ export default function ConfiguracoesClinicaPage() {
         }
 
         if (response.status === 404) {
-          const placeholderForNew = { ...placeholderCompanyData, id: user.companyId };
+          const placeholderForNew = { ...placeholderCompanyData, id: user.companyId, cnpj: user.companyCnpj || placeholderCompanyData.cnpj }; // Use user's CNPJ if available
           setCompanyData(placeholderForNew as Company); 
           form.reset({ name: placeholderForNew.name });
-          setImagePreviewUrl(null); // No logo for a new clinic
+          setImagePreviewUrl(null);
           setIsNotFound(true);
           errorForState = "Clínica não encontrada. Preencha o nome para cadastrá-la.";
         } else {
@@ -109,7 +108,7 @@ export default function ConfiguracoesClinicaPage() {
               variant: "destructive"
           });
         }
-        setError(errorForState); // Set error state here after processing
+        setError(errorForState);
       } else {
           const data: Company = await response.json();
           setCompanyData(data);
@@ -135,7 +134,7 @@ export default function ConfiguracoesClinicaPage() {
       setIsLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.companyId]); // form.reset removed, will be called inside based on data
+  }, [user?.companyId, user?.companyCnpj]); // Added user.companyCnpj
 
   useEffect(() => {
     if (user) { 
@@ -151,12 +150,12 @@ export default function ConfiguracoesClinicaPage() {
       return;
     }
     
-    const currentCnpj = companyData?.cnpj || placeholderCompanyData.cnpj;
+    const currentCnpj = companyData?.cnpj || user?.companyCnpj || placeholderCompanyData.cnpj;
 
     const payload: { name: string; cnpj?: string } = {
       name: data.name,
     };
-    if (isNotFound) { // If creating, send CNPJ
+    if (isNotFound || !companyData?.cnpj) { 
         payload.cnpj = currentCnpj;
     }
 
@@ -176,8 +175,7 @@ export default function ConfiguracoesClinicaPage() {
             if (errorText) {
                 try {
                     const errorData = JSON.parse(errorText);
-                    // Prioritize 'details' for more specific backend messages
-                    const specificDetail = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null) || errorData.error || errorData.message;
+                    const specificDetail = errorData.details || errorData.error || errorData.message;
                     errorMessage = specificDetail || (errorText.length < 200 && !errorText.trim().startsWith('<') ? errorText : `Erro ${response.status}`);
                 } catch (jsonParseError) {
                      if (errorText.length < 200 && !errorText.trim().startsWith('<')) { 
@@ -214,57 +212,81 @@ export default function ConfiguracoesClinicaPage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({ title: "Arquivo Muito Grande", description: "Por favor, selecione um arquivo menor que 5MB.", variant: "destructive"});
+        setSelectedFile(null);
+        setImagePreviewUrl(companyData?.logoUrl || null);
+        if (event.target) event.target.value = ""; // Clear file input
+        return;
+      }
       setSelectedFile(file);
       setImagePreviewUrl(URL.createObjectURL(file));
     } else {
       setSelectedFile(null);
-      setImagePreviewUrl(companyData?.logoUrl || null); // Revert to original if no file selected
+      setImagePreviewUrl(companyData?.logoUrl || null);
     }
   };
 
   const handleSaveLogo = async () => {
-    if (!selectedFile || !user?.companyId || !storage) {
-      toast({ title: "Erro", description: "Selecione um arquivo e certifique-se de estar logado. Serviço de storage pode não estar disponível.", variant: "destructive" });
-      if (!storage) console.error("Firebase Storage instance is not available.");
+    if (!selectedFile || !user?.companyId) {
+      toast({ title: "Erro", description: "Selecione um arquivo e certifique-se de estar logado.", variant: "destructive" });
       return;
     }
+    if (!storage) {
+      toast({ title: "Erro de Configuração", description: "Serviço de armazenamento não está disponível. Contate o suporte.", variant: "destructive" });
+      console.error("Firebase Storage instance is not available in handleSaveLogo.");
+      return;
+    }
+
     setIsUploading(true);
     const storageRef = ref(storage, `clinic_logos/${user.companyId}/${Date.now()}_${selectedFile.name}`);
     const uploadTask = uploadBytesResumable(storageRef, selectedFile);
 
     uploadTask.on('state_changed',
       (snapshot) => {
-        // Optional: handle progress
         // const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
         // console.log('Upload is ' + progress + '% done');
       },
-      (error) => {
+      (error: FirebaseStorageError) => { // Specific type for Firebase Storage errors
         console.error("Erro no upload do logo:", error);
-        toast({ title: "Erro no Upload", description: `Falha ao enviar logo: ${error.message}`, variant: "destructive" });
+        let description = `Falha ao enviar logo: ${error.message}`;
+        if (error.code === 'storage/unauthorized') {
+          description = "Falha ao enviar logo: Permissão negada. Verifique as regras de segurança do Firebase Storage.";
+        } else if (error.code === 'storage/retry-limit-exceeded') {
+          description = "Falha ao enviar logo: Limite de tentativas excedido. Verifique sua conexão ou tente um arquivo menor.";
+        }
+        toast({ title: "Erro no Upload", description, variant: "destructive" });
         setIsUploading(false);
       },
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          const response = await fetch(`/api/companies/${user.companyId}`, {
+          const apiResponse = await fetch(`/api/companies/${user.companyId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ logoUrl: downloadURL }),
           });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || errorData.details?.message || 'Falha ao salvar URL do logo.');
+          if (!apiResponse.ok) {
+            let errorDetail = 'Falha ao salvar URL do logo no banco de dados.';
+            try {
+                const errorData = await apiResponse.json();
+                errorDetail = errorData.error || errorData.details?.message || errorDetail;
+            } catch (e) { /* ignore parsing error */ }
+            throw new Error(errorDetail);
           }
           
-          const updatedCompanyData: Company = await response.json();
-          setCompanyData(prev => ({ ...prev, ...updatedCompanyData } as Company));
+          const updatedCompanyData: Company = await apiResponse.json();
+          setCompanyData(prev => ({ ...prev, ...updatedCompanyData } as Company)); // Ensure all fields are updated
           setImagePreviewUrl(downloadURL);
           setSelectedFile(null); // Clear selected file after successful upload
+          const fileInput = document.getElementById('logoUpload') as HTMLInputElement;
+          if (fileInput) fileInput.value = ''; // Clear the file input visually
+
           toast({ title: "Sucesso!", description: "Logo da clínica atualizado." });
         } catch (apiError) {
           console.error("Erro ao salvar URL do logo:", apiError);
-          toast({ title: "Erro ao Salvar Logo", description: apiError instanceof Error ? apiError.message : 'Ocorreu um erro.', variant: "destructive" });
+          toast({ title: "Erro ao Salvar Logo", description: apiError instanceof Error ? apiError.message : 'Ocorreu um erro ao atualizar o perfil da clínica.', variant: "destructive" });
         } finally {
           setIsUploading(false);
         }
@@ -282,7 +304,7 @@ export default function ConfiguracoesClinicaPage() {
     );
   }
   
-  const displayCompanyForForm = companyData || (isNotFound ? { ...placeholderCompanyData, id: user?.companyId || 'new_clinic_placeholder' } : null);
+  const displayCompanyForForm = companyData || (isNotFound ? { ...placeholderCompanyData, id: user?.companyId || 'new_clinic_placeholder', cnpj: user?.companyCnpj || placeholderCompanyData.cnpj } : null);
 
   return (
     <div className="space-y-6">
@@ -298,7 +320,7 @@ export default function ConfiguracoesClinicaPage() {
          <Alert variant="default" className="border-primary/50 text-primary bg-primary/10">
           <AlertTriangle className="h-5 w-5 !text-primary" />
           <AlertTitle>Nova Clínica</AlertTitle>
-          <AlertDescription>Clínica não encontrada. Preencha o nome abaixo para registrá-la. O CNPJ será o padrão e não pode ser alterado aqui inicialmente.</AlertDescription>
+          <AlertDescription>Clínica não encontrada. Preencha o nome abaixo para registrá-la. O CNPJ será o padrão ou o associado ao seu usuário e não pode ser alterado aqui inicialmente.</AlertDescription>
         </Alert>
       )}
       {error && !isNotFound && (
@@ -351,14 +373,13 @@ export default function ConfiguracoesClinicaPage() {
         </form>
       </Form>
 
-      {/* Card for Logo Upload */}
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="flex items-center">
             <ImageUp className="mr-2 h-5 w-5 text-primary" />
             Logo da Clínica
           </CardTitle>
-          <CardDescription>Faça o upload ou atualize o logo da sua clínica.</CardDescription>
+          <CardDescription>Faça o upload ou atualize o logo da sua clínica (máx 5MB).</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col items-center gap-4">
@@ -390,7 +411,7 @@ export default function ConfiguracoesClinicaPage() {
           </div>
         </CardContent>
         <CardFooter className="border-t pt-6">
-          <Button onClick={handleSaveLogo} disabled={!selectedFile || isUploading || !user?.companyId}>
+          <Button onClick={handleSaveLogo} disabled={!selectedFile || isUploading || !user?.companyId || !storage}>
             {isUploading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -403,4 +424,3 @@ export default function ConfiguracoesClinicaPage() {
     </div>
   );
 }
-
