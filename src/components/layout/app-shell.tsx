@@ -14,8 +14,8 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  // SidebarTrigger, // No longer needed for top-left hamburger
-  SidebarRail, // Keep for desktop collapse/expand
+  SidebarRail, 
+  useSidebar, // Added missing import
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
@@ -39,7 +39,7 @@ import {
   Moon,
   CalendarDays, 
   UsersRound,
-  ImageIcon, // Placeholder for clinic logo/favicon
+  ImageIcon,
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -77,7 +77,6 @@ const navItems: NavItem[] = [
   { href: '/minha-agenda', label: 'Minha Agenda', icon: CalendarDays, roles: [UserRole.PATIENT] },
 ];
 
-// Removed the local NutriTrackIcon (Sparkles) definition, SidebarHeader handles its own logo placeholder
 
 const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   const { user, logout } = useAuth();
@@ -92,7 +91,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
 
-  if (!clientHasMounted) { 
+  if (!clientHasMounted || !user) { 
     return (
         <div className="flex h-screen items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -100,16 +99,6 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
     );
   }
   
-  if (!user) {
-    // AuthContext will handle redirection to login if user is null and not on a login page.
-    // This prevents rendering AppShell content before redirection.
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
 
   const userNavItems = navItems.filter(item => item.roles.includes(user.role));
   const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
@@ -128,8 +117,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
     <>
       {!isMobile && (
         <Sidebar collapsible={sidebarCollapsibleSetting} variant="sidebar" side={sidebarSideSetting}>
-          {/* SidebarRail is now rendered inside SidebarHeader by default if collapsible=icon */}
-          <SidebarHeader /> {/* SidebarHeader now handles its own logo placeholder */}
+          <SidebarHeader /> 
 
           <SidebarContent className="p-2">
             <SidebarMenu>
@@ -190,7 +178,6 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                        toggleTheme();
                      }
                      if (sidebarState === "expanded" || isMobile) {
-                       // Prevent click on the div itself from toggling if there's a Switch inside
                        if (e.target === e.currentTarget && sidebarState === "expanded" && !isMobile) e.preventDefault();
                      }
                    }}
@@ -232,7 +219,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
       
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto", 
-          isMobile ? "px-4 pt-4 pb-16" : "p-6 pt-6" // Adjusted mobile padding
+          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" 
         )}>
           {children}
       </SidebarInset>
@@ -247,7 +234,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
 
 
-  if (authLoading && !user) { // Show loading only if user is not yet available
+  if (authLoading && !user) { 
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -255,8 +242,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // If not loading and still no user, AuthContext's useEffect will redirect to /login.
-  // Returning null here prevents AppShellInternal from rendering prematurely during that redirect.
   if (!user) {
       return null;
   }
@@ -276,4 +261,3 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </TooltipProvider>
   );
 }
-
