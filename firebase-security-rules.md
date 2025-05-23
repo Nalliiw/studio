@@ -13,26 +13,38 @@ service cloud.firestore {
 
     // Regras para a coleção 'companies' (clínicas)
     match /companies/{companyId} {
-      // Permite leitura se o usuário estiver autenticado.
-      // A lógica de qual empresa buscar é controlada pela sua API.
-      // Se você usar custom claims: allow read: if request.auth != null && request.auth.token.companyId == companyId;
+      // PERMISSÃO DE LEITURA:
+      // Opção 1 (Mais segura, se companyId estiver no token JWT do usuário):
+      // Permite leitura se o usuário estiver autenticado e seu companyId (do token)
+      // corresponder ao ID do documento da empresa que está sendo lido.
+      // allow read: if request.auth != null && request.auth.token.companyId == companyId;
+
+      // Opção 2 (Mais simples para começar, se companyId não estiver no token):
+      // Permite leitura se o usuário estiver autenticado. A lógica de qual empresa buscar
+      // é controlada pela sua API (que usaria o companyId do perfil do usuário).
       allow read: if request.auth != null;
 
+      // PERMISSÃO DE CRIAÇÃO:
       // Permite criação se o usuário estiver autenticado.
-      // RESTRINJA ISSO: Idealmente, apenas usuários específicos (ex: super-admins)
-      // ou um fluxo de criação de clínica validado deveria permitir isso.
-      // Se o admin da clínica cria sua própria empresa:
+      // Idealmente, restrinja isso. Se o admin da clínica cria sua própria empresa:
       // allow create: if request.auth != null && request.auth.token.companyId == companyId;
+      // (e o ID do documento deve ser o companyId)
+      // Por enquanto, para desbloquear:
       allow create: if request.auth != null;
 
-      // Permite atualização se o usuário estiver autenticado.
-      // RESTRINJA ISSO: Apenas o admin da clínica correspondente deve poder atualizar.
-      // Exemplo mais seguro (requer companyId como custom claim no token):
+      // PERMISSÃO DE ATUALIZAÇÃO:
+      // Opção 1 (Mais segura):
+      // Permite atualização se o usuário estiver autenticado e seu companyId (do token)
+      // corresponder ao ID do documento da empresa.
       // allow update: if request.auth != null && request.auth.token.companyId == companyId;
-      // Por enquanto, para desbloquear, pode ser:
+
+      // Opção 2 (Mais simples para começar):
+      // Permite atualização se o usuário estiver autenticado.
+      // A API deve validar se o usuário tem permissão para atualizar ESTA empresa.
       allow update: if request.auth != null;
 
-      // Defina regras de exclusão com cuidado. Exemplo: desabilitar por enquanto.
+      // PERMISSÃO DE EXCLUSÃO:
+      // Geralmente muito restrito. Exemplo: desabilitar exclusão por enquanto.
       // allow delete: if false;
     }
 
@@ -40,6 +52,7 @@ service cloud.firestore {
     match /teamMembers/{memberId} {
       // Permite leitura se o usuário estiver autenticado e o clinicId do membro
       // corresponder ao companyId (do token) do usuário.
+      // Isso permite que membros da mesma clínica vejam uns aos outros.
       allow read: if request.auth != null && request.auth.token.companyId == resource.data.clinicId;
 
       // Permite criação se o usuário estiver autenticado e o clinicId do novo membro
@@ -48,6 +61,7 @@ service cloud.firestore {
 
       // Permite atualização se o usuário estiver autenticado e o clinicId do membro
       // corresponder ao companyId (do token) do usuário (admin da clínica).
+      // Você pode querer permitir que um membro edite seu próprio perfil também (ex: if request.auth.uid == memberId).
       allow update: if request.auth != null && request.auth.token.companyId == resource.data.clinicId;
 
       // Permite exclusão se o usuário estiver autenticado e o clinicId do membro
@@ -137,4 +151,5 @@ service firebase.storage {
 3.  Para **Storage**: Navegue até Storage > Aba "Regras". Copie e cole as regras do Storage, **substitua `{YOUR_BUCKET_NAME}` pelo nome do seu bucket**, ajuste se necessário, e clique em "Publicar".
 
 Após publicar, teste as funcionalidades do seu aplicativo para garantir que as permissões estejam corretas.
+    
     
