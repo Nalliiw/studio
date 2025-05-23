@@ -15,11 +15,14 @@ service cloud.firestore {
     match /companies/{companyId} {
       // Permite leitura se o usuário estiver autenticado.
       // A lógica de qual empresa buscar é controlada pela sua API.
+      // Se você usar custom claims: allow read: if request.auth != null && request.auth.token.companyId == companyId;
       allow read: if request.auth != null;
 
       // Permite criação se o usuário estiver autenticado.
       // RESTRINJA ISSO: Idealmente, apenas usuários específicos (ex: super-admins)
       // ou um fluxo de criação de clínica validado deveria permitir isso.
+      // Se o admin da clínica cria sua própria empresa:
+      // allow create: if request.auth != null && request.auth.token.companyId == companyId;
       allow create: if request.auth != null;
 
       // Permite atualização se o usuário estiver autenticado.
@@ -135,4 +138,3 @@ service firebase.storage {
 
 Após publicar, teste as funcionalidades do seu aplicativo para garantir que as permissões estejam corretas.
     
-

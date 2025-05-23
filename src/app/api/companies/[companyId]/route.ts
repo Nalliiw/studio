@@ -1,16 +1,17 @@
-
 // src/app/api/companies/[companyId]/route.ts
-'use server';
-
 import { NextResponse, type NextRequest } from 'next/server';
 import { getCompanyById, updateCompany } from '@/services/companyService';
 import { z } from 'zod';
 
 const FIRESTORE_UNINITIALIZED_ERROR_MESSAGE = 'Serviço Indisponível: Backend (Firebase) não conectado ou configurado corretamente.';
 
+// Schema for PUT request body: name is optional for partial updates (e.g., only logoUrl),
+// but companyService might enforce it for creation.
+// CNPJ is optional for update, but might be required by service for creation.
 const updateCompanySchema = z.object({
-  name: z.string().min(3, { message: 'O nome da clínica deve ter no mínimo 3 caracteres.' }),
+  name: z.string().min(3, { message: 'O nome da clínica deve ter no mínimo 3 caracteres.' }).optional(),
   cnpj: z.string().regex(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, { message: 'CNPJ inválido. Formato esperado: XX.XXX.XXX/XXXX-XX' }).optional(),
+  logoUrl: z.string().url({ message: 'URL do logo inválida.' }).optional(),
 });
 
 export async function GET(
@@ -68,16 +69,23 @@ export async function PUT(
       return NextResponse.json({ error: 'Dados de entrada inválidos para atualizar empresa', details: parsedData.error.flatten() }, { status: 400 });
     }
     
-    const { name, cnpj } = parsedData.data;
+    const updatePayload: { name?: string; cnpj?: string; logoUrl?: string } = {};
+    if (parsedData.data.name) updatePayload.name = parsedData.data.name;
+    if (parsedData.data.cnpj) updatePayload.cnpj = parsedData.data.cnpj; // Pass CNPJ if provided
+    if (parsedData.data.logoUrl) updatePayload.logoUrl = parsedData.data.logoUrl;
 
-    console.log(`API PUT /api/companies/${companyId} - Chamando companyService.updateCompany com nome: ${name} e cnpj: ${cnpj}.`);
-    await updateCompany(companyId, { name, cnpj }); // Pass cnpj to the service
+    if (Object.keys(updatePayload).length === 0) {
+        console.warn(`API PUT /api/companies/${companyId} - Nenhum dado fornecido para atualização.`);
+        return NextResponse.json({ error: 'Nenhum dado fornecido para atualização' }, { status: 400 });
+    }
+    
+    // The service's updateCompany now handles upsert logic
+    console.log(`API PUT /api/companies/${companyId} - Chamando companyService.updateCompany com payload:`, updatePayload);
+    await updateCompany(companyId, updatePayload);
     console.log(`API PUT /api/companies/${companyId} - Empresa atualizada/criada com sucesso.`);
     
-    // Fetch the updated/created company data to return to the client
     const updatedCompany = await getCompanyById(companyId);
     if (!updatedCompany) {
-        // This case should ideally not happen if updateCompany was successful
         console.error(`API PUT /api/companies/${companyId} - Empresa não encontrada após atualização/criação bem-sucedida.`);
         return NextResponse.json({ error: 'Empresa atualizada/criada, mas não pôde ser recuperada.' }, { status: 500 });
     }
@@ -92,8 +100,8 @@ export async function PUT(
     if (errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permissions')) {
       return NextResponse.json({ error: 'Falha ao atualizar empresa.', details: 'Permissões insuficientes no Firestore.' }, { status: 403 });
     }
-    if (errorMessage.includes("CNPJ é obrigatório para criar uma nova clínica")) {
-      return NextResponse.json({ error: 'Falha ao atualizar empresa.', details: errorMessage }, { status: 400 });
+    if (errorMessage.includes("Nome e CNPJ são obrigatórios para criar uma nova clínica")) {
+      return NextResponse.json({ error: 'Falha ao criar/atualizar empresa.', details: errorMessage }, { status: 400 });
     }
     return NextResponse.json({ error: 'Falha ao atualizar empresa.', details: errorMessage }, { status: 500 });
   }

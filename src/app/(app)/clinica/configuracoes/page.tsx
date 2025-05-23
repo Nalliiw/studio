@@ -1,4 +1,3 @@
-
 // src/app/(app)/clinica/configuracoes/page.tsx
 'use client';
 
@@ -16,12 +15,13 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/hooks/use-toast';
 import type { Company } from '@/types';
-import { storage } from '@/lib/firebase';
+import { storage } from '@/lib/firebase'; 
 import { ref, uploadBytesResumable, getDownloadURL, type FirebaseStorageError } from "firebase/storage";
 import Image from 'next/image';
 
 const clinicConfigSchema = z.object({
   name: z.string().min(3, { message: 'Nome da clínica deve ter no mínimo 3 caracteres.' }),
+  // CNPJ não é editável diretamente no formulário, mas é necessário para criação
 });
 
 type ClinicConfigFormValues = z.infer<typeof clinicConfigSchema>;
@@ -91,12 +91,11 @@ export default function ConfiguracoesClinicaPage() {
 
           if (errorText) {
             const errorData = JSON.parse(errorText); 
-            // Prioritize details.message, then details (if string), then errorData.error, then errorData.message
             const detailMsg = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null);
             errorMessage = detailMsg || errorData.error || errorData.message || errorText;
             
             toastMessage = `Detalhes: ${errorMessage}`;
-            if (typeof errorMessage === 'string' && (errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permiss'))) {
+            if (typeof errorMessage === 'string' && (errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permissões insuficientes'))) {
                 isPermError = true;
             }
           }
@@ -105,7 +104,11 @@ export default function ConfiguracoesClinicaPage() {
         }
 
         if (response.status === 404) {
-          const placeholderForNew = { ...placeholderCompanyData, id: user.companyId, cnpj: user.companyCnpj || placeholderCompanyData.cnpj };
+          const placeholderForNew = { 
+            ...placeholderCompanyData, 
+            id: user.companyId, 
+            cnpj: user.companyCnpj || placeholderCompanyData.cnpj 
+          };
           setCompanyData(placeholderForNew); 
           form.reset({ name: placeholderForNew.name });
           setImagePreviewUrl(null);
@@ -113,16 +116,18 @@ export default function ConfiguracoesClinicaPage() {
           errorForState = "Clínica não encontrada. Preencha o nome para cadastrá-la.";
         } else if (isPermError) {
             setIsPermissionError(true);
-            // Use the specific permission error message from parsed details if available
-            const specificPermError = errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permiss') ? errorMessage : "Permissões insuficientes no Firestore. Verifique as regras de segurança.";
+            const specificPermError = errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permissões insuficientes') ? errorMessage : "Permissões insuficientes no Firestore. Verifique as regras de segurança.";
             errorForState = specificPermError; 
             toast({
                 title: "Erro de Permissão",
                 description: specificPermError,
                 variant: "destructive",
             });
-            // Fallback to placeholder data so UI remains usable for dev
-            const placeholderForPermError = { ...placeholderCompanyData, id: user.companyId, cnpj: user.companyCnpj || placeholderCompanyData.cnpj };
+            const placeholderForPermError = { 
+              ...placeholderCompanyData, 
+              id: user.companyId, 
+              cnpj: user.companyCnpj || placeholderCompanyData.cnpj 
+            };
             setCompanyData(placeholderForPermError);
             form.reset({ name: placeholderForPermError.name });
             setImagePreviewUrl(null);
@@ -133,7 +138,7 @@ export default function ConfiguracoesClinicaPage() {
               variant: "destructive"
           });
         }
-        setError(errorForState);
+        setError(errorForState); // Set the error state for UI display
       } else {
           const data: Company = await response.json();
           setCompanyData(data);
@@ -158,8 +163,7 @@ export default function ConfiguracoesClinicaPage() {
     } finally {
       setIsLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.companyId, user?.companyCnpj]); 
+  }, [user?.companyId, user?.companyCnpj, form]); 
 
   useEffect(() => {
     if (user) { 
@@ -171,7 +175,7 @@ export default function ConfiguracoesClinicaPage() {
 
   const onSubmit: SubmitHandler<ClinicConfigFormValues> = async (data) => {
     if (!user?.companyId) {
-      toast({ title: "Erro", description: "ID da clínica não encontrado.", variant: "destructive" });
+      toast({ title: "Erro", description: "ID da clínica do usuário não encontrado.", variant: "destructive" });
       return;
     }
     
@@ -189,7 +193,8 @@ export default function ConfiguracoesClinicaPage() {
     const payload: { name: string; cnpj?: string } = {
       name: data.name,
     };
-    if (isNotFound || !companyData?.cnpj) { 
+    // Ensure CNPJ is sent if it's a new company or if it's available in companyData
+    if (isNotFound || (companyData && !companyData.cnpj && currentCnpj !== placeholderCompanyData.cnpj) || (companyData && companyData.cnpj) ) {
         payload.cnpj = currentCnpj;
     }
 
@@ -210,6 +215,7 @@ export default function ConfiguracoesClinicaPage() {
                 try {
                     const errorData = JSON.parse(errorText);
                     const detailMsg = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null);
+                    // Prioritize details, then error, then message, then raw short text
                     errorMessage = detailMsg || errorData.error || errorData.message || (errorText.length < 200 && !errorText.trim().startsWith('<') ? errorText : `Erro ${response.status}`);
                 } catch (jsonParseError) {
                      if (errorText.length < 200 && !errorText.trim().startsWith('<')) { 
@@ -264,7 +270,7 @@ export default function ConfiguracoesClinicaPage() {
 
   const handleSaveLogo = async () => {
     if (!selectedFile || !user?.companyId) {
-      toast({ title: "Erro", description: "Selecione um arquivo e certifique-se de estar logado.", variant: "destructive" });
+      toast({ title: "Erro", description: "Selecione um arquivo e certifique-se de estar logado e com uma clínica associada.", variant: "destructive" });
       return;
     }
     if (!storage) {
@@ -475,4 +481,3 @@ export default function ConfiguracoesClinicaPage() {
     </div>
   );
 }
-

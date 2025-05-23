@@ -9,7 +9,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyAxzIqz02q90ja_Z-b5nL_O2VoNo30sLT0",
   authDomain: "nutritrack-lite-x6ffb.firebaseapp.com",
   projectId: "nutritrack-lite-x6ffb",
-  storageBucket: "nutritrack-lite-x6ffb.appspot.com", // Confirme este valor no seu console Firebase
+  storageBucket: "nutritrack-lite-x6ffb.appspot.com", // Default format, ensure this matches your Firebase console
   messagingSenderId: "235653291259",
   appId: "1:235653291259:web:83efefa74e5670b7d3645e"
 };
@@ -30,7 +30,7 @@ if (!getApps().length) {
     console.log("Firebase inicializado com sucesso.");
   } catch (error) {
     console.error("Erro ao inicializar Firebase com a configuração fornecida:", error);
-    app = null;
+    app = null; // Garante que app é null se a inicialização falhar
   }
 } else {
   app = getApps()[0];
@@ -43,7 +43,7 @@ if (app) {
     console.log("Instância do Firestore obtida com sucesso.");
   } catch (error) {
     console.error("Erro ao obter instância do Firestore:", error);
-    db = null;
+    db = null; // Garante que db é null se getFirestore falhar
   }
   try {
     storage = getStorage(app);
@@ -51,11 +51,11 @@ if (app) {
     const configuredBucket = storage.app.options.storageBucket;
     console.log('Firebase Storage configurado para o bucket:', configuredBucket);
     if (configuredBucket !== firebaseConfig.storageBucket) {
-        console.warn(`AVISO: O bucket do Storage configurado (${configuredBucket}) é diferente do firebaseConfig.storageBucket (${firebaseConfig.storageBucket}). Verifique sua configuração.`);
+        console.warn(`AVISO: O bucket do Storage configurado (${configuredBucket}) é diferente do firebaseConfig.storageBucket (${firebaseConfig.storageBucket}). Verifique sua configuração em src/lib/firebase.ts para que corresponda ao nome exato do bucket no seu console Firebase.`);
     }
   } catch (error) {
     console.error("Erro ao obter instância do Firebase Storage:", error);
-    storage = null;
+    storage = null; // Garante que storage é null se getStorage falhar
   }
 } else {
     db = null;
