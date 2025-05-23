@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
 export default function EquipePage() {
-  const { user, loading: authLoading } = useAuth(); // Renomeado loading para authLoading para evitar conflito
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,9 +87,9 @@ export default function EquipePage() {
 
   const getStatusBadgeVariant = (status?: TeamMember['status']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
-        case 'active': return 'default'; // Greenish
-        case 'pending_invitation': return 'secondary'; // Yellowish
-        case 'inactive': return 'outline'; // Grayish
+        case 'active': return 'default'; 
+        case 'pending_invitation': return 'secondary'; 
+        case 'inactive': return 'outline'; 
         default: return 'outline';
     }
   };
@@ -105,10 +105,16 @@ export default function EquipePage() {
       const response = await fetch(`/api/team/${memberToDelete.id}`, {
         method: 'DELETE',
       });
-      const responseData = await response.json();
-
+      
       if (!response.ok) {
-        throw new Error(responseData.error || 'Falha ao excluir membro.');
+        let errorMessage = 'Falha ao excluir membro.';
+        try {
+            const responseData = await response.json();
+            errorMessage = responseData.error || errorMessage;
+        } catch (e) {
+            // Could not parse JSON, stick to generic error
+        }
+        throw new Error(errorMessage);
       }
       setTeamMembers(prev => prev.filter(m => m.id !== memberToDelete.id));
       toast({ title: "Membro Excluído", description: `O membro "${memberToDelete.name}" foi excluído.` });
@@ -133,9 +139,16 @@ export default function EquipePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'activate' }),
       });
-      const responseData = await response.json();
+      
       if (!response.ok) {
-        throw new Error(responseData.error || 'Falha ao ativar convite.');
+        let errorMessage = 'Falha ao ativar convite.';
+        try {
+            const responseData = await response.json();
+            errorMessage = responseData.error || errorMessage;
+        } catch (e) {
+             // Could not parse JSON
+        }
+        throw new Error(errorMessage);
       }
       setTeamMembers(prev => 
         prev.map(m => m.id === member.id ? { ...m, status: 'active', invitationToken: undefined } : m)

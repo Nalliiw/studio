@@ -33,8 +33,14 @@ export default function EmpresasPage() {
       try {
         const response = await fetch('/api/companies');
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.details || 'Falha ao buscar empresas');
+          let errorMessage = 'Falha ao buscar empresas.';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.details || errorData.error || errorMessage;
+          } catch (e) {
+            // Ignore if response is not JSON
+          }
+          throw new Error(errorMessage);
         }
         const data: Company[] = await response.json();
         setCompanies(data);
@@ -106,7 +112,7 @@ export default function EmpresasPage() {
                 <TableRow>
                   <TableHead>Nome da Empresa</TableHead>
                   <TableHead>CNPJ</TableHead>
-                  <TableHead className="text-center">Nutricionistas</TableHead>
+                  <TableHead className="text-center">Especialistas</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>

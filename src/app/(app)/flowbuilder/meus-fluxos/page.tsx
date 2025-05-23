@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function MeusFluxosPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [flows, setFlows] = useState<Flow[]>([]); 
@@ -39,8 +39,8 @@ export default function MeusFluxosPage() {
   useEffect(() => {
     const fetchFlows = async () => {
       if (!user?.id) {
+        setError("Usuário não autenticado. Não é possível carregar fluxos.");
         setIsLoading(false);
-        setError("Usuário não autenticado.");
         return;
       }
       setIsLoading(true);
@@ -48,27 +48,38 @@ export default function MeusFluxosPage() {
       try {
         const response = await fetch(`/api/flows?nutritionistId=${user.id}`);
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Falha ao buscar fluxos.');
+          let errorMessage = 'Falha ao buscar fluxos.';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch(e) {
+            // Could not parse JSON
+          }
+          throw new Error(errorMessage);
         }
         const data: Flow[] = await response.json();
         setFlows(data);
       } catch (err) {
         console.error("Erro ao buscar fluxos:", err);
-        setError(err instanceof Error ? err.message : "Ocorreu um erro inesperado.");
+        const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro inesperado.";
+        setError(errorMessage);
+        toast({
+          title: "Erro ao Carregar Fluxos",
+          description: errorMessage,
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (user?.id) {
+    if (!authLoading && user?.id) {
         fetchFlows();
-    } else {
-        // Se o usuário não estiver disponível imediatamente, podemos aguardar ou lidar com isso.
-        // Por agora, vamos apenas não buscar se não houver ID.
+    } else if (!authLoading && !user?.id) {
+        setError("Usuário não autenticado.");
         setIsLoading(false); 
     }
-  }, [user?.id]);
+  }, [user?.id, authLoading]);
 
   const filteredFlows = flows.filter(flow =>
     flow.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -80,8 +91,14 @@ export default function MeusFluxosPage() {
     try {
       const response = await fetch(`/api/flows/${flowToDelete.id}`, { method: 'DELETE' });
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Falha ao excluir fluxo.');
+        let errorMessage = 'Falha ao excluir fluxo.';
+        try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+        } catch(e) {
+            // no json response
+        }
+        throw new Error(errorMessage);
       }
       setFlows(prevFlows => prevFlows.filter(f => f.id !== flowToDelete.id));
       toast({ title: "Fluxo Removido", description: `O fluxo "${flowToDelete.name}" foi removido com sucesso.` });
@@ -106,8 +123,14 @@ export default function MeusFluxosPage() {
             body: JSON.stringify({ status: newStatus }),
         });
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Falha ao alterar status do fluxo.');
+            let errorMessage = 'Falha ao alterar status do fluxo.';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorMessage;
+            } catch(e) {
+                // no json
+            }
+            throw new Error(errorMessage);
         }
         setFlows(prevFlows => prevFlows.map(f => f.id === flow.id ? {...f, status: newStatus, lastModified: new Date().toISOString()} : f));
         toast({ title: "Status Alterado", description: `Fluxo "${flow.name}" agora está ${newStatus === 'active' ? 'ativo' : (newStatus === 'draft' ? 'como rascunho' : 'arquivado')}.` });
@@ -152,7 +175,12 @@ export default function MeusFluxosPage() {
 
       <Card className="shadow-md flex-grow">
         <CardContent className="p-0 h-full">
-          {isLoading ? (
+          {authLoading ? (
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-10">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                <p className="text-lg">Carregando dados do usuário...</p>
+            </div>
+          ) : isLoading ? (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-10">
                 <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
                 <p className="text-lg">Carregando fluxos...</p>
@@ -261,4 +289,3 @@ export default function MeusFluxosPage() {
     </div>
   );
 }
-
