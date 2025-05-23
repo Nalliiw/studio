@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { UserRole } from '@/types'; 
-import { SlidersHorizontal, Home, ClipboardList, PlaySquare, Award, LayoutDashboard, Users, Workflow, Library, Sparkles, CalendarDays, UsersRound, Settings2 } from 'lucide-react';
+import { SlidersHorizontal, Home, ClipboardList, PlaySquare, Award, LayoutDashboard, Users, Workflow, Library, CalendarDays, UsersRound, Settings2, ImageIcon } from 'lucide-react'; // Added ImageIcon
 import MobileMoreOptionsSheet from './mobile-more-options-sheet';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -24,8 +24,8 @@ interface BottomNavigationProps {
 }
 
 // Main nav items that might appear directly on the bottom bar
-const mainBottomNavLinksPatient: string[] = ['/inicio', '/formulario', '/conteudos', '/minha-agenda']; // Removed '/conquistas' to make space
-const mainBottomNavLinksSpecialist: string[] = ['/dashboard-especialista', '/pacientes', '/flowbuilder/meus-fluxos', '/agenda-especialista']; // Removed '/biblioteca' and '/equipe'
+const mainBottomNavLinksPatient: string[] = ['/inicio', '/formulario', '/conteudos', '/minha-agenda'];
+const mainBottomNavLinksSpecialist: string[] = ['/dashboard-especialista', '/pacientes', '/flowbuilder/meus-fluxos', '/agenda-especialista'];
 const mainBottomNavLinksAdmin: string[] = ['/dashboard-geral', '/empresas', '/relatorios-gerais'];
 
 
@@ -68,9 +68,11 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
       allRoleSpecificNavItems = [];
   }
   
-  const displayItems = allRoleSpecificNavItems.filter(item => relevantMainLinks.includes(item.href)).slice(0, 3);
-  // Items for "More" sheet are all role-specific items NOT already in displayItems
-  const moreSheetItems = allRoleSpecificNavItems.filter(item => !displayItems.find(displayed => displayed.href === item.href));
+  // Use ImageIcon for the home/logo link
+  const HomeIcon = ImageIcon; 
+
+  const displayItems = allRoleSpecificNavItems.filter(item => relevantMainLinks.includes(item.href) && item.href !== homePath).slice(0, 3);
+  const moreSheetItems = allRoleSpecificNavItems.filter(item => !displayItems.find(displayed => displayed.href === item.href) && item.href !== homePath);
 
 
   return (
@@ -81,7 +83,7 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
             className="flex flex-none flex-col items-center justify-center p-1 text-xs text-muted-foreground hover:bg-muted/50 w-1/5 max-w-[70px]"
             aria-label="Página Inicial"
         >
-            <Sparkles className={cn("h-6 w-6", pathname === homePath ? "text-primary" : "")} />
+            <HomeIcon className={cn("h-6 w-6", pathname === homePath ? "text-primary" : "")} />
             <span className="truncate text-[10px] leading-tight mt-0.5">Início</span>
         </Link>
 
@@ -129,3 +131,4 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
     </>
   );
 }
+
