@@ -3,7 +3,7 @@
 'use server';
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { getTeamMemberById, updateTeamMember, deleteTeamMember } from '@/services/teamService';
+import { getTeamMemberById, updateTeamMember, deleteTeamMember, activateTeamMember } from '@/services/teamService';
 import { z } from 'zod';
 import type { ClinicAccessType } from '@/types';
 
@@ -17,6 +17,10 @@ const updateTeamMemberSchema = z.object({
   specialtiesRaw: z.string().optional(), 
   status: z.enum(['active', 'pending_invitation', 'inactive']).optional(),
 }).strict(); 
+
+const patchTeamMemberActionSchema = z.object({
+    action: z.enum(['activate']),
+});
 
 export async function GET(
   request: NextRequest,
@@ -81,6 +85,45 @@ export async function PUT(
     return NextResponse.json({ error: 'Falha ao atualizar membro da equipe.', details: errorMessage }, { status: 500 });
   }
 }
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { memberId: string } }
+) {
+  console.log(`API PATCH /api/team/${params.memberId} atingida`);
+  try {
+    const memberId = params.memberId;
+    if (!memberId) {
+      return NextResponse.json({ error: 'ID do membro não fornecido' }, { status: 400 });
+    }
+    const json = await request.json();
+    console.log("Payload recebido em PATCH /api/team/[memberId]:", json);
+
+    const parsedAction = patchTeamMemberActionSchema.safeParse(json);
+
+    if (!parsedAction.success) {
+      console.error("Erro de validação da ação PATCH /api/team/[memberId]:", parsedAction.error.flatten());
+      return NextResponse.json({ error: 'Ação inválida ou dados de entrada incorretos', details: parsedAction.error.flatten() }, { status: 400 });
+    }
+
+    if (parsedAction.data.action === 'activate') {
+      await activateTeamMember(memberId);
+      console.log("Membro da equipe ativado com sucesso:", memberId);
+      return NextResponse.json({ message: 'Convite do membro da equipe ativado com sucesso.' }, { status: 200 });
+    } else {
+      return NextResponse.json({ error: 'Ação não suportada.' }, { status: 400 });
+    }
+
+  } catch (error) {
+    console.error('API Error patching team member (e.g., activating):', error);
+    const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
+    if (errorMessage.includes('Firestore (db) não está inicializado')) {
+      return NextResponse.json({ error: 'Serviço Indisponível: Backend (Firebase) não conectado.', details: errorMessage }, { status: 503 });
+    }
+    return NextResponse.json({ error: 'Falha ao processar ação para membro da equipe.', details: errorMessage }, { status: 500 });
+  }
+}
+
 
 export async function DELETE(
   request: NextRequest,

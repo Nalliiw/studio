@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { PlusCircle, UsersRound, List, Edit, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { PlusCircle, UsersRound, List, Edit, Trash2, Loader2, AlertTriangle, CheckCircle, MailQuestion } from 'lucide-react';
 import Link from 'next/link';
 import type { TeamMember } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,13 +16,15 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
 export default function EquipePage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth(); // Renomeado loading para authLoading para evitar conflito
   const router = useRouter();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isActivating, setIsActivating] = useState<string | null>(null);
+
 
   useEffect(() => {
     const fetchTeamMembers = async () => {
@@ -62,18 +64,13 @@ export default function EquipePage() {
       }
     };
 
-    if (user) { 
+    if (!authLoading && user) { 
       fetchTeamMembers();
-    } else {
-      // Se o usuário não estiver carregado, não tentamos buscar
-      // Isso ajuda a evitar chamadas desnecessárias ou erros se user.companyId não estiver pronto
-      if (!authLoading) { // authLoading é um exemplo, use a variável real do seu useAuth se existir
+    } else if (!authLoading && !user) {
         setError("Usuário não autenticado.");
-      }
-      setIsLoading(false); 
+        setIsLoading(false); 
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // Adicionando user?.companyId explicitamente se authLoading não for usado
+  }, [user, authLoading]);
 
   const getAccessTypeText = (accessType: TeamMember['accessType']) => {
     if (accessType === 'administrador_clinica') return 'Admin da Clínica';
@@ -90,9 +87,9 @@ export default function EquipePage() {
 
   const getStatusBadgeVariant = (status?: TeamMember['status']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
-        case 'active': return 'default';
-        case 'pending_invitation': return 'secondary';
-        case 'inactive': return 'outline';
+        case 'active': return 'default'; // Greenish
+        case 'pending_invitation': return 'secondary'; // Yellowish
+        case 'inactive': return 'outline'; // Grayish
         default: return 'outline';
     }
   };
@@ -128,6 +125,34 @@ export default function EquipePage() {
     }
   };
 
+  const handleActivateInvitation = async (member: TeamMember) => {
+    setIsActivating(member.id);
+    try {
+      const response = await fetch(`/api/team/${member.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'activate' }),
+      });
+      const responseData = await response.json();
+      if (!response.ok) {
+        throw new Error(responseData.error || 'Falha ao ativar convite.');
+      }
+      setTeamMembers(prev => 
+        prev.map(m => m.id === member.id ? { ...m, status: 'active', invitationToken: undefined } : m)
+      );
+      toast({ title: "Convite Ativado!", description: `O membro "${member.name}" foi ativado.` });
+    } catch (err) {
+      console.error("Erro ao ativar convite:", err);
+      toast({
+        title: "Erro ao Ativar",
+        description: err instanceof Error ? err.message : "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsActivating(null);
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -160,7 +185,7 @@ export default function EquipePage() {
           {!isLoading && error && <CardDescription className="text-destructive">Erro: {error}</CardDescription>}
         </CardHeader>
         <CardContent>
-          {isLoading && !user ? ( 
+          {authLoading ? ( 
             <div className="h-40 flex flex-col items-center justify-center text-muted-foreground">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
               <p>Carregando dados do usuário...</p>
@@ -214,12 +239,23 @@ export default function EquipePage() {
                       </p>
                     )}
                   </div>
-                  <div className="flex gap-2 self-start sm:self-center shrink-0 mt-2 sm:mt-0">
+                  <div className="flex flex-wrap gap-2 self-start sm:self-center shrink-0 mt-2 sm:mt-0">
+                    {member.status === 'pending_invitation' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleActivateInvitation(member)}
+                        disabled={isActivating === member.id}
+                        className="border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700"
+                      >
+                        {isActivating === member.id ? <Loader2 className="h-3 w-3 animate-spin sm:mr-1.5" /> : <CheckCircle className="h-3 w-3 sm:mr-1.5" />}
+                        <span className="hidden sm:inline">Ativar Convite</span>
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => handleEditMember(member.id)}>
                         <Edit className="h-3 w-3 sm:mr-1.5" />
                         <span className="hidden sm:inline">Editar</span>
                     </Button>
-                    {/* AlertDialogTrigger foi removido daqui */}
                     <Button variant="destructive" size="sm" onClick={() => setMemberToDelete(member)}>
                         <Trash2 className="h-3 w-3 sm:mr-1.5" />
                         <span className="hidden sm:inline">Excluir</span>
@@ -262,4 +298,3 @@ export default function EquipePage() {
     </div>
   );
 }
-

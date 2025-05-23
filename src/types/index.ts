@@ -121,8 +121,8 @@ export interface TeamMember {
   status: 'active' | 'pending_invitation' | 'inactive';
   createdAt: any; // Firestore Timestamp or string ISO
   addedBy: string; // User ID of who added this member
+  invitationToken?: string; // Token para o fluxo de convite
 }
 
 // Partial type for updating a team member, making most fields optional
-export type UpdateTeamMemberData = Partial<Omit<TeamMember, 'id' | 'clinicId' | 'createdAt' | 'addedBy'>>;
-
+export type UpdateTeamMemberData = Partial<Omit<TeamMember, 'id' | 'clinicId' | 'createdAt' | 'addedBy' | 'invitationToken'>>;
