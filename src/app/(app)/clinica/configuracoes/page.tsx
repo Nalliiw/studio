@@ -26,13 +26,15 @@ const clinicConfigSchema = z.object({
 
 type ClinicConfigFormValues = z.infer<typeof clinicConfigSchema>;
 
-const placeholderCompanyData: Omit<Company, 'createdAt' | 'lastModified'> = {
+const placeholderCompanyData: Company = {
   id: 'new_clinic_placeholder',
   name: 'Nova Clínica (Preencha o Nome)',
-  cnpj: '00.000.000/0000-00',
+  cnpj: '00.000.000/0000-00', // Default CNPJ placeholder
   logoUrl: undefined,
   nutritionistCount: 0,
   status: 'active',
+  createdAt: new Date().toISOString(),
+  lastModified: new Date().toISOString(),
 };
 
 export default function ConfiguracoesClinicaPage() {
@@ -41,6 +43,7 @@ export default function ConfiguracoesClinicaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isNotFound, setIsNotFound] = useState(false);
+  const [isPermissionError, setIsPermissionError] = useState(false);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -67,6 +70,7 @@ export default function ConfiguracoesClinicaPage() {
     setIsLoading(true);
     setError(null);
     setIsNotFound(false);
+    setIsPermissionError(false);
 
     try {
       const response = await fetch(`/api/companies/${user.companyId}`);
@@ -74,7 +78,8 @@ export default function ConfiguracoesClinicaPage() {
       
       if (!response.ok) {
         let errorForState: string | null = errorMessage; 
-        let toastMessage = errorMessage; 
+        let toastMessage = errorMessage;
+        let isPermError = false;
 
         try {
           const errorText = await response.text();
@@ -86,21 +91,41 @@ export default function ConfiguracoesClinicaPage() {
 
           if (errorText) {
             const errorData = JSON.parse(errorText); 
-            const detailMessage = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null) || errorData.error || errorData.message;
-            errorMessage = detailMessage || errorText;
+            // Prioritize details.message, then details (if string), then errorData.error, then errorData.message
+            const detailMsg = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null);
+            errorMessage = detailMsg || errorData.error || errorData.message || errorText;
+            
             toastMessage = `Detalhes: ${errorMessage}`;
+            if (typeof errorMessage === 'string' && (errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permiss'))) {
+                isPermError = true;
+            }
           }
         } catch (e) {
           console.error("Failed to parse error response or read text (fetchCompanyData):", e);
         }
 
         if (response.status === 404) {
-          const placeholderForNew = { ...placeholderCompanyData, id: user.companyId, cnpj: user.companyCnpj || placeholderCompanyData.cnpj }; // Use user's CNPJ if available
-          setCompanyData(placeholderForNew as Company); 
+          const placeholderForNew = { ...placeholderCompanyData, id: user.companyId, cnpj: user.companyCnpj || placeholderCompanyData.cnpj };
+          setCompanyData(placeholderForNew); 
           form.reset({ name: placeholderForNew.name });
           setImagePreviewUrl(null);
           setIsNotFound(true);
           errorForState = "Clínica não encontrada. Preencha o nome para cadastrá-la.";
+        } else if (isPermError) {
+            setIsPermissionError(true);
+            // Use the specific permission error message from parsed details if available
+            const specificPermError = errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permiss') ? errorMessage : "Permissões insuficientes no Firestore. Verifique as regras de segurança.";
+            errorForState = specificPermError; 
+            toast({
+                title: "Erro de Permissão",
+                description: specificPermError,
+                variant: "destructive",
+            });
+            // Fallback to placeholder data so UI remains usable for dev
+            const placeholderForPermError = { ...placeholderCompanyData, id: user.companyId, cnpj: user.companyCnpj || placeholderCompanyData.cnpj };
+            setCompanyData(placeholderForPermError);
+            form.reset({ name: placeholderForPermError.name });
+            setImagePreviewUrl(null);
         } else {
           toast({
               title: "Erro ao Carregar Dados da Clínica",
@@ -134,7 +159,7 @@ export default function ConfiguracoesClinicaPage() {
       setIsLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.companyId, user?.companyCnpj]); // Added user.companyCnpj
+  }, [user?.companyId, user?.companyCnpj]); 
 
   useEffect(() => {
     if (user) { 
@@ -150,6 +175,15 @@ export default function ConfiguracoesClinicaPage() {
       return;
     }
     
+    if (isPermissionError) {
+        toast({
+            title: "Ação Bloqueada",
+            description: "Não é possível salvar devido a erro de permissão. Verifique as regras do Firestore.",
+            variant: "destructive",
+        });
+        return;
+    }
+
     const currentCnpj = companyData?.cnpj || user?.companyCnpj || placeholderCompanyData.cnpj;
 
     const payload: { name: string; cnpj?: string } = {
@@ -175,8 +209,8 @@ export default function ConfiguracoesClinicaPage() {
             if (errorText) {
                 try {
                     const errorData = JSON.parse(errorText);
-                    const specificDetail = errorData.details || errorData.error || errorData.message;
-                    errorMessage = specificDetail || (errorText.length < 200 && !errorText.trim().startsWith('<') ? errorText : `Erro ${response.status}`);
+                    const detailMsg = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null);
+                    errorMessage = detailMsg || errorData.error || errorData.message || (errorText.length < 200 && !errorText.trim().startsWith('<') ? errorText : `Erro ${response.status}`);
                 } catch (jsonParseError) {
                      if (errorText.length < 200 && !errorText.trim().startsWith('<')) { 
                         errorMessage = errorText;
@@ -193,12 +227,13 @@ export default function ConfiguracoesClinicaPage() {
       }
       
       const updatedCompany: Company = await response.json();
-      toast({ title: "Sucesso!", description: "Nome da clínica atualizado." });
+      toast({ title: "Sucesso!", description: `Clínica "${updatedCompany.name}" ${isNotFound ? 'registrada' : 'atualizada'} com sucesso.` });
       setCompanyData(updatedCompany); 
       form.reset({ name: updatedCompany.name });
       if (updatedCompany.logoUrl) setImagePreviewUrl(updatedCompany.logoUrl);
       setIsNotFound(false); 
       setError(null); 
+      setIsPermissionError(false); // Clear permission error on successful save
     } catch (error) {
       console.error("Erro ao atualizar clínica:", error);
       toast({
@@ -216,7 +251,7 @@ export default function ConfiguracoesClinicaPage() {
         toast({ title: "Arquivo Muito Grande", description: "Por favor, selecione um arquivo menor que 5MB.", variant: "destructive"});
         setSelectedFile(null);
         setImagePreviewUrl(companyData?.logoUrl || null);
-        if (event.target) event.target.value = ""; // Clear file input
+        if (event.target) event.target.value = ""; 
         return;
       }
       setSelectedFile(file);
@@ -237,6 +272,14 @@ export default function ConfiguracoesClinicaPage() {
       console.error("Firebase Storage instance is not available in handleSaveLogo.");
       return;
     }
+     if (isPermissionError) {
+        toast({
+            title: "Ação Bloqueada",
+            description: "Não é possível salvar o logo devido a erro de permissão. Verifique as regras do Firestore/Storage.",
+            variant: "destructive",
+        });
+        return;
+    }
 
     setIsUploading(true);
     const storageRef = ref(storage, `clinic_logos/${user.companyId}/${Date.now()}_${selectedFile.name}`);
@@ -247,7 +290,7 @@ export default function ConfiguracoesClinicaPage() {
         // const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
         // console.log('Upload is ' + progress + '% done');
       },
-      (error: FirebaseStorageError) => { // Specific type for Firebase Storage errors
+      (error: FirebaseStorageError) => { 
         console.error("Erro no upload do logo:", error);
         let description = `Falha ao enviar logo: ${error.message}`;
         if (error.code === 'storage/unauthorized') {
@@ -271,17 +314,18 @@ export default function ConfiguracoesClinicaPage() {
             let errorDetail = 'Falha ao salvar URL do logo no banco de dados.';
             try {
                 const errorData = await apiResponse.json();
-                errorDetail = errorData.error || errorData.details?.message || errorDetail;
+                const detailMsg = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null);
+                errorDetail = detailMsg || errorData.error || errorData.message || errorDetail;
             } catch (e) { /* ignore parsing error */ }
             throw new Error(errorDetail);
           }
           
           const updatedCompanyData: Company = await apiResponse.json();
-          setCompanyData(prev => ({ ...prev, ...updatedCompanyData } as Company)); // Ensure all fields are updated
+          setCompanyData(prev => ({ ...prev, ...updatedCompanyData } as Company)); 
           setImagePreviewUrl(downloadURL);
-          setSelectedFile(null); // Clear selected file after successful upload
+          setSelectedFile(null); 
           const fileInput = document.getElementById('logoUpload') as HTMLInputElement;
-          if (fileInput) fileInput.value = ''; // Clear the file input visually
+          if (fileInput) fileInput.value = ''; 
 
           toast({ title: "Sucesso!", description: "Logo da clínica atualizado." });
         } catch (apiError) {
@@ -316,14 +360,21 @@ export default function ConfiguracoesClinicaPage() {
         <p className="text-muted-foreground">Gerencie as informações e preferências da sua clínica.</p>
       </div>
 
-      {isNotFound && (
+      {isPermissionError && (
+         <Alert variant="destructive">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle>Erro de Permissão no Firestore!</AlertTitle>
+          <AlertDescription>Não foi possível carregar ou salvar os dados da sua clínica devido a permissões insuficientes no Firestore. Por favor, verifique as Regras de Segurança do seu banco de dados no Console do Firebase. Os dados exibidos podem ser placeholders e as alterações não serão salvas permanentemente até que as permissões sejam corrigidas.</AlertDescription>
+        </Alert>
+      )}
+      {isNotFound && !isPermissionError && (
          <Alert variant="default" className="border-primary/50 text-primary bg-primary/10">
           <AlertTriangle className="h-5 w-5 !text-primary" />
           <AlertTitle>Nova Clínica</AlertTitle>
-          <AlertDescription>Clínica não encontrada. Preencha o nome abaixo para registrá-la. O CNPJ será o padrão ou o associado ao seu usuário e não pode ser alterado aqui inicialmente.</AlertDescription>
+          <AlertDescription>Clínica não encontrada. Preencha o nome abaixo para registrá-la. O CNPJ será o associado ao seu usuário (se houver) ou um valor padrão, e não pode ser alterado aqui inicialmente.</AlertDescription>
         </Alert>
       )}
-      {error && !isNotFound && (
+      {error && !isNotFound && !isPermissionError && (
          <Alert variant="destructive">
           <AlertTriangle className="h-5 w-5" />
           <AlertTitle>Erro ao Carregar Dados</AlertTitle>
@@ -345,7 +396,7 @@ export default function ConfiguracoesClinicaPage() {
                   <FormItem>
                     <FormLabel htmlFor="clinicName">Nome da Clínica</FormLabel>
                     <FormControl>
-                      <Input id="clinicName" placeholder="Nome da sua clínica" {...field} disabled={isLoading && !!companyData && !isNotFound} />
+                      <Input id="clinicName" placeholder="Nome da sua clínica" {...field} disabled={(isLoading && !!companyData && !isNotFound && !isPermissionError)} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -360,7 +411,7 @@ export default function ConfiguracoesClinicaPage() {
               )}
             </CardContent>
             <CardFooter className="border-t pt-6">
-              <Button type="submit" disabled={form.formState.isSubmitting || (isLoading && !!companyData && !isNotFound) }>
+              <Button type="submit" disabled={form.formState.isSubmitting || (isLoading && !!companyData && !isNotFound && !isPermissionError) || isPermissionError}>
                 {form.formState.isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -411,7 +462,7 @@ export default function ConfiguracoesClinicaPage() {
           </div>
         </CardContent>
         <CardFooter className="border-t pt-6">
-          <Button onClick={handleSaveLogo} disabled={!selectedFile || isUploading || !user?.companyId || !storage}>
+          <Button onClick={handleSaveLogo} disabled={!selectedFile || isUploading || !user?.companyId || !storage || isPermissionError}>
             {isUploading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -424,3 +475,4 @@ export default function ConfiguracoesClinicaPage() {
     </div>
   );
 }
+
