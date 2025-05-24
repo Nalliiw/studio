@@ -14,7 +14,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/hooks/use-toast';
-import type { Company } from '@/types';
+import type { Company, User } from '@/types'; // Added User
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL, type FirebaseStorageError } from "firebase/storage";
 import Image from 'next/image';
@@ -38,7 +38,7 @@ const placeholderCompanyData: Company = {
 };
 
 export default function ConfiguracoesClinicaPage() {
-  const { user } = useAuth();
+  const { user } = useAuth() as { user: User | null }; // Ensure user type for companyId & companyCnpj
   const [companyData, setCompanyData] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +95,7 @@ export default function ConfiguracoesClinicaPage() {
             errorMessage = detailMsg || errorText;
 
             toastMessage = `Detalhes: ${errorMessage}`;
-            if (typeof errorMessage === 'string' && (errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permissões insuficientes'))) {
+            if (typeof errorMessage === 'string' && (errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permissões insuficientes') || errorMessage.toLowerCase().includes('insufficient permissions'))) {
                 isPermError = true;
             }
           }
@@ -120,9 +120,9 @@ export default function ConfiguracoesClinicaPage() {
             errorForState = specificPermError;
             toast({
                 title: "Erro de Permissão no Firestore!",
-                description: "Não foi possível carregar os dados da sua clínica devido a permissões insuficientes no Firestore. Por favor, VERIFIQUE AS REGRAS DE SEGURANÇA do seu banco de dados no Console do Firebase. Os dados exibidos podem ser placeholders e as alterações não serão salvas permanentemente até que as permissões sejam corrigidas.",
+                description: "Não foi possível carregar os dados da sua clínica. POR FAVOR, VERIFIQUE AS REGRAS DE SEGURANÇA do seu Firestore no Console do Firebase. Para teste, use 'allow read, write: if true;' na coleção 'companies'. Os dados exibidos podem ser placeholders.",
                 variant: "destructive",
-                duration: 10000,
+                duration: 15000,
             });
             const placeholderForPermError = {
               ...placeholderCompanyData,
@@ -166,7 +166,7 @@ export default function ConfiguracoesClinicaPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.companyId, user?.companyCnpj, form]);
+  }, [user, form]);
 
   useEffect(() => {
     if (user) {
@@ -197,6 +197,7 @@ export default function ConfiguracoesClinicaPage() {
       name: data.name,
     };
 
+    // Only include CNPJ if creating or if it's explicitly part of the update
     if (isNotFound || (companyData && !companyData.cnpj && currentCnpj !== placeholderCompanyData.cnpj) || (companyData && companyData.cnpj) ) {
         payload.cnpj = currentCnpj;
     }
@@ -216,11 +217,12 @@ export default function ConfiguracoesClinicaPage() {
             if (errorText) {
                 try {
                     const errorData = JSON.parse(errorText);
-                    const detailMsg = errorData.details || errorData.error || errorData.message;
-                    errorMessage = detailMsg || (errorText.length < 200 && !errorText.trim().startsWith('<') ? errorText : `Erro ${response.status}`);
+                    // Prioritize 'details' if it's a string or has a message, then 'error', then 'message'
+                    const detailMsg = (typeof errorData.details === 'string' ? errorData.details : errorData.details?.message);
+                    errorMessage = detailMsg || errorData.error || errorData.message || (errorText.length < 200 && !errorText.trim().startsWith('<') ? errorText : `Erro ${response.status}`);
                 } catch (jsonParseError) {
                      if (errorText.length < 200 && !errorText.trim().startsWith('<')) {
-                        errorMessage = errorText;
+                        errorMessage = errorText; // Use raw text if not too long and not HTML
                     } else {
                          errorMessage = `Erro ${response.status}: Falha ao processar resposta do servidor.`;
                     }
@@ -314,7 +316,7 @@ export default function ConfiguracoesClinicaPage() {
           const apiResponse = await fetch(`/api/companies/${user.companyId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ logoUrl: downloadURL }),
+            body: JSON.stringify({ logoUrl: downloadURL }), // Only send logoUrl
           });
 
           if (!apiResponse.ok) {
@@ -371,7 +373,7 @@ export default function ConfiguracoesClinicaPage() {
          <Alert variant="destructive">
           <AlertTriangle className="h-5 w-5" />
           <AlertTitle>Erro de Permissão no Firestore!</AlertTitle>
-          <AlertDescription>Não foi possível carregar ou salvar os dados da sua clínica devido a permissões insuficientes no Firestore. Por favor, **VERIFIQUE AS REGRAS DE SEGURANÇA** do seu banco de dados no Console do Firebase. Os dados exibidos são placeholders e as alterações não serão salvas permanentemente até que as permissões sejam corrigidas.</AlertDescription>
+          <AlertDescription>Não foi possível carregar ou salvar os dados da sua clínica. **VERIFIQUE SUAS REGRAS DE SEGURANÇA DO FIRESTORE NO CONSOLE DO FIREBASE.** Para teste inicial, você pode usar `allow read, write: if true;` na coleção `companies`. Os dados exibidos são placeholders e as alterações não serão salvas.</AlertDescription>
         </Alert>
       )}
       {isNotFound && !isPermissionError && (
@@ -403,7 +405,7 @@ export default function ConfiguracoesClinicaPage() {
                   <FormItem>
                     <FormLabel htmlFor="clinicName">Nome da Clínica</FormLabel>
                     <FormControl>
-                      <Input id="clinicName" placeholder="Nome da sua clínica" {...field} disabled={(isLoading && !!companyData && !isNotFound && !isPermissionError) || isPermissionError} />
+                      <Input id="clinicName" placeholder="Nome da sua clínica" {...field} disabled={isLoading || isPermissionError} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -418,7 +420,7 @@ export default function ConfiguracoesClinicaPage() {
               )}
             </CardContent>
             <CardFooter className="border-t pt-6">
-              <Button type="submit" disabled={form.formState.isSubmitting || (isLoading && !!companyData && !isNotFound && !isPermissionError) || isPermissionError}>
+              <Button type="submit" disabled={form.formState.isSubmitting || isLoading || isPermissionError}>
                 {form.formState.isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -463,14 +465,14 @@ export default function ConfiguracoesClinicaPage() {
                 accept="image/png, image/jpeg, image/gif, image/webp"
                 onChange={handleFileChange}
                 className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                disabled={isPermissionError}
+                disabled={isPermissionError || isLoading}
               />
               {selectedFile && <p className="text-xs text-muted-foreground mt-1">Arquivo selecionado: {selectedFile.name}</p>}
             </div>
           </div>
         </CardContent>
         <CardFooter className="border-t pt-6">
-          <Button onClick={handleSaveLogo} disabled={!selectedFile || isUploading || !user?.companyId || !storage || isPermissionError}>
+          <Button onClick={handleSaveLogo} disabled={!selectedFile || isUploading || !user?.companyId || !storage || isPermissionError || isLoading}>
             {isUploading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
