@@ -7,9 +7,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { UserRole } from '@/types'; 
-import { SlidersHorizontal, Home, ClipboardList, PlaySquare, Award, LayoutDashboard, Users, Workflow, Library, CalendarDays, UsersRound, Settings2, ImageIcon } from 'lucide-react'; // Added ImageIcon
+import { SlidersHorizontal, Home, ClipboardList, PlaySquare, Award, LayoutDashboard, Users, Workflow, Library, CalendarDays, UsersRound, Settings2, ImageIcon } from 'lucide-react';
 import MobileMoreOptionsSheet from './mobile-more-options-sheet';
 import { useAuth } from '@/hooks/useAuth';
+import Image from 'next/image'; // Added for next/image
 
 interface NavItem {
   href: string;
@@ -24,15 +25,15 @@ interface BottomNavigationProps {
 }
 
 // Main nav items that might appear directly on the bottom bar
-const mainBottomNavLinksPatient: string[] = ['/inicio', '/formulario', '/conteudos', '/minha-agenda'];
-const mainBottomNavLinksSpecialist: string[] = ['/dashboard-especialista', '/pacientes', '/flowbuilder/meus-fluxos', '/agenda-especialista'];
-const mainBottomNavLinksAdmin: string[] = ['/dashboard-geral', '/empresas', '/relatorios-gerais'];
+const mainBottomNavLinksPatient: string[] = ['/formulario', '/conteudos', '/minha-agenda']; // Removed /inicio as logo takes its place
+const mainBottomNavLinksSpecialist: string[] = ['/pacientes', '/flowbuilder/meus-fluxos', '/agenda-especialista']; // Removed dashboard as logo takes its place
+const mainBottomNavLinksAdmin: string[] = ['/empresas', '/relatorios-gerais']; // Removed dashboard as logo takes its place
 
 
 export default function BottomNavigation({ userNavItems }: BottomNavigationProps) {
   const pathname = usePathname();
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, company } = useAuth(); // Added company from useAuth
   const [clientHasMounted, setClientHasMounted] = useState(false);
 
   useEffect(() => {
@@ -68,9 +69,6 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
       allRoleSpecificNavItems = [];
   }
   
-  // Use ImageIcon for the home/logo link
-  const HomeIcon = ImageIcon; 
-
   const displayItems = allRoleSpecificNavItems.filter(item => relevantMainLinks.includes(item.href) && item.href !== homePath).slice(0, 3);
   const moreSheetItems = allRoleSpecificNavItems.filter(item => !displayItems.find(displayed => displayed.href === item.href) && item.href !== homePath);
 
@@ -83,7 +81,11 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
             className="flex flex-none flex-col items-center justify-center p-1 text-xs text-muted-foreground hover:bg-muted/50 w-1/5 max-w-[70px]"
             aria-label="Página Inicial"
         >
-            <HomeIcon className={cn("h-6 w-6", pathname === homePath ? "text-primary" : "")} />
+            {company?.logoUrl ? (
+              <Image src={company.logoUrl} alt="Logo da Clínica" width={24} height={24} className="h-6 w-6 object-contain rounded-sm" data-ai-hint="company logo small"/>
+            ) : (
+              <ImageIcon className={cn("h-6 w-6", pathname === homePath ? "text-primary" : "")} />
+            )}
             <span className="truncate text-[10px] leading-tight mt-0.5">Início</span>
         </Link>
 
@@ -131,4 +133,3 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
     </>
   );
 }
-

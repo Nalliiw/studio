@@ -5,8 +5,9 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-import { PanelLeft, PanelRight, PanelLeftOpen, PanelRightOpen, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react" // Added ImageIcon
+import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react" // Changed from Sparkles to ImageIcon
 import * as SheetPrimitive from "@radix-ui/react-dialog";
+import Image from 'next/image'; // Added for next/image
 
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -22,6 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useAuth } from "@/hooks/useAuth"; // Added useAuth to get company data
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -291,8 +293,8 @@ const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      <PanelLeft />
-      <span className="sr-only">Toggle Sidebar</span>
+      <ChevronLeft /> {/* Changed from PanelLeft to ChevronLeft for toggle */}
+      <span className="sr-only">Alternar Menu Lateral</span>
     </Button>
   )
 })
@@ -331,7 +333,7 @@ const SidebarRail = React.forwardRef<
       aria-label={state === "expanded" ? "Recolher menu" : "Expandir menu"}
       className={cn(
         "absolute z-20",
-        "h-6 w-6 p-1 rounded-full",
+        "h-7 w-7 rounded-full p-0", // Adjusted size and padding for a tighter look
         "bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         "border border-sidebar-border shadow-sm",
         "hidden md:flex items-center justify-center",
@@ -386,47 +388,50 @@ const SidebarHeader = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div">
 >(({ className, children, ...props }, ref) => {
+  const { company } = useAuth(); // Get company data from AuthContext
+  const { state, collapsible } = useSidebar(); // Get sidebar state
+
+  const isIconOnlyCollapsed = state === "collapsed" && collapsible === "icon";
+
   return (
     <div
       ref={ref}
       data-sidebar="header"
       className={cn(
-        "flex flex-col gap-2 p-4", // Default state
-        "group-data-[state=collapsed]:group-data-[collapsible=icon]:items-center group-data-[state=collapsed]:group-data-[collapsible=icon]:py-4 group-data-[state=collapsed]:group-data-[collapsible=icon]:px-2", // Icon-only collapsed state
+        "flex flex-col gap-2 p-4 items-center", // Center items by default
+        isIconOnlyCollapsed && "py-4 px-2", // Specific padding for icon-only collapsed
         className
       )}
       {...props}
     >
-      <SidebarRail /> {/* This button is for collapsing/expanding */}
+      <SidebarRail />
 
-      {/* Placeholder for Clinic Logo (Expanded state) */}
       <div className={cn(
-        "flex flex-col items-center", // Centering the logo
-        "group-data-[state=expanded]:flex", // Show when expanded
-        "group-data-[state=collapsed]:group-data-[collapsible=icon]:hidden" // Hide when icon-collapsed
+        "flex justify-center w-full",
+        isIconOnlyCollapsed ? "mt-12 mb-2" : "mb-2" // Adjust top margin for logo/favicon based on collapsed state
       )}>
-        <div className="p-1 rounded-md bg-sidebar-primary/10 text-sidebar-primary w-fit">
-          {/* Use a generic icon as placeholder for the clinic's actual logo */}
-          <ImageIcon className="h-8 w-8" />
-        </div>
-         {/* White-label: No "NutriTrack Lite" text here */}
+        {company?.logoUrl ? (
+          <Image
+            src={company.logoUrl}
+            alt={company.name || "Logo da Clínica"}
+            width={isIconOnlyCollapsed ? 32 : 80} // Smaller for favicon, larger for logo
+            height={isIconOnlyCollapsed ? 32 : 80}
+            className={cn("object-contain", isIconOnlyCollapsed ? "rounded-sm" : "rounded-md")}
+            data-ai-hint="company logo"
+          />
+        ) : (
+          <div className={cn(
+            "flex items-center justify-center bg-sidebar-primary/10 text-sidebar-primary rounded-md",
+            isIconOnlyCollapsed ? "h-8 w-8 p-1" : "h-16 w-16 p-2" // Placeholder size
+          )}>
+            <ImageIcon className={isIconOnlyCollapsed ? "h-5 w-5" : "h-10 w-10"} />
+          </div>
+        )}
       </div>
 
-      {/* Placeholder for Clinic Favicon (Collapsed icon-only state) */}
-      <div className={cn(
-        "flex justify-center w-full", // Centering the icon
-        "group-data-[state=collapsed]:group-data-[collapsible=icon]:flex", // Show ONLY when icon-collapsed
-        "group-data-[state=expanded]:hidden", // Hide when expanded
-        "mt-12 mb-2" // Adjusted margin for spacing when collapsed
-      )}>
-         {/* Use a smaller generic icon as placeholder for the clinic's favicon */}
-        <ImageIcon className="h-6 w-6 text-sidebar-primary" />
-      </div>
-
-      {/* Original children prop, if any (e.g. search input), hidden when icon-collapsed */}
       <div className={cn(
         "group-data-[state=expanded]:block",
-        "group-data-[state=collapsed]:group-data-[collapsible=icon]:hidden"
+        isIconOnlyCollapsed && "hidden"
       )}>
         {children}
       </div>
@@ -833,5 +838,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
-    
