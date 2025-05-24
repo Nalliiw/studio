@@ -14,33 +14,28 @@ service cloud.firestore {
     // Regras para a coleção 'companies' (clínicas)
     match /companies/{companyId} {
       // PERMISSÃO DE LEITURA:
-      // Opção 1 (Mais segura, se companyId estiver no token JWT do usuário):
-      // Permite leitura se o usuário estiver autenticado e seu companyId (do token)
-      // corresponder ao ID do documento da empresa que está sendo lido.
-      // allow read: if request.auth != null && request.auth.token.companyId == companyId;
-
-      // Opção 2 (Mais simples para começar, se companyId não estiver no token):
+      // Opção 1 (Mais simples para começar):
       // Permite leitura se o usuário estiver autenticado. A lógica de qual empresa buscar
       // é controlada pela sua API (que usaria o companyId do perfil do usuário).
       allow read: if request.auth != null;
+      // Se quiser ser mais restritivo e usar custom claims (recomendado para produção):
+      // allow read: if request.auth != null && request.auth.token.companyId == companyId;
+
 
       // PERMISSÃO DE CRIAÇÃO:
       // Permite criação se o usuário estiver autenticado.
-      // Idealmente, restrinja isso. Se o admin da clínica cria sua própria empresa:
+      // Idealmente, restrinja isso para que apenas usuários específicos (ex: super-admin) ou
+      // administradores de clínica possam criar sua própria empresa.
+      // Se um admin de clínica cria sua própria empresa:
       // allow create: if request.auth != null && request.auth.token.companyId == companyId;
-      // (e o ID do documento deve ser o companyId)
-      // Por enquanto, para desbloquear:
+      // Por enquanto, para desbloquear e permitir a criação via página de configurações:
       allow create: if request.auth != null;
 
-      // PERMISSÃO DE ATUALIZAÇÃO:
-      // Opção 1 (Mais segura):
-      // Permite atualização se o usuário estiver autenticado e seu companyId (do token)
-      // corresponder ao ID do documento da empresa.
-      // allow update: if request.auth != null && request.auth.token.companyId == companyId;
 
-      // Opção 2 (Mais simples para começar):
+      // PERMISSÃO DE ATUALIZAÇÃO:
       // Permite atualização se o usuário estiver autenticado.
-      // A API deve validar se o usuário tem permissão para atualizar ESTA empresa.
+      // RESTRINJA MAIS PARA PRODUÇÃO! Idealmente, apenas o admin da clínica correspondente.
+      // Ex: allow update: if request.auth != null && request.auth.token.companyId == companyId;
       allow update: if request.auth != null;
 
       // PERMISSÃO DE EXCLUSÃO:
@@ -51,8 +46,8 @@ service cloud.firestore {
     // Regras para a coleção 'teamMembers' (membros da equipe da clínica)
     match /teamMembers/{memberId} {
       // Permite leitura se o usuário estiver autenticado e o clinicId do membro
-      // corresponder ao companyId (do token) do usuário.
-      // Isso permite que membros da mesma clínica vejam uns aos outros.
+      // corresponder ao companyId (do token, se usar custom claims) do usuário.
+      // Ou, de forma mais simples para começar: if request.auth != null; (e a API filtra)
       allow read: if request.auth != null && request.auth.token.companyId == resource.data.clinicId;
 
       // Permite criação se o usuário estiver autenticado e o clinicId do novo membro
@@ -61,7 +56,6 @@ service cloud.firestore {
 
       // Permite atualização se o usuário estiver autenticado e o clinicId do membro
       // corresponder ao companyId (do token) do usuário (admin da clínica).
-      // Você pode querer permitir que um membro edite seu próprio perfil também (ex: if request.auth.uid == memberId).
       allow update: if request.auth != null && request.auth.token.companyId == resource.data.clinicId;
 
       // Permite exclusão se o usuário estiver autenticado e o clinicId do membro
@@ -71,7 +65,7 @@ service cloud.firestore {
 
     // Regras para a coleção 'flows' (fluxos de acompanhamento)
     match /flows/{flowId} {
-      // Permite que o especialista (nutritionistId) que criou o fluxo o leia.
+      // Permite que o especialista (nutritionistId/specialistId) que criou o fluxo o leia.
       allow read: if request.auth != null && request.auth.uid == resource.data.nutritionistId;
 
       // Permite que um especialista crie um fluxo se o nutritionistId do novo fluxo
@@ -91,9 +85,9 @@ service cloud.firestore {
 ```
 
 **Nota sobre `request.auth.token.companyId`:**
-Esta condição assume que o `companyId` está disponível como um "Custom Claim" no token de autenticação do Firebase do usuário. Se você não configurou custom claims, você precisará:
-1.  Simplificar as regras (ex: `allow read: if request.auth != null;` para a coleção `companies`) e
-2.  Garantir que suas **API Routes no Next.js** façam a validação de que o usuário autenticado tem permissão para acessar/modificar os dados específicos da clínica. Por exemplo, ao buscar uma empresa, sua API deve usar o `companyId` do perfil do usuário logado (se disponível no frontend via `useAuth`) e não um `companyId` vindo diretamente do cliente sem validação.
+Esta condição assume que o `companyId` está disponível como um "Custom Claim" no token de autenticação do Firebase do usuário. Se você não configurou custom claims:
+1.  Para as regras `read` e `update` da coleção `companies`, você pode começar com a regra mais simples `if request.auth != null;` e garantir que suas **API Routes no Next.js** façam a validação de que o usuário autenticado tem permissão para acessar/modificar os dados específicos da clínica (usando o `user.companyId` do `useAuth`).
+2.  Para `teamMembers`, a validação na API se torna ainda mais crucial se você não usar custom claims nas regras do Firestore.
 
 ---
 

@@ -119,13 +119,15 @@ export default function ConfiguracoesClinicaPage() {
             const specificPermError = errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permissões insuficientes') ? errorMessage : "Permissões insuficientes no Firestore. Verifique as regras de segurança.";
             errorForState = specificPermError; 
             toast({
-                title: "Erro de Permissão",
-                description: specificPermError,
+                title: "Erro de Permissão no Firestore!",
+                description: "Não foi possível carregar os dados da sua clínica devido a permissões insuficientes no Firestore. Por favor, verifique as Regras de Segurança do seu banco de dados no Console do Firebase. Os dados exibidos podem ser placeholders e as alterações não serão salvas permanentemente até que as permissões sejam corrigidas.",
                 variant: "destructive",
+                duration: 10000,
             });
             const placeholderForPermError = { 
               ...placeholderCompanyData, 
               id: user.companyId, 
+              name: "CLÍNICA (ERRO DE PERMISSÃO)", // Nome indicativo do problema
               cnpj: user.companyCnpj || placeholderCompanyData.cnpj 
             };
             setCompanyData(placeholderForPermError);
@@ -138,7 +140,7 @@ export default function ConfiguracoesClinicaPage() {
               variant: "destructive"
           });
         }
-        setError(errorForState); // Set the error state for UI display
+        setError(errorForState); 
       } else {
           const data: Company = await response.json();
           setCompanyData(data);
@@ -193,7 +195,7 @@ export default function ConfiguracoesClinicaPage() {
     const payload: { name: string; cnpj?: string } = {
       name: data.name,
     };
-    // Ensure CNPJ is sent if it's a new company or if it's available in companyData
+    
     if (isNotFound || (companyData && !companyData.cnpj && currentCnpj !== placeholderCompanyData.cnpj) || (companyData && companyData.cnpj) ) {
         payload.cnpj = currentCnpj;
     }
@@ -215,7 +217,6 @@ export default function ConfiguracoesClinicaPage() {
                 try {
                     const errorData = JSON.parse(errorText);
                     const detailMsg = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null);
-                    // Prioritize details, then error, then message, then raw short text
                     errorMessage = detailMsg || errorData.error || errorData.message || (errorText.length < 200 && !errorText.trim().startsWith('<') ? errorText : `Erro ${response.status}`);
                 } catch (jsonParseError) {
                      if (errorText.length < 200 && !errorText.trim().startsWith('<')) { 
@@ -239,7 +240,7 @@ export default function ConfiguracoesClinicaPage() {
       if (updatedCompany.logoUrl) setImagePreviewUrl(updatedCompany.logoUrl);
       setIsNotFound(false); 
       setError(null); 
-      setIsPermissionError(false); // Clear permission error on successful save
+      setIsPermissionError(false);
     } catch (error) {
       console.error("Erro ao atualizar clínica:", error);
       toast({
@@ -345,7 +346,7 @@ export default function ConfiguracoesClinicaPage() {
   };
 
 
-  if (isLoading && !companyData) { 
+  if (isLoading && !companyData && !isPermissionError) { 
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
@@ -370,7 +371,7 @@ export default function ConfiguracoesClinicaPage() {
          <Alert variant="destructive">
           <AlertTriangle className="h-5 w-5" />
           <AlertTitle>Erro de Permissão no Firestore!</AlertTitle>
-          <AlertDescription>Não foi possível carregar ou salvar os dados da sua clínica devido a permissões insuficientes no Firestore. Por favor, verifique as Regras de Segurança do seu banco de dados no Console do Firebase. Os dados exibidos podem ser placeholders e as alterações não serão salvas permanentemente até que as permissões sejam corrigidas.</AlertDescription>
+          <AlertDescription>Não foi possível carregar ou salvar os dados da sua clínica devido a permissões insuficientes no Firestore. Por favor, **VERIFIQUE AS REGRAS DE SEGURANÇA** do seu banco de dados no Console do Firebase. Os dados exibidos podem ser placeholders e as alterações não serão salvas permanentemente até que as permissões sejam corrigidas.</AlertDescription>
         </Alert>
       )}
       {isNotFound && !isPermissionError && (
@@ -402,7 +403,7 @@ export default function ConfiguracoesClinicaPage() {
                   <FormItem>
                     <FormLabel htmlFor="clinicName">Nome da Clínica</FormLabel>
                     <FormControl>
-                      <Input id="clinicName" placeholder="Nome da sua clínica" {...field} disabled={(isLoading && !!companyData && !isNotFound && !isPermissionError)} />
+                      <Input id="clinicName" placeholder="Nome da sua clínica" {...field} disabled={(isLoading && !!companyData && !isNotFound && !isPermissionError && !isPermissionError)} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -462,6 +463,7 @@ export default function ConfiguracoesClinicaPage() {
                 accept="image/png, image/jpeg, image/gif, image/webp"
                 onChange={handleFileChange}
                 className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                disabled={isPermissionError}
               />
               {selectedFile && <p className="text-xs text-muted-foreground mt-1">Arquivo selecionado: {selectedFile.name}</p>}
             </div>
