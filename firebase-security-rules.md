@@ -1,4 +1,3 @@
-
 ## Regras de Segurança Sugeridas para Firebase
 
 **Lembrete Importante:** Estas regras são sugestões e precisam ser adaptadas e testadas cuidadosamente no seu ambiente Firebase. A segurança dos seus dados é crucial!
@@ -13,41 +12,17 @@ service cloud.firestore {
 
     // Regras para a coleção 'companies' (clínicas)
     match /companies/{companyId} {
-      // PERMISSÃO DE LEITURA:
-      // Opção 1 (Mais simples para começar):
-      // Permite leitura se o usuário estiver autenticado. A lógica de qual empresa buscar
-      // é controlada pela sua API (que usaria o companyId do perfil do usuário).
-      allow read: if request.auth != null;
-      // Se quiser ser mais restritivo e usar custom claims (recomendado para produção):
-      // allow read: if request.auth != null && request.auth.token.companyId == companyId;
-
-
-      // PERMISSÃO DE CRIAÇÃO:
-      // Permite criação se o usuário estiver autenticado.
-      // Idealmente, restrinja isso para que apenas usuários específicos (ex: super-admin) ou
-      // administradores de clínica possam criar sua própria empresa.
-      // Se um admin de clínica cria sua própria empresa:
-      // allow create: if request.auth != null && request.auth.token.companyId == companyId;
-      // Por enquanto, para desbloquear e permitir a criação via página de configurações:
-      allow create: if request.auth != null;
-
-
-      // PERMISSÃO DE ATUALIZAÇÃO:
-      // Permite atualização se o usuário estiver autenticado.
-      // RESTRINJA MAIS PARA PRODUÇÃO! Idealmente, apenas o admin da clínica correspondente.
-      // Ex: allow update: if request.auth != null && request.auth.token.companyId == companyId;
-      allow update: if request.auth != null;
-
-      // PERMISSÃO DE EXCLUSÃO:
-      // Geralmente muito restrito. Exemplo: desabilitar exclusão por enquanto.
-      // allow delete: if false;
+      // PARA TESTE: Permite que qualquer usuário AUTENTICADO leia e escreva.
+      // IMPORTANTE: Em produção, restrinja isso! Por exemplo, para que um usuário
+      // só possa ler/escrever na sua própria empresa (usando request.auth.token.companyId == companyId,
+      // o que requer que companyId seja um Custom Claim no token JWT do usuário).
+      allow read, write: if request.auth != null;
     }
 
     // Regras para a coleção 'teamMembers' (membros da equipe da clínica)
     match /teamMembers/{memberId} {
       // Permite leitura se o usuário estiver autenticado e o clinicId do membro
-      // corresponder ao companyId (do token, se usar custom claims) do usuário.
-      // Ou, de forma mais simples para começar: if request.auth != null; (e a API filtra)
+      // corresponder ao companyId (do token) do usuário.
       allow read: if request.auth != null && request.auth.token.companyId == resource.data.clinicId;
 
       // Permite criação se o usuário estiver autenticado e o clinicId do novo membro
@@ -65,7 +40,7 @@ service cloud.firestore {
 
     // Regras para a coleção 'flows' (fluxos de acompanhamento)
     match /flows/{flowId} {
-      // Permite que o especialista (nutritionistId/specialistId) que criou o fluxo o leia.
+      // Permite que o especialista (nutritionistId) que criou o fluxo o leia.
       allow read: if request.auth != null && request.auth.uid == resource.data.nutritionistId;
 
       // Permite que um especialista crie um fluxo se o nutritionistId do novo fluxo
@@ -108,30 +83,33 @@ service firebase.storage {
       // Ajuste para 'if request.auth != null;' se precisar de autenticação para ler.
       allow read: if true;
 
-      // Permite escrita (upload) se:
-      // 1. O usuário estiver autenticado.
-      // 2. O companyId no token de autenticação corresponder ao companyId no caminho do arquivo.
-      // 3. O tamanho do arquivo for menor que 5MB.
-      // 4. O tipo de conteúdo for uma imagem comum.
-      allow write: if request.auth != null &&
-                      request.auth.token.companyId == companyId &&
-                      request.resource.size < 5 * 1024 * 1024 &&
-                      (request.resource.contentType.matches('image/jpeg') ||
-                       request.resource.contentType.matches('image/png') ||
-                       request.resource.contentType.matches('image/gif') ||
-                       request.resource.contentType.matches('image/webp'));
+      // PARA TESTE: Permite que qualquer usuário AUTENTICADO escreva.
+      // IMPORTANTE: Em produção, restrinja isso! Por exemplo, usando
+      // request.auth.token.companyId == companyId, verificando tamanho e tipo do arquivo.
+      allow write: if request.auth != null;
+      // Exemplo mais seguro para produção:
+      // allow write: if request.auth != null &&
+      //                 request.auth.token.companyId == companyId &&
+      //                 request.resource.size < 5 * 1024 * 1024 &&
+      //                 (request.resource.contentType.matches('image/jpeg') ||
+      //                  request.resource.contentType.matches('image/png') ||
+      //                  request.resource.contentType.matches('image/gif') ||
+      //                  request.resource.contentType.matches('image/webp'));
     }
 
     // Regras para favicons de clínicas (se armazenados separadamente)
     // Caminho de exemplo: clinic_favicons/ID_DA_CLINICA/favicon.ico
     match /clinic_favicons/{companyId}/{fileName} {
       allow read: if true;
-      allow write: if request.auth != null &&
-                      request.auth.token.companyId == companyId &&
-                      request.resource.size < 1 * 1024 * 1024 && // Favicons são menores
-                      (request.resource.contentType.matches('image/vnd.microsoft.icon') ||
-                       request.resource.contentType.matches('image/x-icon') ||
-                       request.resource.contentType.matches('image/png'));
+      // PARA TESTE: Permite que qualquer usuário AUTENTICADO escreva.
+      allow write: if request.auth != null;
+      // Exemplo mais seguro para produção:
+      // allow write: if request.auth != null &&
+      //                 request.auth.token.companyId == companyId &&
+      //                 request.resource.size < 1 * 1024 * 1024 && // Favicons são menores
+      //                 (request.resource.contentType.matches('image/vnd.microsoft.icon') ||
+      //                  request.resource.contentType.matches('image/x-icon') ||
+      //                  request.resource.contentType.matches('image/png'));
     }
 
     // Adicione regras para outros caminhos/tipos de arquivos conforme necessário.
@@ -141,7 +119,7 @@ service firebase.storage {
 
 **Como Aplicar:**
 1.  Vá para o seu projeto no **Firebase Console**.
-2.  Para **Firestore**: Navegue até Firestore Database > Aba "Regras". Copie e cole as regras do Firestore, ajuste se necessário (especialmente as condições `request.auth.token.companyId`), e clique em "Publicar".
+2.  Para **Firestore**: Navegue até Firestore Database > Aba "Regras". Copie e cole as regras do Firestore, ajuste se necessário, e clique em "Publicar".
 3.  Para **Storage**: Navegue até Storage > Aba "Regras". Copie e cole as regras do Storage, **substitua `{YOUR_BUCKET_NAME}` pelo nome do seu bucket**, ajuste se necessário, e clique em "Publicar".
 
 Após publicar, teste as funcionalidades do seu aplicativo para garantir que as permissões estejam corretas.

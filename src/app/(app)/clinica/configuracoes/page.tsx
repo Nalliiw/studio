@@ -15,7 +15,7 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/hooks/use-toast';
 import type { Company } from '@/types';
-import { storage } from '@/lib/firebase'; 
+import { storage } from '@/lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL, type FirebaseStorageError } from "firebase/storage";
 import Image from 'next/image';
 
@@ -48,7 +48,7 @@ export default function ConfiguracoesClinicaPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  
+
   const form = useForm<ClinicConfigFormValues>({
     resolver: zodResolver(clinicConfigSchema),
     defaultValues: {
@@ -75,11 +75,11 @@ export default function ConfiguracoesClinicaPage() {
     try {
       const response = await fetch(`/api/companies/${user.companyId}`);
       let errorMessage = `Falha ao buscar dados da clínica. Status: ${response.status}`;
-      
+      let errorForState: string | null = null;
+
       if (!response.ok) {
-        let errorForState: string | null = errorMessage; 
-        let toastMessage = errorMessage;
         let isPermError = false;
+        let toastMessage = errorMessage;
 
         try {
           const errorText = await response.text();
@@ -90,10 +90,10 @@ export default function ConfiguracoesClinicaPage() {
           }
 
           if (errorText) {
-            const errorData = JSON.parse(errorText); 
-            const detailMsg = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null);
-            errorMessage = detailMsg || errorData.error || errorData.message || errorText;
-            
+            const errorData = JSON.parse(errorText);
+            const detailMsg = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null) || errorData.error || errorData.message;
+            errorMessage = detailMsg || errorText;
+
             toastMessage = `Detalhes: ${errorMessage}`;
             if (typeof errorMessage === 'string' && (errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permissões insuficientes'))) {
                 isPermError = true;
@@ -104,12 +104,12 @@ export default function ConfiguracoesClinicaPage() {
         }
 
         if (response.status === 404) {
-          const placeholderForNew = { 
-            ...placeholderCompanyData, 
-            id: user.companyId, 
-            cnpj: user.companyCnpj || placeholderCompanyData.cnpj 
+          const placeholderForNew = {
+            ...placeholderCompanyData,
+            id: user.companyId,
+            cnpj: user.companyCnpj || placeholderCompanyData.cnpj
           };
-          setCompanyData(placeholderForNew); 
+          setCompanyData(placeholderForNew);
           form.reset({ name: placeholderForNew.name });
           setImagePreviewUrl(null);
           setIsNotFound(true);
@@ -117,18 +117,18 @@ export default function ConfiguracoesClinicaPage() {
         } else if (isPermError) {
             setIsPermissionError(true);
             const specificPermError = errorMessage.toLowerCase().includes('permission') || errorMessage.toLowerCase().includes('permissões insuficientes') ? errorMessage : "Permissões insuficientes no Firestore. Verifique as regras de segurança.";
-            errorForState = specificPermError; 
+            errorForState = specificPermError;
             toast({
                 title: "Erro de Permissão no Firestore!",
-                description: "Não foi possível carregar os dados da sua clínica devido a permissões insuficientes no Firestore. Por favor, verifique as Regras de Segurança do seu banco de dados no Console do Firebase. Os dados exibidos podem ser placeholders e as alterações não serão salvas permanentemente até que as permissões sejam corrigidas.",
+                description: "Não foi possível carregar os dados da sua clínica devido a permissões insuficientes no Firestore. Por favor, VERIFIQUE AS REGRAS DE SEGURANÇA do seu banco de dados no Console do Firebase. Os dados exibidos podem ser placeholders e as alterações não serão salvas permanentemente até que as permissões sejam corrigidas.",
                 variant: "destructive",
                 duration: 10000,
             });
-            const placeholderForPermError = { 
-              ...placeholderCompanyData, 
-              id: user.companyId, 
+            const placeholderForPermError = {
+              ...placeholderCompanyData,
+              id: user.companyId,
               name: "CLÍNICA (ERRO DE PERMISSÃO)", // Nome indicativo do problema
-              cnpj: user.companyCnpj || placeholderCompanyData.cnpj 
+              cnpj: user.companyCnpj || placeholderCompanyData.cnpj
             };
             setCompanyData(placeholderForPermError);
             form.reset({ name: placeholderForPermError.name });
@@ -139,8 +139,9 @@ export default function ConfiguracoesClinicaPage() {
               description: toastMessage,
               variant: "destructive"
           });
+          errorForState = errorMessage;
         }
-        setError(errorForState); 
+        setError(errorForState);
       } else {
           const data: Company = await response.json();
           setCompanyData(data);
@@ -150,8 +151,8 @@ export default function ConfiguracoesClinicaPage() {
           } else {
             setImagePreviewUrl(null);
           }
-          setIsNotFound(false); 
-          setError(null); 
+          setIsNotFound(false);
+          setError(null);
       }
     } catch (err) {
       console.error("Erro ao buscar dados da clínica:", err);
@@ -165,13 +166,13 @@ export default function ConfiguracoesClinicaPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.companyId, user?.companyCnpj, form]); 
+  }, [user?.companyId, user?.companyCnpj, form]);
 
   useEffect(() => {
-    if (user) { 
+    if (user) {
       fetchCompanyData();
     } else {
-      setIsLoading(false); 
+      setIsLoading(false);
     }
   }, [user, fetchCompanyData]);
 
@@ -180,7 +181,7 @@ export default function ConfiguracoesClinicaPage() {
       toast({ title: "Erro", description: "ID da clínica do usuário não encontrado.", variant: "destructive" });
       return;
     }
-    
+
     if (isPermissionError) {
         toast({
             title: "Ação Bloqueada",
@@ -195,11 +196,10 @@ export default function ConfiguracoesClinicaPage() {
     const payload: { name: string; cnpj?: string } = {
       name: data.name,
     };
-    
+
     if (isNotFound || (companyData && !companyData.cnpj && currentCnpj !== placeholderCompanyData.cnpj) || (companyData && companyData.cnpj) ) {
         payload.cnpj = currentCnpj;
     }
-
 
     try {
       const response = await fetch(`/api/companies/${user.companyId}`, {
@@ -207,7 +207,7 @@ export default function ConfiguracoesClinicaPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      
+
       let errorMessage = `Falha ao atualizar dados da clínica. Status: ${response.status}`;
       if (!response.ok) {
         try {
@@ -216,10 +216,10 @@ export default function ConfiguracoesClinicaPage() {
             if (errorText) {
                 try {
                     const errorData = JSON.parse(errorText);
-                    const detailMsg = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null);
-                    errorMessage = detailMsg || errorData.error || errorData.message || (errorText.length < 200 && !errorText.trim().startsWith('<') ? errorText : `Erro ${response.status}`);
+                    const detailMsg = errorData.details || errorData.error || errorData.message;
+                    errorMessage = detailMsg || (errorText.length < 200 && !errorText.trim().startsWith('<') ? errorText : `Erro ${response.status}`);
                 } catch (jsonParseError) {
-                     if (errorText.length < 200 && !errorText.trim().startsWith('<')) { 
+                     if (errorText.length < 200 && !errorText.trim().startsWith('<')) {
                         errorMessage = errorText;
                     } else {
                          errorMessage = `Erro ${response.status}: Falha ao processar resposta do servidor.`;
@@ -232,15 +232,15 @@ export default function ConfiguracoesClinicaPage() {
         }
         throw new Error(errorMessage);
       }
-      
+
       const updatedCompany: Company = await response.json();
       toast({ title: "Sucesso!", description: `Clínica "${updatedCompany.name}" ${isNotFound ? 'registrada' : 'atualizada'} com sucesso.` });
-      setCompanyData(updatedCompany); 
+      setCompanyData(updatedCompany);
       form.reset({ name: updatedCompany.name });
       if (updatedCompany.logoUrl) setImagePreviewUrl(updatedCompany.logoUrl);
-      setIsNotFound(false); 
-      setError(null); 
-      setIsPermissionError(false);
+      setIsNotFound(false);
+      setError(null);
+      setIsPermissionError(false); // Reset permission error on successful save
     } catch (error) {
       console.error("Erro ao atualizar clínica:", error);
       toast({
@@ -258,7 +258,7 @@ export default function ConfiguracoesClinicaPage() {
         toast({ title: "Arquivo Muito Grande", description: "Por favor, selecione um arquivo menor que 5MB.", variant: "destructive"});
         setSelectedFile(null);
         setImagePreviewUrl(companyData?.logoUrl || null);
-        if (event.target) event.target.value = ""; 
+        if (event.target) event.target.value = "";
         return;
       }
       setSelectedFile(file);
@@ -297,7 +297,7 @@ export default function ConfiguracoesClinicaPage() {
         // const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
         // console.log('Upload is ' + progress + '% done');
       },
-      (error: FirebaseStorageError) => { 
+      (error: FirebaseStorageError) => {
         console.error("Erro no upload do logo:", error);
         let description = `Falha ao enviar logo: ${error.message}`;
         if (error.code === 'storage/unauthorized') {
@@ -321,18 +321,18 @@ export default function ConfiguracoesClinicaPage() {
             let errorDetail = 'Falha ao salvar URL do logo no banco de dados.';
             try {
                 const errorData = await apiResponse.json();
-                const detailMsg = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null);
-                errorDetail = detailMsg || errorData.error || errorData.message || errorDetail;
+                const detailMsg = errorData.details?.message || (typeof errorData.details === 'string' ? errorData.details : null) || errorData.error || errorData.message;
+                errorDetail = detailMsg || errorDetail;
             } catch (e) { /* ignore parsing error */ }
             throw new Error(errorDetail);
           }
-          
+
           const updatedCompanyData: Company = await apiResponse.json();
-          setCompanyData(prev => ({ ...prev, ...updatedCompanyData } as Company)); 
+          setCompanyData(prev => ({ ...prev, ...updatedCompanyData } as Company));
           setImagePreviewUrl(downloadURL);
-          setSelectedFile(null); 
+          setSelectedFile(null);
           const fileInput = document.getElementById('logoUpload') as HTMLInputElement;
-          if (fileInput) fileInput.value = ''; 
+          if (fileInput) fileInput.value = '';
 
           toast({ title: "Sucesso!", description: "Logo da clínica atualizado." });
         } catch (apiError) {
@@ -346,7 +346,7 @@ export default function ConfiguracoesClinicaPage() {
   };
 
 
-  if (isLoading && !companyData && !isPermissionError) { 
+  if (isLoading && !companyData && !isPermissionError) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
@@ -354,7 +354,7 @@ export default function ConfiguracoesClinicaPage() {
       </div>
     );
   }
-  
+
   const displayCompanyForForm = companyData || (isNotFound ? { ...placeholderCompanyData, id: user?.companyId || 'new_clinic_placeholder', cnpj: user?.companyCnpj || placeholderCompanyData.cnpj } : null);
 
   return (
@@ -371,7 +371,7 @@ export default function ConfiguracoesClinicaPage() {
          <Alert variant="destructive">
           <AlertTriangle className="h-5 w-5" />
           <AlertTitle>Erro de Permissão no Firestore!</AlertTitle>
-          <AlertDescription>Não foi possível carregar ou salvar os dados da sua clínica devido a permissões insuficientes no Firestore. Por favor, **VERIFIQUE AS REGRAS DE SEGURANÇA** do seu banco de dados no Console do Firebase. Os dados exibidos podem ser placeholders e as alterações não serão salvas permanentemente até que as permissões sejam corrigidas.</AlertDescription>
+          <AlertDescription>Não foi possível carregar ou salvar os dados da sua clínica devido a permissões insuficientes no Firestore. Por favor, **VERIFIQUE AS REGRAS DE SEGURANÇA** do seu banco de dados no Console do Firebase. Os dados exibidos são placeholders e as alterações não serão salvas permanentemente até que as permissões sejam corrigidas.</AlertDescription>
         </Alert>
       )}
       {isNotFound && !isPermissionError && (
@@ -403,7 +403,7 @@ export default function ConfiguracoesClinicaPage() {
                   <FormItem>
                     <FormLabel htmlFor="clinicName">Nome da Clínica</FormLabel>
                     <FormControl>
-                      <Input id="clinicName" placeholder="Nome da sua clínica" {...field} disabled={(isLoading && !!companyData && !isNotFound && !isPermissionError && !isPermissionError)} />
+                      <Input id="clinicName" placeholder="Nome da sua clínica" {...field} disabled={(isLoading && !!companyData && !isNotFound && !isPermissionError) || isPermissionError} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
