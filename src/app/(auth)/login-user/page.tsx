@@ -2,10 +2,10 @@
 // src/app/(auth)/login-user/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react'; // Added useEffect
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -15,10 +15,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/hooks/useAuth';
-import { UserRole, type User } from '@/types';
-import { LogIn, Sun, Moon, UserCheck } from 'lucide-react';
+import { UserRole } from '@/types';
+import { LogIn, Sun, Moon, UserCheck, UserPlus, Shield } from 'lucide-react'; // Added UserPlus, Shield
 import { useTheme } from '@/hooks/useTheme';
+import { toast } from '@/hooks/use-toast';
 
+// Schema for Especialista/Paciente login (role selection is for UI clarity, auth determines actual role)
 const loginUserSchema = z.object({
   email: z.string().email({ message: 'Endereço de email inválido.' }),
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
@@ -27,15 +29,9 @@ const loginUserSchema = z.object({
 
 type LoginUserFormValues = z.infer<typeof loginUserSchema>;
 
-// Mock users for demonstration (excluding Admin Supremo)
-const mockUsers: Partial<Record<UserRole, User>> = {
-  [UserRole.CLINIC_SPECIALIST]: { id: 'specialist01', name: 'Dr. Especialista Exemplo', email: 'especialista@nutritrack.com', role: UserRole.CLINIC_SPECIALIST, companyId: 'comp01' },
-  [UserRole.PATIENT]: { id: 'patient01', name: 'Paciente Exemplo', email: 'patient@nutritrack.com', role: UserRole.PATIENT, companyId: 'comp01' },
-};
-
 export default function LoginUserPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const authContext = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -44,32 +40,6 @@ export default function LoginUserPage() {
     setMounted(true);
   }, []);
 
-  const onSubmit: SubmitHandler<LoginUserFormValues> = async (data) => {
-    setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-
-    const userToLogin = mockUsers[data.role];
-    
-    if (userToLogin && userToLogin.email?.split('@')[0] === data.email.split('@')[0]) {
-      login(userToLogin as User); 
-
-      switch (data.role) {
-        case UserRole.CLINIC_SPECIALIST:
-          router.push('/dashboard-especialista'); // Rota atualizada
-          break;
-        case UserRole.PATIENT:
-          router.push('/inicio');
-          break;
-        default:
-          router.push('/login-user'); 
-      }
-    } else {
-      form.setError("email", { type: "manual", message: "Credenciais inválidas para o perfil selecionado."});
-      form.setError("password", { type: "manual", message: " "}); 
-    }
-    setIsLoading(false);
-  };
-
   const form = useForm<LoginUserFormValues>({
     resolver: zodResolver(loginUserSchema),
     defaultValues: {
@@ -77,6 +47,32 @@ export default function LoginUserPage() {
       password: '',
     },
   });
+  
+  const onSubmit: SubmitHandler<LoginUserFormValues> = async (data) => {
+    setIsLoading(true);
+    try {
+      // The role selected in the form is not strictly needed by authContext.login,
+      // as the actual role is fetched from Firestore after Firebase Auth.
+      // However, it could be used for client-side pre-validation if desired.
+      await authContext.login(data.email, data.password);
+      // AuthContext will handle redirection based on the fetched user's role.
+      toast({ title: "Login bem-sucedido!"});
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      let errorMessage = "Falha no login. Verifique suas credenciais.";
+       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        errorMessage = "Email ou senha inválidos para o perfil selecionado.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      form.setError("email", { type: "manual", message: errorMessage });
+      form.setError("password", { type: "manual", message: " " });
+      toast({ title: "Erro no Login", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   return (
     <Card className="w-full max-w-md shadow-xl">
@@ -132,7 +128,7 @@ export default function LoginUserPage() {
               name="role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Perfil de Acesso</FormLabel>
+                  <FormLabel>Sou</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -159,11 +155,16 @@ export default function LoginUserPage() {
           </form>
         </Form>
       </CardContent>
-      <CardFooter className="flex flex-col items-center text-sm text-muted-foreground space-y-2">
-        <p>Problemas para acessar? Entre em contato com o suporte.</p>
-        <Link href="/login" passHref>
-            <Button variant="link" size="sm">Acessar como Administrador</Button>
+      <CardFooter className="flex flex-col items-center text-sm text-muted-foreground space-y-2 pt-6">
+        <Button variant="outline" className="w-full" onClick={() => alert('Página de cadastro ainda não implementada.')}>
+            <UserPlus className="mr-2 h-4 w-4" /> Cadastre-se
+        </Button>
+        <Link href="/login" passHref className="w-full">
+            <Button variant="link" size="sm" className="w-full">
+                <Shield className="mr-2 h-4 w-4" /> Acessar como Administrador Principal
+            </Button>
         </Link>
+         <p className="text-xs mt-2">Problemas para acessar? Contate o suporte.</p>
       </CardFooter>
     </Card>
   );

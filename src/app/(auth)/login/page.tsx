@@ -2,40 +2,33 @@
 // src/app/(auth)/login/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react'; // Added useEffect
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/hooks/useAuth';
-import { UserRole, type User } from '@/types';
-import { LogIn, Sun, Moon, ShieldCheck, UserCheck } from 'lucide-react';
+import { LogIn, Sun, Moon, ShieldCheck, UserPlus, UserCheck } from 'lucide-react'; // Added UserPlus
 import { useTheme } from '@/hooks/useTheme';
+import { toast } from '@/hooks/use-toast';
 
+// Schema for Admin Supremo login (no role selection needed here)
 const loginSchema = z.object({
   email: z.string().email({ message: 'Endereço de email inválido.' }),
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
-  role: z.nativeEnum(UserRole, { errorMap: () => ({ message: "Por favor, selecione um perfil."}) }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-const mockUsers: Record<UserRole, User> = {
-  [UserRole.ADMIN_SUPREMO]: { id: 'admin01', name: 'Admin Supremo', email: 'admin@nutritrack.com', role: UserRole.ADMIN_SUPREMO },
-  [UserRole.CLINIC_SPECIALIST]: { id: 'specialist01', name: 'Dr. Especialista Exemplo', email: 'especialista@nutritrack.com', role: UserRole.CLINIC_SPECIALIST, companyId: 'comp01' },
-  [UserRole.PATIENT]: { id: 'patient01', name: 'Paciente Exemplo', email: 'patient@nutritrack.com', role: UserRole.PATIENT, companyId: 'comp01' },
-};
-
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const authContext = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -54,29 +47,25 @@ export default function LoginPage() {
 
   const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-
-    const userToLogin = mockUsers[data.role];
-    
-    if (userToLogin && userToLogin.email.split('@')[0] === data.email.split('@')[0]) { 
-      login(userToLogin);
-
-      switch (data.role) {
-        case UserRole.ADMIN_SUPREMO:
-          router.push('/dashboard-geral');
-          break;
-        case UserRole.CLINIC_SPECIALIST:
-        case UserRole.PATIENT:
-          router.push('/login-user'); 
-          break;
-        default:
-          router.push('/login'); 
+    try {
+      await authContext.login(data.email, data.password);
+      // AuthContext will handle redirection based on the fetched user's role.
+      // Specific redirection for admin supremo is handled by AppShell or AuthContext logic.
+      toast({ title: "Login bem-sucedido!"});
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      let errorMessage = "Falha no login. Verifique suas credenciais.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        errorMessage = "Email ou senha inválidos.";
+      } else if (error.message) {
+        errorMessage = error.message;
       }
-    } else {
-      form.setError("email", { type: "manual", message: "Credenciais inválidas para o perfil selecionado."});
-      form.setError("password", { type: "manual", message: " "}); 
+      form.setError("email", { type: "manual", message: errorMessage });
+      form.setError("password", { type: "manual", message: " " });
+      toast({ title: "Erro no Login", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
@@ -97,7 +86,7 @@ export default function LoginPage() {
             <ShieldCheck className="h-8 w-8" />
         </div>
         <CardTitle className="text-3xl font-bold">NutriTrack Lite</CardTitle>
-        <CardDescription>Bem-vindo! Faça login para continuar (Acesso Principal).</CardDescription>
+        <CardDescription>Acesso Administrativo Principal.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -109,7 +98,7 @@ export default function LoginPage() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="seuemail@exemplo.com" {...field} />
+                    <Input placeholder="admin@nutritrack.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -128,28 +117,6 @@ export default function LoginPage() {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Perfil de Acesso</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione seu perfil" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={UserRole.ADMIN_SUPREMO}>Administrador Supremo</SelectItem>
-                      <SelectItem value={UserRole.CLINIC_SPECIALIST}>Especialista (Clínica)</SelectItem>
-                      <SelectItem value={UserRole.PATIENT}>Paciente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <span className="animate-spin mr-2">◌</span>
@@ -161,14 +128,17 @@ export default function LoginPage() {
           </form>
         </Form>
       </CardContent>
-      <CardFooter className="flex flex-col items-center text-sm text-muted-foreground space-y-2">
-        <p>Não tem uma conta? Entre em contato com o suporte.</p>
-        <Link href="/login-user" passHref>
-          <Button variant="outline" className="w-full">
+      <CardFooter className="flex flex-col items-center text-sm text-muted-foreground space-y-2 pt-6">
+        <Button variant="outline" className="w-full" onClick={() => alert('Página de cadastro ainda não implementada.')}>
+            <UserPlus className="mr-2 h-4 w-4" /> Cadastre-se
+        </Button>
+        <Link href="/login-user" passHref className="w-full">
+          <Button variant="secondary" className="w-full">
             <UserCheck className="mr-2 h-4 w-4" />
             Acessar como Especialista ou Paciente
           </Button>
         </Link>
+        <p className="text-xs mt-2">Problemas para acessar? Contate o suporte.</p>
       </CardFooter>
     </Card>
   );
