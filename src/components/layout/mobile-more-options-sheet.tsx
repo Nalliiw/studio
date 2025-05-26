@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { UserCircle, Settings, LogOut, Moon, Sun, HelpCircle } from 'lucide-react'; 
+import { UserCircle, Settings, LogOut, Moon, Sun, HelpCircle, CalendarClock, Users as UsersIcon } from 'lucide-react'; 
 import { UserRole } from '@/types'; 
 
 interface NavItem {
@@ -80,15 +80,34 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
                  )
             ))}
             
-            {user?.role === UserRole.ADMIN_SUPREMO && (
-                 <Button
-                    variant="ghost"
-                    className="w-full justify-start text-base py-3 h-auto gap-3"
-                    onClick={() => handleNavigate('/central-ajuda')}
-                >
-                    <HelpCircle className="h-5 w-5" />
-                    Central de Ajuda
-                </Button>
+            {/* Explicitly add new Admin Supremo items here if not covered by additionalNavItems logic */}
+             {user?.role === UserRole.ADMIN_SUPREMO && (
+                <>
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-start text-base py-3 h-auto gap-3"
+                        onClick={() => handleNavigate('/central-ajuda')}
+                    >
+                        <HelpCircle className="h-5 w-5" />
+                        Central de Ajuda
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-start text-base py-3 h-auto gap-3"
+                        onClick={() => handleNavigate('/agenda-admin')}
+                    >
+                        <CalendarClock className="h-5 w-5" />
+                        Agenda Admin
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-start text-base py-3 h-auto gap-3"
+                        onClick={() => handleNavigate('/admin/equipe')}
+                    >
+                        <UsersIcon className="h-5 w-5" />
+                        Equipe Admin
+                    </Button>
+                </>
             )}
 
 

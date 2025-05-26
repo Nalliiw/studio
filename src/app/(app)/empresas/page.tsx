@@ -14,11 +14,19 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Search, Eye, Users, AlertTriangle, Loader2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Search, Eye, Users, AlertTriangle, Loader2, MessageCircle } from 'lucide-react';
 import type { Company } from '@/types';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
+
+// Mock data, as the backend connection is simulated for now.
+const mockCompanies: Company[] = [
+  { id: 'comp01', name: 'Clínica Saúde & Bem-Estar Mock', cnpj: '11.222.333/0001-44', nutritionistCount: 2, status: 'active', createdAt: new Date().toISOString(), lastModified: new Date().toISOString() },
+  { id: 'comp02', name: 'NutriVida Consultoria', cnpj: '44.555.666/0001-77', nutritionistCount: 5, status: 'active', createdAt: new Date().toISOString(), lastModified: new Date().toISOString() },
+  { id: 'comp03', name: 'Performance Nutricional Avançada', cnpj: '77.888.999/0001-00', nutritionistCount: 1, status: 'inactive', createdAt: new Date().toISOString(), lastModified: new Date().toISOString() },
+];
+
 
 export default function EmpresasPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,32 +38,36 @@ export default function EmpresasPage() {
     const fetchCompanies = async () => {
       setIsLoading(true);
       setError(null);
-      try {
-        const response = await fetch('/api/companies');
-        if (!response.ok) {
-          let errorMessage = 'Falha ao buscar empresas.';
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.details || errorData.error || errorMessage;
-          } catch (e) {
-            // Ignore if response is not JSON
-          }
-          throw new Error(errorMessage);
-        }
-        const data: Company[] = await response.json();
-        setCompanies(data);
-      } catch (err) {
-        console.error("Error fetching companies:", err);
-        const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro inesperado.';
-        setError(errorMessage);
-        toast({
-          title: "Erro ao Carregar Empresas",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setCompanies(mockCompanies);
+      setIsLoading(false);
+      // try {
+      //   const response = await fetch('/api/companies');
+      //   if (!response.ok) {
+      //     let errorMessage = 'Falha ao buscar empresas.';
+      //     try {
+      //       const errorData = await response.json();
+      //       errorMessage = errorData.details || errorData.error || errorMessage;
+      //     } catch (e) {
+      //       // Ignore if response is not JSON
+      //     }
+      //     throw new Error(errorMessage);
+      //   }
+      //   const data: Company[] = await response.json();
+      //   setCompanies(data);
+      // } catch (err) {
+      //   console.error("Error fetching companies:", err);
+      //   const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro inesperado.';
+      //   setError(errorMessage);
+      //   toast({
+      //     title: "Erro ao Carregar Empresas",
+      //     description: errorMessage,
+      //     variant: "destructive",
+      //   });
+      // } finally {
+      //   setIsLoading(false);
+      // }
     };
 
     fetchCompanies();
@@ -136,11 +148,14 @@ export default function EmpresasPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => alert(`Ver detalhes ${company.name}`)}>
+                          <DropdownMenuItem onSelect={() => toast({title: "Ação: Ver Detalhes", description: `Visualizar detalhes de ${company.name} (não implementado).`})}>
                             <Eye className="mr-2 h-4 w-4" /> Ver Detalhes
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => alert(`Gerenciar usuários ${company.name}`)}>
+                          <DropdownMenuItem onSelect={() => toast({title: "Ação: Gerenciar Usuários", description: `Gerenciar usuários de ${company.name} (não implementado).`})}>
                             <Users className="mr-2 h-4 w-4" /> Gerenciar Usuários
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => toast({title: "Chat com Clínica", description: `Iniciar chat com ${company.name} (funcionalidade em desenvolvimento).`})}>
+                            <MessageCircle className="mr-2 h-4 w-4" /> Chat com Clínica
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

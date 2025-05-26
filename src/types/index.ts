@@ -1,7 +1,7 @@
 
 export enum UserRole {
   ADMIN_SUPREMO = 'administrador_supremo',
-  CLINIC_SPECIALIST = 'clinic_specialist',
+  CLINIC_SPECIALIST = 'clinic_specialist', // Usuário da Clínica (Admin ou Especialista Padrão)
   PATIENT = 'paciente',
 }
 
@@ -9,10 +9,10 @@ export interface User {
   id: string;
   name: string | null;
   email: string | null;
-  displayName?: string | null;
+  displayName?: string | null; // Firebase Auth display name
   role: UserRole;
-  companyId?: string;
-  companyCnpj?: string;
+  companyId?: string; // ID da clínica à qual o especialista ou paciente está associado
+  companyCnpj?: string; // CNPJ da clínica, se o usuário for o admin dela
   specialties?: string[];
 }
 
@@ -24,10 +24,10 @@ export interface Company {
   responsibleEmail?: string;
   responsiblePhone?: string;
   logoUrl?: string;
-  nutritionistCount: number; // Considerar renomear para memberCount ou specialistCount no futuro
+  nutritionistCount: number;
   status: 'active' | 'inactive';
-  createdAt?: any;
-  lastModified?: any;
+  createdAt?: any; // Firebase Timestamp or string
+  lastModified?: any; // Firebase Timestamp or string
 }
 
 export interface Patient {
@@ -97,7 +97,7 @@ export interface Content {
   nutritionistId: string; // ID do especialista que adicionou
 }
 
-export interface Praise { // Renomeado para Conquista na UI, mas tipo pode permanecer Praise
+export interface Praise {
   id: string;
   type: 'text' | 'audio' | 'video';
   content: string;
@@ -143,12 +143,32 @@ export interface HelpMaterial {
   id: string;
   title: string;
   type: HelpMaterialType;
-  // Para FAQ: o texto da resposta.
-  // Para Vídeo/Link Externo: a URL.
-  // Para PDF/Documento: a URL do arquivo após o upload (ou um identificador para buscar).
   content: string;
   audience: HelpMaterialAudience[];
   category?: string;
   createdAt?: string; // ISO date string
   lastModified?: string; // ISO date string
+}
+
+// Para Agenda do Admin Supremo com Clínicas
+export interface AdminAgendaItem {
+  id: string;
+  type: 'meeting_clinic' | 'task_admin' | 'reminder_admin';
+  title: string;
+  clinicName?: string; // Nome da clínica envolvida
+  clinicId?: string;   // ID da clínica envolvida
+  date: string; // ISO String
+  time?: string; // HH:mm
+  description?: string;
+  status?: 'scheduled' | 'completed' | 'cancelled';
+}
+
+// Para Equipe Interna do Admin Supremo
+export interface AdminTeamMember {
+  id: string;
+  name: string;
+  email: string;
+  roleAdminTeam: string; // Ex: 'Suporte Técnico', 'Gerente de Contas'
+  status: 'active' | 'inactive';
+  addedAt: string; // ISO string
 }

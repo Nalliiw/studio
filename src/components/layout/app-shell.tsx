@@ -38,8 +38,8 @@ import {
   Moon,
   CalendarDays,
   UsersRound,
-  ImageIcon,
-  HelpCircle, // Ícone para Central de Ajuda
+  HelpCircle,
+  CalendarClock, // Novo ícone para Agenda Admin
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -62,13 +62,15 @@ const navItems: NavItem[] = [
   { href: '/empresas', label: 'Empresas (Clínicas)', icon: Building, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/relatorios-gerais', label: 'Relatórios Gerais', icon: BarChart3, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/central-ajuda', label: 'Central de Ajuda', icon: HelpCircle, roles: [UserRole.ADMIN_SUPREMO] },
-  // Especialista da Clínica
+  { href: '/agenda-admin', label: 'Agenda Admin', icon: CalendarClock, roles: [UserRole.ADMIN_SUPREMO] },
+  { href: '/admin/equipe', label: 'Equipe Admin', icon: Users, roles: [UserRole.ADMIN_SUPREMO] },
+  // Especialista da Clínica (Clinic Specialist)
   { href: '/dashboard-especialista', label: 'Painel do Especialista', icon: LayoutDashboard, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/pacientes', label: 'Pacientes', icon: Users, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/flowbuilder/meus-fluxos', label: 'Meus Fluxos', icon: Workflow, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/biblioteca', label: 'Biblioteca', icon: Library, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/agenda-especialista', label: 'Agenda do Especialista', icon: CalendarDays, roles: [UserRole.CLINIC_SPECIALIST] },
-  { href: '/equipe', label: 'Equipe', icon: UsersRound, roles: [UserRole.CLINIC_SPECIALIST] },
+  { href: '/equipe', label: 'Equipe da Clínica', icon: UsersRound, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/clinica/configuracoes', label: 'Config. Clínica', icon: Settings2, roles: [UserRole.CLINIC_SPECIALIST] },
   // Paciente
   { href: '/inicio', label: 'Início', icon: Home, roles: [UserRole.PATIENT] },
@@ -99,8 +101,6 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Se não há usuário e não está carregando, o AuthContext deve redirecionar para /login.
-  // Retornar null aqui evita renderizar o AppShell antes do redirecionamento.
   if (!user) {
     return null;
   }
@@ -124,8 +124,6 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   }
   
   const handleThemeToggle = (e: React.MouseEvent | React.KeyboardEvent) => {
-     // Impede a propagação apenas se o clique for diretamente no Switch,
-     // permitindo que o clique no div maior ainda alterne o tema.
     if ((e.target as HTMLElement).closest('[role="switch"]')) {
         e.stopPropagation();
     } else {
@@ -143,7 +141,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
           <SidebarContent className="p-2">
             <SidebarMenu>
               {userNavItems.map((item) => {
-                const isActive = pathname === item.href || (item.href !== '/' && !item.href.startsWith('/dashboard') && !item.href.startsWith('/inicio') && !item.href.startsWith('/clinica') && !item.href.startsWith('/central-ajuda') && pathname.startsWith(item.href)) || ((item.href.startsWith('/clinica') || item.href.startsWith('/central-ajuda')) && pathname.startsWith(item.href));
+                const isActive = pathname === item.href || (item.href !== '/' && !item.href.startsWith('/dashboard') && !item.href.startsWith('/inicio') && !item.href.startsWith('/admin') && !item.href.startsWith('/clinica') && !item.href.startsWith('/central-ajuda') && pathname.startsWith(item.href)) || ((item.href.startsWith('/clinica') || item.href.startsWith('/central-ajuda') || item.href.startsWith('/admin')) && pathname.startsWith(item.href));
 
                 return (
                   <SidebarMenuItem key={item.href}>
@@ -175,7 +173,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                       <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
                     <span className="flex flex-col items-start group-data-[collapsible=icon]:hidden">
-                        <span className="text-sm font-medium leading-tight">{user.name || 'Usuário'}</span>
+                        <span className="text-sm font-medium leading-tight">{user.displayName || user.name || 'Usuário'}</span>
                         <span className="text-xs text-sidebar-foreground/70 leading-tight">{user.email}</span>
                     </span>
                   </SidebarMenuButton>
@@ -230,7 +228,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
       
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto",
-          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" 
+          isMobile ? "px-4 pt-4 pb-16" : "p-6 pt-6" 
         )}>
           {children}
       </SidebarInset>
@@ -244,20 +242,26 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
 
-  if (authLoading) {
+  if (authLoading && (typeof window !== 'undefined' && !localStorage.getItem('nutritrack_user'))) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
-
-  if (!user) {
-    // AuthContext deveria redirecionar para /login.
-    // Não renderizar o AppShell para evitar piscar de conteúdo protegido.
+  
+  if (!user && !authLoading) {
     return null;
   }
   
+  if (authLoading && user) { // Show loader if user exists but still loading company etc.
+     return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   const sidebarCollapsibleType = "icon";
   const sidebarSidePlacement = "left";
 
