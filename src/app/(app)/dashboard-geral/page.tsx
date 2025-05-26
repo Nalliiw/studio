@@ -1,12 +1,15 @@
 
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BarChart, Building, Users, Activity, PlusCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BarChart, Building, Users, Activity, PlusCircle, Filter } from 'lucide-react';
 import Link from 'next/link';
 import { ResponsiveContainer, BarChart as RechartsBarChart, XAxis, YAxis, Tooltip, Legend, Bar } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import type { Company } from '@/types';
 
 const engagementData = [
   { month: 'Jan', responses: 400, target: 500 },
@@ -28,6 +31,12 @@ const chartConfig = {
   },
 } satisfies import("@/components/ui/chart").ChartConfig;
 
+// Mock companies for filter demonstration
+const mockCompaniesForFilter: Pick<Company, 'id' | 'name'>[] = [
+  { id: 'comp01', name: 'Clínica Saúde & Bem-Estar Mock' },
+  { id: 'comp02', name: 'NutriVida Consultoria' },
+  { id: 'comp03', name: 'Performance Nutricional Avançada' },
+];
 
 export default function DashboardGeralPage() {
   // Mock data
@@ -35,21 +44,54 @@ export default function DashboardGeralPage() {
   const activeNutritionists = 75;
   const activePatients = 1250;
 
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+
+  const handleCompanyFilterChange = (companyId: string) => {
+    if (companyId === 'all') {
+      setSelectedCompanyId(null);
+    } else {
+      setSelectedCompanyId(companyId);
+    }
+  };
+
+  const getSelectedCompanyName = () => {
+    if (!selectedCompanyId) return "Todas as Empresas";
+    return mockCompaniesForFilter.find(c => c.id === selectedCompanyId)?.name || "Empresa Desconhecida";
+  };
+
   return (
-    <div className="space-y-4"> {/* Reduced from space-y-6 */}
-      <div className="flex flex-wrap justify-between items-center gap-4">
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard Geral</h1>
           <p className="text-muted-foreground">Visão geral do sistema NutriTrack Lite.</p>
         </div>
-        <div className="space-x-2">
+        <div className="flex items-center gap-2">
+            <div className="min-w-[200px]">
+              <Select onValueChange={handleCompanyFilterChange} defaultValue="all">
+                <SelectTrigger className="w-full sm:w-auto" aria-label="Filtrar por empresa">
+                  <Filter className="h-4 w-4 mr-2 opacity-50" />
+                  <SelectValue placeholder="Filtrar por empresa..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as Empresas</SelectItem>
+                  {mockCompaniesForFilter.map(company => (
+                    <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Link href="/empresas/nova" passHref>
-                <Button variant="outline"><PlusCircle className="mr-2 h-4 w-4" /> Criar Empresa</Button>
+                <Button variant="outline" className="shrink-0"><PlusCircle className="mr-2 h-4 w-4" /> Criar Empresa</Button>
             </Link>
         </div>
       </div>
+       <CardDescription className="text-sm">
+        Exibindo dados para: <span className="font-semibold">{getSelectedCompanyName()}</span>.
+        {selectedCompanyId && " (Os gráficos e totais abaixo ainda são dados gerais do sistema)"}
+      </CardDescription>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"> {/* Reduced gap from gap-6 */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="shadow-md hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Empresas Ativas</CardTitle>
@@ -62,7 +104,7 @@ export default function DashboardGeralPage() {
         </Card>
         <Card className="shadow-md hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Nutricionistas Ativos</CardTitle>
+            <CardTitle className="text-sm font-medium">Especialistas Ativos</CardTitle>
             <Users className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
@@ -87,7 +129,7 @@ export default function DashboardGeralPage() {
           <CardTitle>Taxa de Engajamento (Formulários)</CardTitle>
           <CardDescription>Respostas de formulários nos últimos 6 meses.</CardDescription>
         </CardHeader>
-        <CardContent className="h-[250px] w-full p-0 pr-6"> {/* Reduced height from h-[300px] */}
+        <CardContent className="h-[250px] w-full p-0 pr-6">
           <ChartContainer config={chartConfig} className="h-full w-full">
             <RechartsBarChart data={engagementData} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
               <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
