@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { List, Clock, Users, MessageSquare, CalendarClock, Building } from 'lucide-react';
+import { List, Clock, Users, MessageSquare, CalendarClock, Building, CalendarDays } from 'lucide-react'; // Added CalendarDays
 import { format, isSameDay, parseISO, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils'; 
@@ -141,3 +141,4 @@ export default function AgendaAdminPage() {
     </div>
   );
 }
+
