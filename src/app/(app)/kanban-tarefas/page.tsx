@@ -9,10 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Kanban, PlusCircle, GripVertical, CalendarIcon as CalendarIconLucide, AlertTriangle, Filter } from 'lucide-react'; // Renomeado CalendarIcon para CalendarIconLucide
+import { Kanban, PlusCircle, GripVertical, CalendarIcon as CalendarIconLucide, AlertTriangle, Filter } from 'lucide-react';
 import type { KanbanTask, KanbanTaskStatus } from '@/types';
 import { Badge } from '@/components/ui/badge';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, set } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,12 +34,12 @@ const taskSchema = z.object({
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 const initialMockKanbanTasks: KanbanTask[] = [
-  { id: 'task1', title: 'Revisar Onboarding Clínica X', description: 'Verificar se todos os documentos foram enviados e se o treinamento inicial foi concluído.', status: 'a_fazer', assignee: 'Admin Equipe Suporte', relatedTo: 'Clínica X', dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(), priority: 'Alta', tags: ['Onboarding'] },
-  { id: 'task2', title: 'Preparar Relatório Mensal de Uso', description: 'Coletar dados de uso da plataforma e gerar o relatório para a diretoria.', status: 'em_andamento', assignee: 'Admin Equipe BI', dueDate: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(), priority: 'Média', tags: ['Relatório', 'Interno'] },
-  { id: 'task3', title: 'Agendar Follow-up Paciente Y', description: 'Entrar em contato com o Paciente Y para agendar a próxima consulta de acompanhamento.', status: 'a_fazer', assignee: 'Dr. Especialista A', relatedTo: 'Paciente Y', priority: 'Média', tags: ['Paciente'] },
-  { id: 'task4', title: 'Desenvolver Novo Fluxo: Pós-Parto', description: 'Criar um novo fluxo de acompanhamento focado no período pós-parto para pacientes.', status: 'a_fazer', assignee: 'Dr. Especialista B', priority: 'Alta', tags: ['Conteúdo', 'Fluxo'] },
-  { id: 'task5', title: 'Finalizar Documentação API v2', status: 'concluido', assignee: 'Admin Equipe Dev', dueDate: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(), priority: 'Alta', tags: ['API', 'Documentação'] },
-  { id: 'task6', title: 'Treinamento Novos Especialistas Clínica Z', description: 'Realizar o treinamento sobre o uso da plataforma para os novos especialistas da Clínica Z.', status: 'em_andamento', assignee: 'Admin Equipe Sucesso', relatedTo: 'Clínica Z', dueDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(), priority: 'Alta', tags: ['Treinamento'] },
+  { id: 'task1', title: 'Revisar Onboarding Clínica X e verificar documentos pendentes', description: 'Verificar se todos os documentos foram enviados e se o treinamento inicial foi concluído.', status: 'a_fazer', assignee: 'Admin Equipe Suporte', relatedTo: 'Clínica X', dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(), priority: 'Alta', tags: ['Onboarding'] },
+  { id: 'task2', title: 'Preparar Relatório Mensal de Uso da Plataforma', description: 'Coletar dados de uso da plataforma e gerar o relatório para a diretoria.', status: 'em_andamento', assignee: 'Admin Equipe BI', dueDate: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(), priority: 'Média', tags: ['Relatório', 'Interno'] },
+  { id: 'task3', title: 'Agendar Follow-up Paciente Y e enviar questionário pré-consulta', description: 'Entrar em contato com o Paciente Y para agendar a próxima consulta de acompanhamento.', status: 'a_fazer', assignee: 'Dr. Especialista A', relatedTo: 'Paciente Y', priority: 'Média', tags: ['Paciente'] },
+  { id: 'task4', title: 'Desenvolver Novo Fluxo de Acompanhamento: Pós-Parto e Primeiros Cuidados', description: 'Criar um novo fluxo de acompanhamento focado no período pós-parto para pacientes.', status: 'a_fazer', assignee: 'Dr. Especialista B', priority: 'Alta', tags: ['Conteúdo', 'Fluxo'] },
+  { id: 'task5', title: 'Finalizar Documentação da API v2.1 e revisar exemplos de código', status: 'concluido', assignee: 'Admin Equipe Dev', dueDate: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(), priority: 'Alta', tags: ['API', 'Documentação'] },
+  { id: 'task6', title: 'Treinamento Novos Especialistas Clínica Z - Módulo Avançado', description: 'Realizar o treinamento sobre o uso da plataforma para os novos especialistas da Clínica Z.', status: 'em_andamento', assignee: 'Admin Equipe Sucesso', relatedTo: 'Clínica Z', dueDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(), priority: 'Alta', tags: ['Treinamento'] },
 ];
 
 const KANBAN_COLUMNS: { id: KanbanTaskStatus; title: string }[] = [
@@ -81,8 +81,8 @@ export default function KanbanTarefasPage() {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      const assigneeMatch = filterAssignee === 'todos' || task.assignee === filterAssignee;
-      const priorityMatch = filterPriority === 'todas' || task.priority === filterPriority;
+      const assigneeMatch = filterAssignee === 'todos' || !task.assignee || task.assignee === filterAssignee;
+      const priorityMatch = filterPriority === 'todas' || !task.priority || task.priority === filterPriority;
       return assigneeMatch && priorityMatch;
     });
   }, [tasks, filterAssignee, filterPriority]);
@@ -160,7 +160,7 @@ export default function KanbanTarefasPage() {
         </Button>
       </div>
       
-      <div className="flex flex-col sm:flex-row gap-4 mb-4 p-3 border rounded-md bg-card shadow-sm">
+      <div className="flex flex-col sm:flex-row gap-4 p-3 border rounded-md bg-card shadow-sm">
         <div className="flex-1 min-w-[180px]">
             <Label htmlFor="filter-assignee" className="text-xs">Filtrar por Responsável</Label>
             <Select value={filterAssignee} onValueChange={setFilterAssignee}>
@@ -189,67 +189,73 @@ export default function KanbanTarefasPage() {
         </div>
       </div>
 
-
       <ScrollArea className="flex-grow whitespace-nowrap pb-4">
         <div className="flex gap-4 h-full">
-          {KANBAN_COLUMNS.map(column => (
-            <Card
-              key={column.id}
-              className="w-80 min-w-[300px] sm:w-96 sm:min-w-[360px] h-full flex flex-col shadow-md bg-muted/50"
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, column.id)}
-            >
-              <CardHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10 p-4 border-b">
-                <CardTitle className="text-base font-semibold">{column.title} ({filteredTasks.filter(t => t.status === column.id).length})</CardTitle>
-              </CardHeader>
-              <ScrollArea className="flex-grow">
-                <CardContent className="p-3 space-y-3">
-                  {filteredTasks.filter(task => task.status === column.id).length > 0 ? (
-                    filteredTasks
-                      .filter(task => task.status === column.id)
-                      .sort((a,b) => {
-                        const priorityOrder = { 'Alta': 1, 'Média': 2, 'Baixa': 3 };
-                        return (priorityOrder[a.priority || 'Baixa'] || 4) - (priorityOrder[b.priority || 'Baixa'] || 4);
-                      })
-                      .map(task => (
-                        <Card 
-                            key={task.id} 
-                            className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab"
-                            draggable="true"
-                            onDragStart={(e) => handleDragStart(e, task.id)}
-                            onDragEnd={handleDragEnd}
-                        >
-                          <CardHeader className="p-3 pb-2">
-                            <div className="flex justify-between items-start">
-                                <CardTitle className="text-sm font-semibold leading-tight line-clamp-2">{task.title}</CardTitle>
-                                <GripVertical className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
-                            </div>
-                            {task.priority && (
-                              <Badge variant={priorityBadgeVariant(task.priority)} className="mt-1 text-xs w-fit">{task.priority}</Badge>
+          {KANBAN_COLUMNS.map(column => {
+            const tasksInColumn = filteredTasks
+              .filter(task => task.status === column.id)
+              .sort((a,b) => {
+                const priorityOrder = { 'Alta': 1, 'Média': 2, 'Baixa': 3 };
+                return (priorityOrder[a.priority || 'Baixa'] || 4) - (priorityOrder[b.priority || 'Baixa'] || 4);
+              });
+
+            return (
+              <Card
+                key={column.id}
+                className="w-80 min-w-[300px] sm:w-96 sm:min-w-[360px] h-full flex flex-col shadow-md bg-muted/50"
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, column.id)}
+              >
+                <CardHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10 p-4 border-b">
+                  <CardTitle className="text-base font-semibold">{column.title} ({tasksInColumn.length})</CardTitle>
+                </CardHeader>
+                <ScrollArea className="flex-grow">
+                  <CardContent className="p-3 space-y-3">
+                    {tasksInColumn.length > 0 ? (
+                      tasksInColumn.map(task => (
+                          <Card 
+                              key={task.id} 
+                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full" // Added w-full
+                              draggable="true"
+                              onDragStart={(e) => handleDragStart(e, task.id)}
+                              onDragEnd={handleDragEnd}
+                          >
+                            <CardHeader className="p-3 pb-2">
+                              <div className="flex justify-between items-start gap-2"> {/* Added gap-2 */}
+                                  <div className="flex-grow min-w-0"> {/* Wrapper for title */}
+                                    <CardTitle className="text-sm font-semibold leading-tight line-clamp-2 break-words">
+                                        {task.title}
+                                    </CardTitle>
+                                  </div>
+                                  <GripVertical className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
+                              </div>
+                              {task.priority && (
+                                <Badge variant={priorityBadgeVariant(task.priority)} className="mt-1 text-xs w-fit">{task.priority}</Badge>
+                              )}
+                            </CardHeader>
+                            <CardContent className="p-3 pt-1 text-xs space-y-1.5">
+                              {task.description && <p className="text-muted-foreground line-clamp-3">{task.description}</p>}
+                              {task.assignee && <p><span className="font-medium">Responsável:</span> {task.assignee}</p>}
+                              {task.relatedTo && <p><span className="font-medium">Ref:</span> {task.relatedTo}</p>}
+                            </CardContent>
+                            {task.dueDate && (
+                              <CardFooter className="p-3 pt-1 text-xs text-muted-foreground border-t">
+                                 <CalendarIconLucide className="mr-1.5 h-3.5 w-3.5" /> 
+                                 Venc: {isValid(parseISO(task.dueDate)) ? format(parseISO(task.dueDate), "dd/MM/yy", { locale: ptBR }) : "Data inválida"}
+                              </CardFooter>
                             )}
-                          </CardHeader>
-                          <CardContent className="p-3 pt-1 text-xs space-y-1.5">
-                            {task.description && <p className="text-muted-foreground line-clamp-3">{task.description}</p>}
-                            {task.assignee && <p><span className="font-medium">Responsável:</span> {task.assignee}</p>}
-                            {task.relatedTo && <p><span className="font-medium">Ref:</span> {task.relatedTo}</p>}
-                          </CardContent>
-                          {task.dueDate && (
-                            <CardFooter className="p-3 pt-1 text-xs text-muted-foreground border-t">
-                               <CalendarIconLucide className="mr-1.5 h-3.5 w-3.5" /> 
-                               Venc: {isValid(parseISO(task.dueDate)) ? format(parseISO(task.dueDate), "dd/MM/yy", { locale: ptBR }) : "Data inválida"}
-                            </CardFooter>
-                          )}
-                        </Card>
-                      ))
-                  ) : (
-                    <div className="text-center py-10 text-muted-foreground">
-                      <p className="text-sm">Nenhuma tarefa aqui.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </ScrollArea>
-            </Card>
-          ))}
+                          </Card>
+                        ))
+                    ) : (
+                      <div className="text-center py-10 text-muted-foreground">
+                        <p className="text-sm">Nenhuma tarefa aqui.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </ScrollArea>
+              </Card>
+            );
+          })}
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
