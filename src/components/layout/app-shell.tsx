@@ -1,4 +1,3 @@
-
 // src/components/layout/app-shell.tsx
 "use client";
 
@@ -14,7 +13,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  useSidebar, // Added this import
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
@@ -41,7 +40,7 @@ import {
   HelpCircle,
   CalendarClock,
   Kanban,
-  LayoutGrid, // Added LayoutGrid icon
+  // LayoutGrid, // Removed as we are unifying
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -67,7 +66,7 @@ const navItems: NavItem[] = [
   { href: '/agenda-admin', label: 'Agenda Admin', icon: CalendarClock, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/admin/equipe', label: 'Equipe Admin', icon: Users, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/kanban-tarefas', label: 'Tarefas (Kanban)', icon: Kanban, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] },
-  { href: '/kanban-tarefas', label: 'CRM (Tarefas)', icon: LayoutGrid, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] }, // New CRM button
+  // { href: '/kanban-tarefas', label: 'CRM (Tarefas)', icon: LayoutGrid, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] }, // Removed this duplicate entry
 
   // Especialista da Clínica (Clinic Specialist)
   { href: '/dashboard-especialista', label: 'Painel do Especialista', icon: LayoutDashboard, roles: [UserRole.CLINIC_SPECIALIST] },
@@ -77,7 +76,6 @@ const navItems: NavItem[] = [
   { href: '/agenda-especialista', label: 'Agenda do Especialista', icon: CalendarDays, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/equipe', label: 'Equipe da Clínica', icon: UsersRound, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/clinica/configuracoes', label: 'Config. Clínica', icon: Settings2, roles: [UserRole.CLINIC_SPECIALIST] },
-  // Note: Tarefas (Kanban) and CRM (Tarefas) are already added above and will be filtered by role.
 
   // Paciente
   { href: '/inicio', label: 'Início', icon: Home, roles: [UserRole.PATIENT] },
@@ -109,8 +107,6 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!user) {
-    // AuthContext deve lidar com o redirecionamento para /login se não houver usuário
-    // e authLoading for false. AppShellInternal simplesmente não renderiza o shell.
     return null;
   }
 
@@ -133,7 +129,6 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   }
   
   const handleThemeToggleAsButton = (e: React.MouseEvent | React.KeyboardEvent) => {
-    // Verifica se o clique foi no próprio Switch para evitar duplo toggle
     if ((e.target as HTMLElement).closest('[role="switch"]')) {
         e.stopPropagation(); 
     } else {
@@ -219,10 +214,10 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                   </div>
                   <Switch
                     checked={theme === 'dark'}
-                    onCheckedChange={toggleTheme} // O toggleTheme direto no Switch está OK
+                    onCheckedChange={toggleTheme}
                     aria-label="Alternar tema"
                     className="ml-auto group-data-[collapsible=icon]:hidden"
-                    onClick={(e) => e.stopPropagation()} // Impede que o clique no Switch também dispare o toggle do div pai
+                    onClick={(e) => e.stopPropagation()} 
                   />
                 </div>
               </SidebarMenuItem>
@@ -240,7 +235,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
       
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto",
-          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" // Ajustado pb-20 para mobile
+          isMobile ? "px-4 pt-4 pb-16" : "p-6" // Adjusted pb-16 for mobile to account for bottom nav
         )}>
           {children}
       </SidebarInset>
@@ -254,11 +249,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
 
-  if (authLoading) {
-    // Se está carregando e não há usuário no localStorage, mostra o loader global
-    // Isso evita que o AppShell tente renderizar ou redirecionar prematuramente
-    // antes do AuthContext determinar o estado inicial.
-    // A verificação de localStorage foi removida pois o AuthContext já lida com isso.
+  if (authLoading && typeof window !== 'undefined' && !localStorage.getItem('nutritrack_user')) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -267,11 +258,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
   
   if (!user && !authLoading) {
-    // AuthContext irá redirecionar para /login, então não renderizamos o shell
     return null;
   }
   
-  // Se chegamos aqui, authLoading é false e user existe.
   const sidebarCollapsibleType = "icon";
   const sidebarSidePlacement = "left";
 

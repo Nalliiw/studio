@@ -1,4 +1,3 @@
-
 // src/components/layout/mobile-more-options-sheet.tsx
 'use client';
 
@@ -10,7 +9,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetClose, // Adicionado SheetClose
+  // SheetClose, // Explicit SheetClose not needed as SheetContent provides one
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -18,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { UserCircle, Settings, LogOut, Moon, Sun, HelpCircle, CalendarClock, Users as UsersIcon, Kanban, LayoutGrid } from 'lucide-react'; 
+import { UserCircle, Settings, LogOut, Moon, Sun, HelpCircle, CalendarClock, Users as UsersIcon, Kanban } from 'lucide-react'; 
 import { UserRole } from '@/types'; 
 
 interface NavItem {
@@ -49,19 +48,14 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
   };
   
   const allSheetItems: NavItem[] = [
-    // Itens que sempre aparecem se o usuário estiver logado
     { href: '/perfil', label: 'Ver Perfil', icon: UserCircle, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST, UserRole.PATIENT] },
-    // Adiciona os itens passados por props
     ...additionalNavItems,
-    // Adiciona itens específicos de Admin Supremo que podem não estar no navItems principal se a lógica de filtro for diferente
     { href: '/central-ajuda', label: 'Central de Ajuda', icon: HelpCircle, roles: [UserRole.ADMIN_SUPREMO] },
     { href: '/agenda-admin', label: 'Agenda Admin', icon: CalendarClock, roles: [UserRole.ADMIN_SUPREMO] },
     { href: '/admin/equipe', label: 'Equipe Admin', icon: UsersIcon, roles: [UserRole.ADMIN_SUPREMO] },
-    // Adiciona o novo CRM (Tarefas) para Admin e Especialista
-    { href: '/kanban-tarefas', label: 'CRM (Tarefas)', icon: LayoutGrid, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] },
+    // { href: '/kanban-tarefas', label: 'CRM (Tarefas)', icon: LayoutGrid, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] }, // Removed, keeping only Tarefas (Kanban)
   ];
 
-  // Filtra e remove duplicados, mantendo a ordem de `allSheetItems`
   const uniqueSheetItems = allSheetItems.reduce((acc, current) => {
     const x = acc.find(item => item.href === current.href && item.label === current.label);
     if (!x) {
@@ -77,7 +71,6 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
       <SheetContent side="bottom" className="h-auto max-h-[70vh] flex flex-col rounded-t-lg p-0">
         <SheetHeader className="p-4 border-b sticky top-0 bg-background z-10">
           <SheetTitle className="text-lg text-center">Mais Opções</SheetTitle>
-          {/* O SheetContent já adiciona um botão X por padrão. Se você quiser um customizado, pode usar SheetClose aqui */}
         </SheetHeader>
         
         <div className="flex-grow overflow-y-auto p-4 space-y-1">

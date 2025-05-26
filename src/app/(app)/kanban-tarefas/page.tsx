@@ -35,11 +35,11 @@ type TaskFormValues = z.infer<typeof taskSchema>;
 
 const initialMockKanbanTasks: KanbanTask[] = [
   { id: 'task1', title: 'Revisar Onboarding Clínica X e verificar documentos pendentes', description: 'Verificar se todos os documentos foram enviados e se o treinamento inicial foi concluído.', status: 'a_fazer', assignee: 'Admin Equipe Suporte', relatedTo: 'Clínica X', dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(), priority: 'Alta', tags: ['Onboarding'] },
-  { id: 'task2', title: 'Preparar Relatório Mensal de Uso da Plataforma', description: 'Coletar dados de uso da plataforma e gerar o relatório para a diretoria.', status: 'em_andamento', assignee: 'Admin Equipe BI', dueDate: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(), priority: 'Média', tags: ['Relatório', 'Interno'] },
-  { id: 'task3', title: 'Agendar Follow-up Paciente Y e enviar questionário pré-consulta', description: 'Entrar em contato com o Paciente Y para agendar a próxima consulta de acompanhamento.', status: 'a_fazer', assignee: 'Dr. Especialista A', relatedTo: 'Paciente Y', priority: 'Média', tags: ['Paciente'] },
-  { id: 'task4', title: 'Desenvolver Novo Fluxo de Acompanhamento: Pós-Parto e Primeiros Cuidados', description: 'Criar um novo fluxo de acompanhamento focado no período pós-parto para pacientes.', status: 'a_fazer', assignee: 'Dr. Especialista B', priority: 'Alta', tags: ['Conteúdo', 'Fluxo'] },
-  { id: 'task5', title: 'Finalizar Documentação da API v2.1 e revisar exemplos de código', status: 'concluido', assignee: 'Admin Equipe Dev', dueDate: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(), priority: 'Alta', tags: ['API', 'Documentação'] },
-  { id: 'task6', title: 'Treinamento Novos Especialistas Clínica Z - Módulo Avançado', description: 'Realizar o treinamento sobre o uso da plataforma para os novos especialistas da Clínica Z.', status: 'em_andamento', assignee: 'Admin Equipe Sucesso', relatedTo: 'Clínica Z', dueDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(), priority: 'Alta', tags: ['Treinamento'] },
+  { id: 'task2', title: 'Preparar Relatório Mensal de Uso da Plataforma para apresentar à diretoria da empresa', description: 'Coletar dados de uso da plataforma e gerar o relatório para a diretoria. Incluir métricas de engajamento, número de novos usuários e feedback geral.', status: 'em_andamento', assignee: 'Admin Equipe BI', dueDate: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(), priority: 'Média', tags: ['Relatório', 'Interno'] },
+  { id: 'task3', title: 'Agendar Follow-up Paciente Y e enviar questionário pré-consulta detalhado sobre hábitos alimentares e progresso recente', status: 'a_fazer', assignee: 'Dr. Especialista A', relatedTo: 'Paciente Y', priority: 'Média', tags: ['Paciente'] },
+  { id: 'task4', title: 'Desenvolver Novo Fluxo de Acompanhamento: Pós-Parto e Primeiros Cuidados com o bebê, incluindo dicas de amamentação', description: 'Criar um novo fluxo de acompanhamento focado no período pós-parto para pacientes, com informações sobre recuperação, nutrição e cuidados com o recém-nascido.', status: 'a_fazer', assignee: 'Dr. Especialista B', priority: 'Alta', tags: ['Conteúdo', 'Fluxo'] },
+  { id: 'task5', title: 'Finalizar Documentação da API v2.1 e revisar exemplos de código para integração de terceiros', status: 'concluido', assignee: 'Admin Equipe Dev', dueDate: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(), priority: 'Alta', tags: ['API', 'Documentação'] },
+  { id: 'task6', title: 'Treinamento Novos Especialistas Clínica Z - Módulo Avançado de Uso da Plataforma NutriTrack Lite', description: 'Realizar o treinamento sobre o uso da plataforma para os novos especialistas da Clínica Z, cobrindo funcionalidades avançadas e melhores práticas.', status: 'em_andamento', assignee: 'Admin Equipe Sucesso', relatedTo: 'Clínica Z', dueDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(), priority: 'Alta', tags: ['Treinamento'] },
 ];
 
 const KANBAN_COLUMNS: { id: KanbanTaskStatus; title: string }[] = [
@@ -215,14 +215,14 @@ export default function KanbanTarefasPage() {
                       tasksInColumn.map(task => (
                           <Card 
                               key={task.id} 
-                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full" // Added w-full
+                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full"
                               draggable="true"
                               onDragStart={(e) => handleDragStart(e, task.id)}
                               onDragEnd={handleDragEnd}
                           >
                             <CardHeader className="p-3 pb-2">
-                              <div className="flex justify-between items-start gap-2"> {/* Added gap-2 */}
-                                  <div className="flex-grow min-w-0"> {/* Wrapper for title */}
+                              <div className="flex justify-between items-start gap-2">
+                                  <div className="flex-grow min-w-0"> 
                                     <CardTitle className="text-sm font-semibold leading-tight line-clamp-2 break-words">
                                         {task.title}
                                     </CardTitle>
@@ -234,9 +234,9 @@ export default function KanbanTarefasPage() {
                               )}
                             </CardHeader>
                             <CardContent className="p-3 pt-1 text-xs space-y-1.5">
-                              {task.description && <p className="text-muted-foreground line-clamp-3">{task.description}</p>}
-                              {task.assignee && <p><span className="font-medium">Responsável:</span> {task.assignee}</p>}
-                              {task.relatedTo && <p><span className="font-medium">Ref:</span> {task.relatedTo}</p>}
+                              {task.description && <p className="text-muted-foreground line-clamp-3 break-words">{task.description}</p>}
+                              {task.assignee && <p className="truncate"><span className="font-medium">Responsável:</span> {task.assignee}</p>}
+                              {task.relatedTo && <p className="truncate"><span className="font-medium">Ref:</span> {task.relatedTo}</p>}
                             </CardContent>
                             {task.dueDate && (
                               <CardFooter className="p-3 pt-1 text-xs text-muted-foreground border-t">
