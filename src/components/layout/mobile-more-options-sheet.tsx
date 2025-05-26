@@ -1,3 +1,4 @@
+
 // src/components/layout/mobile-more-options-sheet.tsx
 'use client';
 
@@ -9,7 +10,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  // SheetClose, // Explicit SheetClose not needed as SheetContent provides one
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -47,16 +47,22 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
     onOpenChange(false); 
   };
   
-  const allSheetItems: NavItem[] = [
+  // Combine a base set of "more" options with any dynamically passed additionalNavItems
+  const baseMoreOptions: NavItem[] = [
     { href: '/perfil', label: 'Ver Perfil', icon: UserCircle, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST, UserRole.PATIENT] },
-    ...additionalNavItems,
-    { href: '/central-ajuda', label: 'Central de Ajuda', icon: HelpCircle, roles: [UserRole.ADMIN_SUPREMO] },
-    { href: '/agenda-admin', label: 'Agenda Admin', icon: CalendarClock, roles: [UserRole.ADMIN_SUPREMO] },
-    { href: '/admin/equipe', label: 'Equipe Admin', icon: UsersIcon, roles: [UserRole.ADMIN_SUPREMO] },
-    // { href: '/kanban-tarefas', label: 'CRM (Tarefas)', icon: LayoutGrid, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] }, // Removed, keeping only Tarefas (Kanban)
+    // Add other static "more" items if any
   ];
 
-  const uniqueSheetItems = allSheetItems.reduce((acc, current) => {
+  const allPotentialSheetItems: NavItem[] = [
+    ...baseMoreOptions,
+    ...additionalNavItems,
+    // Ensure these ADMIN_SUPREMO specific items are only added if not already in additionalNavItems
+    // or define them as base if they ALWAYS appear in "more" for admin.
+    // For now, let additionalNavItems take precedence if there are overlaps.
+  ];
+  
+  // Filter unique items and then filter by role
+  const uniqueSheetItems = allPotentialSheetItems.reduce((acc, current) => {
     const x = acc.find(item => item.href === current.href && item.label === current.label);
     if (!x) {
       return acc.concat([current]);
@@ -64,6 +70,8 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
       return acc;
     }
   }, [] as NavItem[]);
+
+  const finalSheetItems = uniqueSheetItems.filter(item => user && item.roles.includes(user.role as UserRole));
 
 
   return (
@@ -74,18 +82,16 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
         </SheetHeader>
         
         <div className="flex-grow overflow-y-auto p-4 space-y-1">
-            {user && uniqueSheetItems.map(item => (
-                 item.roles.includes(user?.role as UserRole) && ( 
-                    <Button
-                        key={`${item.href}-${item.label}`}
-                        variant="ghost"
-                        className="w-full justify-start text-base py-3 h-auto gap-3"
-                        onClick={() => handleNavigate(item.href)}
-                    >
-                        <item.icon className="h-5 w-5" />
-                        {item.label}
-                    </Button>
-                 )
+            {finalSheetItems.map(item => (
+                <Button
+                    key={`${item.href}-${item.label}`}
+                    variant="ghost"
+                    className="w-full justify-start text-base py-3 h-auto gap-3"
+                    onClick={() => handleNavigate(item.href)}
+                >
+                    <item.icon className="h-5 w-5" />
+                    {item.label}
+                </Button>
             ))}
             
             <Separator className="my-2"/>

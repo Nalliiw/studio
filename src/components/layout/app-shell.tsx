@@ -1,3 +1,4 @@
+
 // src/components/layout/app-shell.tsx
 "use client";
 
@@ -40,7 +41,6 @@ import {
   HelpCircle,
   CalendarClock,
   Kanban,
-  // LayoutGrid, // Removed as we are unifying
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -66,7 +66,6 @@ const navItems: NavItem[] = [
   { href: '/agenda-admin', label: 'Agenda Admin', icon: CalendarClock, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/admin/equipe', label: 'Equipe Admin', icon: Users, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/kanban-tarefas', label: 'Tarefas (Kanban)', icon: Kanban, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] },
-  // { href: '/kanban-tarefas', label: 'CRM (Tarefas)', icon: LayoutGrid, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] }, // Removed this duplicate entry
 
   // Especialista da Clínica (Clinic Specialist)
   { href: '/dashboard-especialista', label: 'Painel do Especialista', icon: LayoutDashboard, roles: [UserRole.CLINIC_SPECIALIST] },
@@ -107,7 +106,13 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!user) {
-    return null;
+    // AuthContext useEffect should handle redirection to /login
+    // Return a loader or null here to prevent rendering protected content before redirect
+     return (
+        <div className="flex h-screen items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+    );
   }
 
   const userNavItems = navItems.filter(item => item.roles.includes(user.role));
@@ -176,7 +181,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                     onClick={handleUserAvatarClick}
                   >
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={`https://picsum.photos/seed/${user.id}/40/40`} alt={user.name || 'Avatar'} data-ai-hint="profile avatar"/>
+                      <AvatarImage src={`https://placehold.co/40x40.png`} data-ai-hint="profile avatar" alt={user.name || 'Avatar'}/>
                       <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
                     <span className="flex flex-col items-start group-data-[collapsible=icon]:hidden">
@@ -235,7 +240,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
       
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto",
-          isMobile ? "px-4 pt-4 pb-16" : "p-6" // Adjusted pb-16 for mobile to account for bottom nav
+          isMobile ? "px-4 pt-4 pb-20" : "p-6" 
         )}>
           {children}
       </SidebarInset>
@@ -249,7 +254,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
 
-  if (authLoading && typeof window !== 'undefined' && !localStorage.getItem('nutritrack_user')) {
+  if (authLoading && typeof window !== 'undefined' && !localStorage.getItem('nutritrack_user_simulated')) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -258,7 +263,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
   
   if (!user && !authLoading) {
-    return null;
+    // AuthContext should handle redirecting to login if no user and not loading
+    // This component shouldn't render its main structure if no user.
+    return null; 
   }
   
   const sidebarCollapsibleType = "icon";

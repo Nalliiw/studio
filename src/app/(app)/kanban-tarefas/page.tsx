@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Kanban, PlusCircle, GripVertical, CalendarIcon as CalendarIconLucide, AlertTriangle, Filter } from 'lucide-react';
 import type { KanbanTask, KanbanTaskStatus } from '@/types';
 import { Badge } from '@/components/ui/badge';
-import { format, parseISO, isValid, set } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,7 +35,7 @@ const taskSchema = z.object({
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 const initialMockKanbanTasks: KanbanTask[] = [
-  { id: 'task1', title: 'Revisar Onboarding Clínica X e verificar documentos pendentes', description: 'Verificar se todos os documentos foram enviados e se o treinamento inicial foi concluído. Este é um texto de descrição um pouco mais longo para testar a quebra de linha e como o card se ajusta ao conteúdo completo sem truncamento excessivo.', status: 'a_fazer', assignee: 'Admin Equipe Suporte Principal com Nome Muito Longo Para Teste', relatedTo: 'Clínica X - Projeto Alpha de Integração Completa', dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(), priority: 'Alta', tags: ['Onboarding'] },
+  { id: 'task1', title: 'Revisar Onboarding Clínica X e verificar documentos pendentes', description: 'Verificar se todos os documentos foram enviados e se o treinamento inicial foi concluído. Este é um texto de descrição um pouco mais longo para testar a quebra de linha e como o card se ajusta ao conteúdo completo sem truncamento excessivo.', status: 'a_fazer', assignee: 'Admin Equipe Suporte Principal com Nome Muito Longo Para Teste de Quebra de Linha no Campo de Responsável Para Garantir que Nao Quebre o Layout', relatedTo: 'Clínica X - Projeto Alpha de Integração Completa e Detalhada Para Testar Limites', dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(), priority: 'Alta', tags: ['Onboarding'] },
   { id: 'task2', title: 'Preparar Relatório Mensal de Uso da Plataforma para apresentar à diretoria da empresa', description: 'Coletar dados de uso da plataforma e gerar o relatório para a diretoria. Incluir métricas de engajamento, número de novos usuários e feedback geral.', status: 'em_andamento', assignee: 'Admin Equipe BI', dueDate: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(), priority: 'Média', tags: ['Relatório', 'Interno'] },
   { id: 'task3', title: 'Agendar Follow-up Paciente Y e enviar questionário pré-consulta detalhado sobre hábitos alimentares e progresso recente', status: 'a_fazer', assignee: 'Dr. Especialista A', relatedTo: 'Paciente Y', priority: 'Média', tags: ['Paciente'] },
   { id: 'task4', title: 'Desenvolver Novo Fluxo de Acompanhamento: Pós-Parto e Primeiros Cuidados com o bebê, incluindo dicas de amamentação', description: 'Criar um novo fluxo de acompanhamento focado no período pós-parto para pacientes, com informações sobre recuperação, nutrição e cuidados com o recém-nascido.', status: 'a_fazer', assignee: 'Dr. Especialista B', priority: 'Alta', tags: ['Conteúdo', 'Fluxo'] },
@@ -52,7 +52,7 @@ const KANBAN_COLUMNS: { id: KanbanTaskStatus; title: string }[] = [
 const priorityBadgeVariant = (priority?: 'Baixa' | 'Média' | 'Alta'): 'default' | 'secondary' | 'destructive' | 'outline' => {
   switch (priority) {
     case 'Alta': return 'destructive';
-    case 'Média': return 'default';
+    case 'Média': return 'default'; // Default will use primary color
     case 'Baixa': return 'secondary';
     default: return 'outline';
   }
@@ -76,7 +76,10 @@ export default function KanbanTarefasPage() {
     },
   });
 
-  const assignees = useMemo(() => ['todos', ...new Set(tasks.map(task => task.assignee).filter(Boolean) as string[])], [tasks]);
+  const assignees = useMemo(() => {
+    const uniqueAssignees = new Set(tasks.map(task => task.assignee).filter(Boolean) as string[]);
+    return ['todos', ...Array.from(uniqueAssignees)];
+  }, [tasks]);
   const priorities = useMemo(() => ['todas', 'Baixa', 'Média', 'Alta'], []);
 
 
@@ -135,7 +138,7 @@ export default function KanbanTarefasPage() {
       relatedTo: data.relatedTo,
       priority: data.priority,
       dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
-      tags: [],
+      tags: [], // Tags can be added later if needed
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
     toast({
@@ -203,7 +206,7 @@ export default function KanbanTarefasPage() {
             return (
               <Card
                 key={column.id}
-                className="w-80 min-w-[300px] sm:w-96 sm:min-w-[360px] h-full flex flex-col shadow-md bg-muted/50"
+                className="w-[300px] sm:w-[360px] md:w-[380px] h-full flex flex-col shadow-md bg-muted/50 flex-shrink-0"
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, column.id)}
               >
@@ -235,9 +238,23 @@ export default function KanbanTarefasPage() {
                               )}
                             </CardHeader>
                             <CardContent className="p-3 pt-1 text-xs space-y-1.5">
-                              {task.description && <p className="text-muted-foreground break-words">{task.description}</p>}
-                              {task.assignee && <p className="break-words"><span className="font-medium">Responsável:</span> {task.assignee}</p>}
-                              {task.relatedTo && <p className="break-words"><span className="font-medium">Ref:</span> {task.relatedTo}</p>}
+                              {task.description && (
+                                <p className="text-muted-foreground break-words line-clamp-3">
+                                  {task.description}
+                                </p>
+                              )}
+                              {task.assignee && (
+                                <div>
+                                  <span className="font-medium">Responsável: </span>
+                                  <span className="text-muted-foreground break-words">{task.assignee}</span>
+                                </div>
+                              )}
+                              {task.relatedTo && (
+                                <div>
+                                  <span className="font-medium">Ref: </span>
+                                  <span className="text-muted-foreground break-words">{task.relatedTo}</span>
+                                </div>
+                              )}
                             </CardContent>
                             {task.dueDate && (
                               <CardFooter className="p-3 pt-1 text-xs text-muted-foreground border-t">
@@ -333,3 +350,4 @@ export default function KanbanTarefasPage() {
     </div>
   );
 }
+
