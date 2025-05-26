@@ -7,12 +7,12 @@ export enum UserRole {
 
 export interface User {
   id: string;
-  name: string | null; // Can be null initially from Firebase Auth
-  email: string | null; // Can be null initially from Firebase Auth
-  displayName?: string | null; // From Firebase Auth
+  name: string | null;
+  email: string | null;
+  displayName?: string | null;
   role: UserRole;
   companyId?: string;
-  companyCnpj?: string; // CNPJ da clínica do especialista
+  companyCnpj?: string;
   specialties?: string[];
 }
 
@@ -20,11 +20,11 @@ export interface Company {
   id: string;
   name: string;
   cnpj: string;
-  responsibleName?: string; // Novo campo
-  responsibleEmail?: string; // Novo campo
-  responsiblePhone?: string; // Novo campo
+  responsibleName?: string;
+  responsibleEmail?: string;
+  responsiblePhone?: string;
   logoUrl?: string;
-  nutritionistCount: number;
+  nutritionistCount: number; // Considerar renomear para memberCount ou specialistCount no futuro
   status: 'active' | 'inactive';
   createdAt?: any;
   lastModified?: any;
@@ -36,7 +36,7 @@ export interface Patient {
   email: string;
   lastAccess: string; // ISO date string
   companyId: string;
-  nutritionistId: string;
+  nutritionistId: string; // ID do especialista principal ou de referência
 }
 
 export type FlowStepType =
@@ -81,7 +81,7 @@ export interface Flow {
   id: string;
   name: string;
   steps: FlowStep[];
-  nutritionistId: string;
+  nutritionistId: string; // ID do especialista que criou
   createdAt?: any;
   lastModified?: any;
   status?: 'draft' | 'active' | 'archived';
@@ -94,10 +94,10 @@ export interface Content {
   title: string;
   url: string;
   category: string;
-  nutritionistId: string;
+  nutritionistId: string; // ID do especialista que adicionou
 }
 
-export interface Praise {
+export interface Praise { // Renomeado para Conquista na UI, mas tipo pode permanecer Praise
   id: string;
   type: 'text' | 'audio' | 'video';
   content: string;
@@ -107,11 +107,13 @@ export interface Praise {
 
 export interface FormResponse {
   id: string;
-  formId: string;
+  formId: string; // ID do Flow original
+  flowName: string; // Nome do Flow para exibição
   patientId: string;
   answers: { stepId: string; answer: any }[];
   status: 'pending' | 'completed';
-  submittedAt?: string;
+  submittedAt?: string; // ISO date string
+  assignedAt?: string; // ISO date string (para formulários pendentes)
 }
 
 export type ClinicAccessType = 'administrador_clinica' | 'especialista_padrao';
@@ -123,11 +125,30 @@ export interface TeamMember {
   email: string;
   accessType: ClinicAccessType;
   specialties?: string[];
-  userId?: string;
+  userId?: string; // UID do Firebase Auth, se o membro tiver uma conta real
   status: 'active' | 'pending_invitation' | 'inactive';
-  createdAt: any;
-  addedBy: string;
+  createdAt: any; // Firebase Timestamp ou string ISO
+  addedBy: string; // UID do admin da clínica que adicionou
   invitationToken?: string;
 }
 
 export type UpdateTeamMemberData = Partial<Omit<TeamMember, 'id' | 'clinicId' | 'createdAt' | 'addedBy' | 'invitationToken'>>;
+
+
+// Tipos para a Central de Ajuda
+export type HelpMaterialType = 'faq' | 'video' | 'pdf' | 'document' | 'external_link';
+export type HelpMaterialAudience = 'support' | 'clinic' | 'patient';
+
+export interface HelpMaterial {
+  id: string;
+  title: string;
+  type: HelpMaterialType;
+  // Para FAQ: o texto da resposta.
+  // Para Vídeo/Link Externo: a URL.
+  // Para PDF/Documento: a URL do arquivo após o upload (ou um identificador para buscar).
+  content: string;
+  audience: HelpMaterialAudience[];
+  category?: string;
+  createdAt?: string; // ISO date string
+  lastModified?: string; // ISO date string
+}

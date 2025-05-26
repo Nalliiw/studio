@@ -14,8 +14,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  // SidebarTrigger, // Not used in this simplified header
-  useSidebar, // Import useSidebar
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
@@ -40,12 +39,13 @@ import {
   CalendarDays,
   UsersRound,
   ImageIcon,
+  HelpCircle, // Ícone para Central de Ajuda
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import BottomNavigation from './bottom-navigation';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 
 interface NavItem {
@@ -61,6 +61,7 @@ const navItems: NavItem[] = [
   { href: '/dashboard-geral', label: 'Dashboard Geral', icon: LayoutDashboard, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/empresas', label: 'Empresas (Clínicas)', icon: Building, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/relatorios-gerais', label: 'Relatórios Gerais', icon: BarChart3, roles: [UserRole.ADMIN_SUPREMO] },
+  { href: '/central-ajuda', label: 'Central de Ajuda', icon: HelpCircle, roles: [UserRole.ADMIN_SUPREMO] },
   // Especialista da Clínica
   { href: '/dashboard-especialista', label: 'Painel do Especialista', icon: LayoutDashboard, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/pacientes', label: 'Pacientes', icon: Users, roles: [UserRole.CLINIC_SPECIALIST] },
@@ -98,9 +99,9 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
+  // Se não há usuário e não está carregando, o AuthContext deve redirecionar para /login.
+  // Retornar null aqui evita renderizar o AppShell antes do redirecionamento.
   if (!user) {
-    // AuthContext's useEffect should handle redirection.
-    // Returning null here prevents rendering AppShell content before redirect.
     return null;
   }
 
@@ -121,14 +122,17 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
     if (isMobile) setOpenMobile(false);
     logout();
   }
-
+  
   const handleThemeToggle = (e: React.MouseEvent | React.KeyboardEvent) => {
+     // Impede a propagação apenas se o clique for diretamente no Switch,
+     // permitindo que o clique no div maior ainda alterne o tema.
     if ((e.target as HTMLElement).closest('[role="switch"]')) {
         e.stopPropagation();
     } else {
         toggleTheme();
     }
   };
+
 
   return (
     <>
@@ -139,7 +143,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
           <SidebarContent className="p-2">
             <SidebarMenu>
               {userNavItems.map((item) => {
-                const isActive = pathname === item.href || (item.href !== '/' && !item.href.startsWith('/dashboard') && !item.href.startsWith('/inicio') && !item.href.startsWith('/clinica') && pathname.startsWith(item.href)) || (item.href.startsWith('/clinica') && pathname.startsWith(item.href));
+                const isActive = pathname === item.href || (item.href !== '/' && !item.href.startsWith('/dashboard') && !item.href.startsWith('/inicio') && !item.href.startsWith('/clinica') && !item.href.startsWith('/central-ajuda') && pathname.startsWith(item.href)) || ((item.href.startsWith('/clinica') || item.href.startsWith('/central-ajuda')) && pathname.startsWith(item.href));
 
                 return (
                   <SidebarMenuItem key={item.href}>
@@ -187,7 +191,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                  <div
                   className={cn(
                     "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
-                    "h-8 text-sm", // Corresponds to default size
+                    "h-8 text-sm", 
                     "justify-between cursor-pointer" 
                   )}
                   onClick={handleThemeToggle}
@@ -223,7 +227,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
           </SidebarFooter>
         </Sidebar>
       )}
-
+      
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto",
           isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" 
@@ -240,9 +244,6 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
 
-
-  // If auth is still loading, show a global loader.
-  // AuthContext handles checking localStorage and initial auth state.
   if (authLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -251,13 +252,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If not loading and no user, AuthContext's useEffect will redirect to /login.
-  // AppShell should not render its main content in this case.
   if (!user) {
+    // AuthContext deveria redirecionar para /login.
+    // Não renderizar o AppShell para evitar piscar de conteúdo protegido.
     return null;
   }
-
-  // If user is loaded, proceed to render the shell with SidebarProvider etc.
+  
   const sidebarCollapsibleType = "icon";
   const sidebarSidePlacement = "left";
 
