@@ -52,7 +52,7 @@ const KANBAN_COLUMNS: { id: KanbanTaskStatus; title: string }[] = [
 const priorityBadgeVariant = (priority?: 'Baixa' | 'Média' | 'Alta'): 'default' | 'secondary' | 'destructive' | 'outline' => {
   switch (priority) {
     case 'Alta': return 'destructive';
-    case 'Média': return 'default'; // Default will use primary color
+    case 'Média': return 'default';
     case 'Baixa': return 'secondary';
     default: return 'outline';
   }
@@ -138,7 +138,7 @@ export default function KanbanTarefasPage() {
       relatedTo: data.relatedTo,
       priority: data.priority,
       dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
-      tags: [], // Tags can be added later if needed
+      tags: [],
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
     toast({
@@ -219,7 +219,7 @@ export default function KanbanTarefasPage() {
                       tasksInColumn.map(task => (
                           <Card
                               key={task.id}
-                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full"
+                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full overflow-hidden" // Added overflow-hidden
                               draggable="true"
                               onDragStart={(e) => handleDragStart(e, task.id)}
                               onDragEnd={handleDragEnd}
@@ -227,7 +227,7 @@ export default function KanbanTarefasPage() {
                             <CardHeader className="p-3 pb-2">
                               <div className="flex justify-between items-start gap-2">
                                   <div className="flex-grow min-w-0">
-                                    <CardTitle className="text-sm font-semibold leading-tight line-clamp-2 break-words">
+                                    <CardTitle className="text-sm font-semibold leading-tight break-all"> {/* Use break-all */}
                                         {task.title}
                                     </CardTitle>
                                   </div>
@@ -239,20 +239,20 @@ export default function KanbanTarefasPage() {
                             </CardHeader>
                             <CardContent className="p-3 pt-1 text-xs space-y-1.5">
                               {task.description && (
-                                <p className="text-muted-foreground break-words line-clamp-3">
+                                <p className="text-muted-foreground break-all"> {/* Use break-all */}
                                   {task.description}
                                 </p>
                               )}
                               {task.assignee && (
                                 <div>
                                   <span className="font-medium">Responsável: </span>
-                                  <span className="text-muted-foreground break-words">{task.assignee}</span>
+                                  <span className="text-muted-foreground break-all">{task.assignee}</span> {/* Use break-all */}
                                 </div>
                               )}
                               {task.relatedTo && (
                                 <div>
                                   <span className="font-medium">Ref: </span>
-                                  <span className="text-muted-foreground break-words">{task.relatedTo}</span>
+                                  <span className="text-muted-foreground break-all">{task.relatedTo}</span> {/* Use break-all */}
                                 </div>
                               )}
                             </CardContent>
