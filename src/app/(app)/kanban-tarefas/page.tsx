@@ -219,7 +219,7 @@ export default function KanbanTarefasPage() {
                       tasksInColumn.map(task => (
                           <Card
                               key={task.id}
-                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full overflow-hidden" // Added overflow-hidden
+                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full overflow-hidden"
                               draggable="true"
                               onDragStart={(e) => handleDragStart(e, task.id)}
                               onDragEnd={handleDragEnd}
@@ -227,7 +227,7 @@ export default function KanbanTarefasPage() {
                             <CardHeader className="p-3 pb-2">
                               <div className="flex justify-between items-start gap-2">
                                   <div className="flex-grow min-w-0">
-                                    <CardTitle className="text-sm font-semibold leading-tight break-all"> {/* Use break-all */}
+                                    <CardTitle className="text-sm font-semibold break-all">
                                         {task.title}
                                     </CardTitle>
                                   </div>
@@ -239,20 +239,20 @@ export default function KanbanTarefasPage() {
                             </CardHeader>
                             <CardContent className="p-3 pt-1 text-xs space-y-1.5">
                               {task.description && (
-                                <p className="text-muted-foreground break-all"> {/* Use break-all */}
+                                <p className="text-muted-foreground break-all">
                                   {task.description}
                                 </p>
                               )}
                               {task.assignee && (
-                                <div>
+                                <div className="min-w-0">
                                   <span className="font-medium">Responsável: </span>
-                                  <span className="text-muted-foreground break-all">{task.assignee}</span> {/* Use break-all */}
+                                  <span className="text-muted-foreground break-all">{task.assignee}</span>
                                 </div>
                               )}
                               {task.relatedTo && (
-                                <div>
+                                <div className="min-w-0">
                                   <span className="font-medium">Ref: </span>
-                                  <span className="text-muted-foreground break-all">{task.relatedTo}</span> {/* Use break-all */}
+                                  <span className="text-muted-foreground break-all">{task.relatedTo}</span>
                                 </div>
                               )}
                             </CardContent>
