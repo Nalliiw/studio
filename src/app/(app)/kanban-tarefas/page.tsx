@@ -1,3 +1,4 @@
+
 // src/app/(app)/kanban-tarefas/page.tsx
 'use client';
 
@@ -34,7 +35,7 @@ const taskSchema = z.object({
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 const initialMockKanbanTasks: KanbanTask[] = [
-  { id: 'task1', title: 'Revisar Onboarding Clínica X e verificar documentos pendentes', description: 'Verificar se todos os documentos foram enviados e se o treinamento inicial foi concluído.', status: 'a_fazer', assignee: 'Admin Equipe Suporte', relatedTo: 'Clínica X', dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(), priority: 'Alta', tags: ['Onboarding'] },
+  { id: 'task1', title: 'Revisar Onboarding Clínica X e verificar documentos pendentes', description: 'Verificar se todos os documentos foram enviados e se o treinamento inicial foi concluído. Este é um texto de descrição um pouco mais longo para testar a quebra de linha e como o card se ajusta ao conteúdo completo sem truncamento excessivo.', status: 'a_fazer', assignee: 'Admin Equipe Suporte Principal com Nome Muito Longo Para Teste', relatedTo: 'Clínica X - Projeto Alpha de Integração Completa', dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(), priority: 'Alta', tags: ['Onboarding'] },
   { id: 'task2', title: 'Preparar Relatório Mensal de Uso da Plataforma para apresentar à diretoria da empresa', description: 'Coletar dados de uso da plataforma e gerar o relatório para a diretoria. Incluir métricas de engajamento, número de novos usuários e feedback geral.', status: 'em_andamento', assignee: 'Admin Equipe BI', dueDate: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(), priority: 'Média', tags: ['Relatório', 'Interno'] },
   { id: 'task3', title: 'Agendar Follow-up Paciente Y e enviar questionário pré-consulta detalhado sobre hábitos alimentares e progresso recente', status: 'a_fazer', assignee: 'Dr. Especialista A', relatedTo: 'Paciente Y', priority: 'Média', tags: ['Paciente'] },
   { id: 'task4', title: 'Desenvolver Novo Fluxo de Acompanhamento: Pós-Parto e Primeiros Cuidados com o bebê, incluindo dicas de amamentação', description: 'Criar um novo fluxo de acompanhamento focado no período pós-parto para pacientes, com informações sobre recuperação, nutrição e cuidados com o recém-nascido.', status: 'a_fazer', assignee: 'Dr. Especialista B', priority: 'Alta', tags: ['Conteúdo', 'Fluxo'] },
@@ -51,7 +52,7 @@ const KANBAN_COLUMNS: { id: KanbanTaskStatus; title: string }[] = [
 const priorityBadgeVariant = (priority?: 'Baixa' | 'Média' | 'Alta'): 'default' | 'secondary' | 'destructive' | 'outline' => {
   switch (priority) {
     case 'Alta': return 'destructive';
-    case 'Média': return 'default'; 
+    case 'Média': return 'default';
     case 'Baixa': return 'secondary';
     default: return 'outline';
   }
@@ -102,9 +103,9 @@ export default function KanbanTarefasPage() {
     }
     setDraggedTaskId(null);
   };
-  
+
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); 
+    e.preventDefault();
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetStatus: KanbanTaskStatus) => {
@@ -133,8 +134,8 @@ export default function KanbanTarefasPage() {
       assignee: data.assignee,
       relatedTo: data.relatedTo,
       priority: data.priority,
-      dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined, 
-      tags: [], 
+      dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
+      tags: [],
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
     toast({
@@ -159,7 +160,7 @@ export default function KanbanTarefasPage() {
           <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Nova Tarefa
         </Button>
       </div>
-      
+
       <div className="flex flex-col sm:flex-row gap-4 p-3 border rounded-md bg-card shadow-sm">
         <div className="flex-1 min-w-[180px]">
             <Label htmlFor="filter-assignee" className="text-xs">Filtrar por Responsável</Label>
@@ -213,8 +214,8 @@ export default function KanbanTarefasPage() {
                   <CardContent className="p-3 space-y-3">
                     {tasksInColumn.length > 0 ? (
                       tasksInColumn.map(task => (
-                          <Card 
-                              key={task.id} 
+                          <Card
+                              key={task.id}
                               className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full"
                               draggable="true"
                               onDragStart={(e) => handleDragStart(e, task.id)}
@@ -222,7 +223,7 @@ export default function KanbanTarefasPage() {
                           >
                             <CardHeader className="p-3 pb-2">
                               <div className="flex justify-between items-start gap-2">
-                                  <div className="flex-grow min-w-0"> 
+                                  <div className="flex-grow min-w-0">
                                     <CardTitle className="text-sm font-semibold leading-tight line-clamp-2 break-words">
                                         {task.title}
                                     </CardTitle>
@@ -234,13 +235,13 @@ export default function KanbanTarefasPage() {
                               )}
                             </CardHeader>
                             <CardContent className="p-3 pt-1 text-xs space-y-1.5">
-                              {task.description && <p className="text-muted-foreground line-clamp-3 break-words">{task.description}</p>}
-                              {task.assignee && <p className="truncate"><span className="font-medium">Responsável:</span> {task.assignee}</p>}
-                              {task.relatedTo && <p className="truncate"><span className="font-medium">Ref:</span> {task.relatedTo}</p>}
+                              {task.description && <p className="text-muted-foreground break-words">{task.description}</p>}
+                              {task.assignee && <p className="break-words"><span className="font-medium">Responsável:</span> {task.assignee}</p>}
+                              {task.relatedTo && <p className="break-words"><span className="font-medium">Ref:</span> {task.relatedTo}</p>}
                             </CardContent>
                             {task.dueDate && (
                               <CardFooter className="p-3 pt-1 text-xs text-muted-foreground border-t">
-                                 <CalendarIconLucide className="mr-1.5 h-3.5 w-3.5" /> 
+                                 <CalendarIconLucide className="mr-1.5 h-3.5 w-3.5" />
                                  Venc: {isValid(parseISO(task.dueDate)) ? format(parseISO(task.dueDate), "dd/MM/yy", { locale: ptBR }) : "Data inválida"}
                               </CardFooter>
                             )}
