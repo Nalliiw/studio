@@ -16,14 +16,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/hooks/useAuth';
 import { UserRole } from '@/types';
-import { LogIn, Sun, Moon, UserCheck, UserPlus, Shield } from 'lucide-react'; // Added UserPlus, Shield
+import { LogIn, Sun, Moon, UserCheck, Shield } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { toast } from '@/hooks/use-toast';
 
-// Schema for Especialista/Paciente login (role selection is for UI clarity, auth determines actual role)
 const loginUserSchema = z.object({
   email: z.string().email({ message: 'Endereço de email inválido.' }),
-  password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
+  password: z.string().min(1, { message: 'A senha é obrigatória.' }), // Mock login, can be 1 char
   role: z.enum([UserRole.CLINIC_SPECIALIST, UserRole.PATIENT], { errorMap: () => ({ message: "Por favor, selecione um perfil."}) }),
 });
 
@@ -51,20 +50,12 @@ export default function LoginUserPage() {
   const onSubmit: SubmitHandler<LoginUserFormValues> = async (data) => {
     setIsLoading(true);
     try {
-      // The role selected in the form is not strictly needed by authContext.login,
-      // as the actual role is fetched from Firestore after Firebase Auth.
-      // However, it could be used for client-side pre-validation if desired.
-      await authContext.login(data.email, data.password);
-      // AuthContext will handle redirection based on the fetched user's role.
+      await authContext.login(data.email, data.password, data.role);
       toast({ title: "Login bem-sucedido!"});
+      // AuthContext's useEffect will handle redirection
     } catch (error: any) {
       console.error("Login failed:", error);
-      let errorMessage = "Falha no login. Verifique suas credenciais.";
-       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        errorMessage = "Email ou senha inválidos para o perfil selecionado.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
+      const errorMessage = error.message || "Falha no login. Verifique suas credenciais.";
       form.setError("email", { type: "manual", message: errorMessage });
       form.setError("password", { type: "manual", message: " " });
       toast({ title: "Erro no Login", description: errorMessage, variant: "destructive" });
@@ -136,8 +127,8 @@ export default function LoginUserPage() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value={UserRole.CLINIC_SPECIALIST}>Especialista (Clínica)</SelectItem>
-                      <SelectItem value={UserRole.PATIENT}>Paciente</SelectItem>
+                      <SelectItem key={UserRole.CLINIC_SPECIALIST} value={UserRole.CLINIC_SPECIALIST}>Especialista (Clínica)</SelectItem>
+                      <SelectItem key={UserRole.PATIENT} value={UserRole.PATIENT}>Paciente</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -156,9 +147,6 @@ export default function LoginUserPage() {
         </Form>
       </CardContent>
       <CardFooter className="flex flex-col items-center text-sm text-muted-foreground space-y-2 pt-6">
-        <Button variant="outline" className="w-full" onClick={() => alert('Página de cadastro ainda não implementada.')}>
-            <UserPlus className="mr-2 h-4 w-4" /> Cadastre-se
-        </Button>
         <Link href="/login" passHref className="w-full">
             <Button variant="link" size="sm" className="w-full">
                 <Shield className="mr-2 h-4 w-4" /> Acessar como Administrador Principal

@@ -14,14 +14,14 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/hooks/useAuth';
-import { LogIn, Sun, Moon, ShieldCheck, UserPlus, UserCheck } from 'lucide-react'; // Added UserPlus
+import { LogIn, Sun, Moon, ShieldCheck, UserCheck } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { toast } from '@/hooks/use-toast';
+import { UserRole } from '@/types';
 
-// Schema for Admin Supremo login (no role selection needed here)
 const loginSchema = z.object({
   email: z.string().email({ message: 'Endereço de email inválido.' }),
-  password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
+  password: z.string().min(1, { message: 'A senha é obrigatória.' }), // Firebase Auth might enforce min 6, but for mock, 1 is fine.
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -48,20 +48,16 @@ export default function LoginPage() {
   const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
     setIsLoading(true);
     try {
-      await authContext.login(data.email, data.password);
-      // AuthContext will handle redirection based on the fetched user's role.
-      // Specific redirection for admin supremo is handled by AppShell or AuthContext logic.
+      // For mock login, we specify the role we are trying to log in as.
+      // In a real Firebase Auth scenario, the role would be determined after successful auth.
+      await authContext.login(data.email, data.password, UserRole.ADMIN_SUPREMO);
       toast({ title: "Login bem-sucedido!"});
+      // AuthContext's useEffect will handle redirection based on the set user role
     } catch (error: any) {
       console.error("Login failed:", error);
-      let errorMessage = "Falha no login. Verifique suas credenciais.";
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        errorMessage = "Email ou senha inválidos.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
+      const errorMessage = error.message || "Falha no login. Verifique suas credenciais.";
       form.setError("email", { type: "manual", message: errorMessage });
-      form.setError("password", { type: "manual", message: " " });
+      form.setError("password", { type: "manual", message: " " }); // Clearer to show error only on one field or use a general toast
       toast({ title: "Erro no Login", description: errorMessage, variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -129,9 +125,6 @@ export default function LoginPage() {
         </Form>
       </CardContent>
       <CardFooter className="flex flex-col items-center text-sm text-muted-foreground space-y-2 pt-6">
-        <Button variant="outline" className="w-full" onClick={() => alert('Página de cadastro ainda não implementada.')}>
-            <UserPlus className="mr-2 h-4 w-4" /> Cadastre-se
-        </Button>
         <Link href="/login-user" passHref className="w-full">
           <Button variant="secondary" className="w-full">
             <UserCheck className="mr-2 h-4 w-4" />
