@@ -14,7 +14,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  useSidebar,
+  useSidebar, // Keep this import for AppShellInternal
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
@@ -41,6 +41,8 @@ import {
   HelpCircle,
   CalendarClock,
   Kanban,
+  LayoutGrid, // Added for CRM (Tarefas)
+  ImageIcon,
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -66,6 +68,7 @@ const navItems: NavItem[] = [
   { href: '/agenda-admin', label: 'Agenda Admin', icon: CalendarClock, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/admin/equipe', label: 'Equipe Admin', icon: Users, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/kanban-tarefas', label: 'Tarefas (Kanban)', icon: Kanban, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] },
+
 
   // Especialista da Clínica (Clinic Specialist)
   { href: '/dashboard-especialista', label: 'Painel do Especialista', icon: LayoutDashboard, roles: [UserRole.CLINIC_SPECIALIST] },
@@ -99,18 +102,19 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
   if (!clientHasMounted || authLoading) {
     return (
-        <div className="flex h-screen items-center justify-center">
+        <div className="flex h-screen items-center justify-center bg-background">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
     );
   }
 
   if (!user) {
-    // AuthContext useEffect should handle redirection to /login
-    // Return a loader or null here to prevent rendering protected content before redirect
-     return (
-        <div className="flex h-screen items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+    // AuthContext's useEffect should handle redirection to /login
+    // If we reach here and !user, it means AuthContext is done loading and there's no user.
+    // Return null or a minimal loader while redirect happens.
+    return (
+        <div className="flex h-screen items-center justify-center bg-background">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
         </div>
     );
   }
@@ -240,7 +244,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
       
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto",
-          isMobile ? "px-4 pt-4 pb-20" : "p-6" 
+          isMobile ? "px-4 pt-4 pb-16" : "p-6 pt-6" // Ensure consistent pt-6 for desktop, adjusted pb for mobile
         )}>
           {children}
       </SidebarInset>
@@ -252,22 +256,9 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  // Removed useAuth() and clientHasMounted from here.
+  // AppShellInternal will handle auth state and client mount checks.
 
-  if (authLoading && typeof window !== 'undefined' && !localStorage.getItem('nutritrack_user_simulated')) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  
-  if (!user && !authLoading) {
-    // AuthContext should handle redirecting to login if no user and not loading
-    // This component shouldn't render its main structure if no user.
-    return null; 
-  }
-  
   const sidebarCollapsibleType = "icon";
   const sidebarSidePlacement = "left";
 
@@ -278,6 +269,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           collapsible={sidebarCollapsibleType}
           side={sidebarSidePlacement}
       >
+        {/* AppShellInternal will now be responsible for checking auth state and client mount before rendering its content or a loader */}
         <AppShellInternal>{children}</AppShellInternal>
       </SidebarProvider>
     </TooltipProvider>
