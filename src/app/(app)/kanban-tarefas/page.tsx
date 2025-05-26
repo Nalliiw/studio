@@ -15,13 +15,13 @@ import type { KanbanTask, KanbanTaskStatus } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useForm, type SubmitHandler, FormProvider, Controller, Form } from 'react-hook-form'; // Added FormProvider, Controller
+import { useForm, type SubmitHandler, FormProvider, Controller } from 'react-hook-form'; // Removed Form
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
-import { FormField, FormItem, FormControl, FormMessage, FormLabel } from '@/components/ui/form'; // Import Form components
+import { Form, FormField, FormItem, FormControl, FormMessage, FormLabel } from '@/components/ui/form'; // Import Form components
 
 const taskSchema = z.object({
   title: z.string().min(3, { message: 'O título deve ter pelo menos 3 caracteres.' }),
@@ -31,9 +31,8 @@ const taskSchema = z.object({
   relatedTo: z.string().optional(),
   priority: z.enum(['Baixa', 'Média', 'Alta']).optional(),
   dueDate: z.string().optional().refine(val => {
-    if (!val || val === '') return true; // Optional field, empty string is also considered not set
+    if (!val || val === '') return true;
     const date = parseISO(val);
-    // Check if date is valid AND if it's not in the past (allow today)
     return isValid(date) && date >= startOfDay(new Date());
   }, { message: "Data inválida ou no passado." }),
 });
@@ -58,7 +57,7 @@ const KANBAN_COLUMNS: { id: KanbanTaskStatus; title: string }[] = [
 const priorityBadgeVariant = (priority?: 'Baixa' | 'Média' | 'Alta'): 'default' | 'secondary' | 'destructive' | 'outline' => {
   switch (priority) {
     case 'Alta': return 'destructive';
-    case 'Média': return 'default'; // Default will use primary color
+    case 'Média': return 'default'; 
     case 'Baixa': return 'secondary';
     default: return 'outline';
   }
@@ -72,7 +71,7 @@ export default function KanbanTarefasPage() {
   const [filterAssignee, setFilterAssignee] = useState<string>('todos');
   const [filterPriority, setFilterPriority] = useState<string>('todas');
 
-  const form = useForm<TaskFormValues>({
+  const formMethods = useForm<TaskFormValues>({ // Renomeado para formMethods para evitar conflito com <Form>
     resolver: zodResolver(taskSchema),
     defaultValues: {
       title: '',
@@ -148,7 +147,7 @@ export default function KanbanTarefasPage() {
       relatedTo: data.relatedTo,
       priority: data.priority,
       dueDate: data.dueDate && data.dueDate !== '' ? new Date(data.dueDate).toISOString() : undefined,
-      tags: [], // Placeholder for tags
+      tags: [], 
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
     toast({
@@ -156,7 +155,7 @@ export default function KanbanTarefasPage() {
       description: `A tarefa "${newTask.title}" foi criada com sucesso. (Simulação)`,
     });
     setIsNewTaskDialogOpen(false);
-    form.reset();
+    formMethods.reset(); // Usar formMethods.reset
   };
 
   return (
@@ -223,13 +222,13 @@ export default function KanbanTarefasPage() {
                 <CardHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10 p-4 border-b">
                   <CardTitle className="text-base font-semibold">{column.title} ({tasksInColumn.length})</CardTitle>
                 </CardHeader>
-                <ScrollArea className="flex-grow"> {/* ScrollArea for tasks within the column */}
+                <ScrollArea className="flex-grow"> 
                   <CardContent className="p-3 space-y-3">
                     {tasksInColumn.length > 0 ? (
                       tasksInColumn.map(task => (
                           <Card
                               key={task.id}
-                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full overflow-hidden"
+                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full max-w-[300px] overflow-hidden"
                               draggable="true"
                               onDragStart={(e) => handleDragStart(e, task.id)}
                               onDragEnd={handleDragEnd}
@@ -253,18 +252,20 @@ export default function KanbanTarefasPage() {
                                   {task.description}
                                 </p>
                               )}
-                              {task.assignee && (
-                                <div className="flex gap-1 text-xs min-w-0">
-                                  <span className="font-medium flex-shrink-0">Responsável:</span>
-                                  <span className="text-muted-foreground break-all min-w-0">{task.assignee}</span>
-                                </div>
-                              )}
-                              {task.relatedTo && (
-                                <div className="flex gap-1 text-xs min-w-0">
-                                  <span className="font-medium flex-shrink-0">Ref:</span>
-                                  <span className="text-muted-foreground break-all min-w-0">{task.relatedTo}</span>
-                                </div>
-                              )}
+                               <div className="space-y-1">
+                                {task.assignee && (
+                                  <div className="flex gap-1 min-w-0">
+                                    <span className="font-medium flex-shrink-0">Responsável:</span>
+                                    <span className="text-muted-foreground break-all min-w-0">{task.assignee}</span>
+                                  </div>
+                                )}
+                                {task.relatedTo && (
+                                  <div className="flex gap-1 min-w-0">
+                                    <span className="font-medium flex-shrink-0">Ref:</span>
+                                    <span className="text-muted-foreground break-all min-w-0">{task.relatedTo}</span>
+                                  </div>
+                                )}
+                              </div>
                             </CardContent>
                             {task.dueDate && (
                               <CardFooter className="p-3 pt-1 text-xs text-muted-foreground border-t">
@@ -294,10 +295,10 @@ export default function KanbanTarefasPage() {
             <DialogTitle>Adicionar Nova Tarefa</DialogTitle>
             <DialogDescription>Preencha os detalhes da nova tarefa.</DialogDescription>
           </DialogHeader>
-          <Form {...form}> {/* Use o componente Form aqui */}
-            <form onSubmit={form.handleSubmit(onSubmitNewTask)} className="space-y-4 py-2">
+          <Form {...formMethods}> {/* Usar formMethods aqui */}
+            <form onSubmit={formMethods.handleSubmit(onSubmitNewTask)} className="space-y-4 py-2">
               <FormField
-                control={form.control}
+                control={formMethods.control}
                 name="title"
                 render={({ field }) => (
                   <FormItem>
@@ -310,7 +311,7 @@ export default function KanbanTarefasPage() {
                 )}
               />
               <FormField
-                control={form.control}
+                control={formMethods.control}
                 name="description"
                 render={({ field }) => (
                   <FormItem>
@@ -323,7 +324,7 @@ export default function KanbanTarefasPage() {
                 )}
               />
               <FormField
-                  control={form.control}
+                  control={formMethods.control}
                   name="status"
                   render={({ field }) => (
                       <FormItem>
@@ -344,7 +345,7 @@ export default function KanbanTarefasPage() {
               />
               <div className="grid grid-cols-2 gap-4">
                 <FormField
-                  control={form.control}
+                  control={formMethods.control}
                   name="assignee"
                   render={({ field }) => (
                       <FormItem>
@@ -357,7 +358,7 @@ export default function KanbanTarefasPage() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={formMethods.control}
                   name="relatedTo"
                   render={({ field }) => (
                       <FormItem>
@@ -372,7 +373,7 @@ export default function KanbanTarefasPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                   <FormField
-                      control={form.control}
+                      control={formMethods.control}
                       name="priority"
                       render={({ field }) => (
                           <FormItem>
@@ -394,7 +395,7 @@ export default function KanbanTarefasPage() {
                       )}
                   />
                   <FormField
-                      control={form.control}
+                      control={formMethods.control}
                       name="dueDate"
                       render={({ field }) => (
                           <FormItem>
@@ -411,8 +412,8 @@ export default function KanbanTarefasPage() {
                 <DialogClose asChild>
                   <Button type="button" variant="outline">Cancelar</Button>
                 </DialogClose>
-                <Button type="submit" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Salvando...' : 'Adicionar Tarefa'}
+                <Button type="submit" disabled={formMethods.formState.isSubmitting}>
+                  {formMethods.formState.isSubmitting ? 'Salvando...' : 'Adicionar Tarefa'}
                 </Button>
               </DialogFooter>
             </form>
@@ -422,3 +423,4 @@ export default function KanbanTarefasPage() {
     </div>
   );
 }
+
