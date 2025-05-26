@@ -14,8 +14,8 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  SidebarRail, 
-  useSidebar, // Added missing import
+  SidebarRail,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
@@ -37,9 +37,9 @@ import {
   Settings2,
   Sun,
   Moon,
-  CalendarDays, 
+  CalendarDays,
   UsersRound,
-  ImageIcon,
+  ImageIcon, // Placeholder for clinic logo/favicon
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -79,7 +79,7 @@ const navItems: NavItem[] = [
 
 
 const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth(); // Renomeado para authLoading
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
@@ -90,21 +90,25 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
     setClientHasMounted(true);
   }, []);
 
-
-  if (!clientHasMounted || !user) { 
+  if (!clientHasMounted || authLoading) {
     return (
         <div className="flex h-screen items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
     );
   }
-  
+
+  // Se o AuthContext já redirecionou para /login, user será null e authLoading será false.
+  // Nesse caso, não renderizamos nada aqui para evitar piscar a UI do AppShell.
+  if (!user) {
+    return null;
+  }
 
   const userNavItems = navItems.filter(item => item.roles.includes(user.role));
   const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
 
   const handleUserAvatarClick = () => {
-    if (isMobile) setOpenMobile(false); 
+    if (isMobile) setOpenMobile(false);
     router.push('/perfil');
   };
 
@@ -112,18 +116,33 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
     if (isMobile) setOpenMobile(false);
     router.push('/configuracoes');
   }
-  
+
+  const handleLogoutClick = () => {
+    if (isMobile) setOpenMobile(false);
+    logout();
+  }
+
+  const handleThemeToggle = (e: React.MouseEvent | React.KeyboardEvent) => {
+    // Previne que o clique no Switch dentro do "botão" do tema acione o toggle duas vezes
+    // ou que o clique no "botão" do tema feche o menu se ele for um link/botão real.
+    if ((e.target as HTMLElement).closest('[role="switch"]')) {
+        e.stopPropagation();
+    } else {
+        toggleTheme();
+    }
+  };
+
   return (
     <>
       {!isMobile && (
         <Sidebar collapsible={sidebarCollapsibleSetting} variant="sidebar" side={sidebarSideSetting}>
-          <SidebarHeader /> 
+          <SidebarHeader />
 
           <SidebarContent className="p-2">
             <SidebarMenu>
               {userNavItems.map((item) => {
                 const isActive = pathname === item.href || (item.href !== '/' && !item.href.startsWith('/dashboard') && !item.href.startsWith('/inicio') && !item.href.startsWith('/clinica') && pathname.startsWith(item.href)) || (item.href.startsWith('/clinica') && pathname.startsWith(item.href));
-                
+
                 return (
                   <SidebarMenuItem key={item.href}>
                     <Link href={item.href} legacyBehavior passHref>
@@ -145,69 +164,58 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
              <SidebarMenu>
                <SidebarMenuItem>
                   <SidebarMenuButton
-                    tooltip={user.name}
+                    tooltip={user.name || user.email || 'Usuário'}
                     className="h-auto py-2 group-data-[collapsible=icon]:justify-center"
                     onClick={handleUserAvatarClick}
                   >
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={`https://picsum.photos/seed/${user.id}/40/40`} alt={user.name} data-ai-hint="profile avatar"/>
+                      <AvatarImage src={`https://picsum.photos/seed/${user.id}/40/40`} alt={user.name || 'Avatar'} data-ai-hint="profile avatar"/>
                       <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
                     <span className="flex flex-col items-start group-data-[collapsible=icon]:hidden">
-                        <span className="text-sm font-medium leading-tight">{user.name}</span>
+                        <span className="text-sm font-medium leading-tight">{user.name || 'Usuário'}</span>
                         <span className="text-xs text-sidebar-foreground/70 leading-tight">{user.email}</span>
                     </span>
                   </SidebarMenuButton>
                </SidebarMenuItem>
               <SidebarMenuItem>
-                  <SidebarMenuButton isActive={pathname === '/configuracoes'} tooltip="Configurações da Conta" onClick={handleSettingsClick}  className={cn(pathname === '/configuracoes' && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90")}>
+                  <SidebarMenuButton isActive={pathname === '/configuracoes'} tooltip="Config. da Conta" onClick={handleSettingsClick}  className={cn(pathname === '/configuracoes' && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90")}>
                       <Settings />
                       <span>Config. da Conta</span>
                   </SidebarMenuButton>
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <div
+                 <div
                   className={cn(
-                    "flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 h-8",
-                    "group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 justify-between group-data-[collapsible=icon]:justify-center cursor-default"
+                    sidebarMenuButtonVariants({className: "justify-between"}), // Usa as variantes para consistência
+                    "cursor-pointer" // Adiciona cursor-pointer para indicar clicabilidade
                   )}
+                  onClick={handleThemeToggle}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleThemeToggle(e);}}
+                  tabIndex={0} // Torna o div focável
+                  role="button" // Define o papel para acessibilidade
+                  aria-label={theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
                   title={sidebarState === "collapsed" && !isMobile ? (theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro') : undefined}
-                   onClick={(e) => {
-                     if (sidebarState === "collapsed" && !isMobile) {
-                       toggleTheme();
-                     }
-                     if (sidebarState === "expanded" || isMobile) {
-                       if (e.target === e.currentTarget && sidebarState === "expanded" && !isMobile) e.preventDefault();
-                     }
-                   }}
                 >
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center shrink-0">
-                        {theme === 'dark' ? <Sun /> : <Moon />}
-                      </div>
-                    </TooltipTrigger>
-                     <TooltipContent side="right" align="center" hidden={sidebarState !== "collapsed" || isMobile || (sidebarState === "expanded" && !isMobile)}>
-                      {theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <span className="flex-grow ml-2 group-data-[collapsible=icon]:hidden">
-                    {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
-                  </span>
+                  <div className="flex items-center gap-2"> {/* Envolve ícone e texto */}
+                    {theme === 'dark' ? <Sun /> : <Moon />}
+                    <span className="group-data-[collapsible=icon]:hidden">
+                      {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+                    </span>
+                  </div>
                   <Switch
                     checked={theme === 'dark'}
                     onCheckedChange={toggleTheme}
                     aria-label="Alternar tema"
-                    className="ml-auto group-data-[collapsible=icon]:hidden shrink-0"
-                    onClick={(e) => e.stopPropagation()} 
+                    className="ml-auto group-data-[collapsible=icon]:hidden"
+                    onClick={(e) => e.stopPropagation()} // Impede que o clique no switch acione o toggle do div pai
                   />
                 </div>
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                  <SidebarMenuButton onClick={logout} tooltip="Sair">
+                  <SidebarMenuButton onClick={handleLogoutClick} tooltip="Sair">
                       <LogOut />
                       <span>Sair</span>
                   </SidebarMenuButton>
@@ -216,10 +224,10 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
           </SidebarFooter>
         </Sidebar>
       )}
-      
+
       <SidebarInset className={cn(
-          "flex-1 overflow-y-auto", 
-          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" 
+          "flex-1 overflow-y-auto",
+          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" // pb-20 para mobile (5rem) para dar espaço para bottom nav de h-16 (4rem) + 1rem de margem
         )}>
           {children}
       </SidebarInset>
@@ -231,29 +239,38 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth(); // Renomeado para authLoading
 
 
-  if (authLoading && !user) { 
+  if (authLoading && typeof window !== 'undefined' && !localStorage.getItem(AUTH_STORAGE_KEY)) {
+    // Se está carregando e não há usuário no localStorage, mostra o loader global
+    // Isso evita que o AppShell tente renderizar ou redirecionar prematuramente
+    // antes do AuthContext determinar o estado inicial.
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
-  
-  if (!user) {
+
+  // Se não está carregando e não há usuário, o AuthContext cuidará do redirecionamento para /login.
+  // Retornar null aqui evita que o AppShell seja renderizado desnecessariamente.
+  if (!authLoading && !user) {
       return null;
   }
-  
-  const sidebarCollapsibleType = "icon"; 
-  const sidebarSidePlacement = "left"; 
+
+  // Se chegou aqui, ou está carregando mas tem usuário no localStorage, ou não está carregando e tem usuário.
+  // Em ambos os casos, é seguro renderizar o AppShellInternal (que tem seu próprio handler de loading/user)
+  // ou o loader se o user ainda não foi totalmente carregado no AppShellInternal.
+
+  const sidebarCollapsibleType = "icon";
+  const sidebarSidePlacement = "left";
 
   return (
-    <TooltipProvider> 
-      <SidebarProvider 
-          defaultOpen={true} 
-          collapsible={sidebarCollapsibleType} 
+    <TooltipProvider>
+      <SidebarProvider
+          defaultOpen={true}
+          collapsible={sidebarCollapsibleType}
           side={sidebarSidePlacement}
       >
         <AppShellInternal>{children}</AppShellInternal>
