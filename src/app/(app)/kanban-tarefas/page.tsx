@@ -15,13 +15,13 @@ import type { KanbanTask, KanbanTaskStatus } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useForm, type SubmitHandler, FormProvider, Controller } from 'react-hook-form'; // Removed Form
+import { useForm, type SubmitHandler, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
-import { Form, FormField, FormItem, FormControl, FormMessage, FormLabel } from '@/components/ui/form'; // Import Form components
+import { Form, FormField, FormItem, FormControl, FormMessage, FormLabel } from '@/components/ui/form';
 
 const taskSchema = z.object({
   title: z.string().min(3, { message: 'O título deve ter pelo menos 3 caracteres.' }),
@@ -33,8 +33,12 @@ const taskSchema = z.object({
   dueDate: z.string().optional().refine(val => {
     if (!val || val === '') return true;
     const date = parseISO(val);
-    return isValid(date) && date >= startOfDay(new Date());
-  }, { message: "Data inválida ou no passado." }),
+    // Permite datas no passado para tarefas concluídas, mas não para novas/em andamento no formulário.
+    // Para o formulário, a validação de data futura é mais apropriada.
+    // Se a tarefa já existe e tem uma data no passado, isso é aceitável.
+    // Para novas tarefas, idealmente a data não deveria ser no passado.
+    return isValid(date); // Simplificado para apenas validar se é uma data válida
+  }, { message: "Data inválida." }),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -63,6 +67,22 @@ const priorityBadgeVariant = (priority?: 'Baixa' | 'Média' | 'Alta'): 'default'
   }
 };
 
+const NewTaskFormSchema = z.object({
+    title: z.string().min(3, { message: 'O título deve ter pelo menos 3 caracteres.' }),
+    description: z.string().optional(),
+    status: z.enum(['a_fazer', 'em_andamento', 'concluido'], { required_error: "Selecione um status" }),
+    assignee: z.string().optional(),
+    relatedTo: z.string().optional(),
+    priority: z.enum(['Baixa', 'Média', 'Alta'], {required_error: "Selecione uma prioridade"}).optional(),
+    dueDate: z.string().optional().refine(val => {
+        if (!val || val === '') return true; // Permite campo vazio
+        const date = parseISO(val);
+        // Para novas tarefas, não permitir datas no passado
+        return isValid(date) && date >= startOfDay(new Date());
+      }, { message: "Data inválida ou no passado." }),
+});
+
+
 export default function KanbanTarefasPage() {
   const [tasks, setTasks] = useState<KanbanTask[]>(initialMockKanbanTasks);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
@@ -71,8 +91,8 @@ export default function KanbanTarefasPage() {
   const [filterAssignee, setFilterAssignee] = useState<string>('todos');
   const [filterPriority, setFilterPriority] = useState<string>('todas');
 
-  const formMethods = useForm<TaskFormValues>({ // Renomeado para formMethods para evitar conflito com <Form>
-    resolver: zodResolver(taskSchema),
+  const formMethods = useForm<TaskFormValues>({
+    resolver: zodResolver(NewTaskFormSchema),
     defaultValues: {
       title: '',
       description: '',
@@ -155,7 +175,7 @@ export default function KanbanTarefasPage() {
       description: `A tarefa "${newTask.title}" foi criada com sucesso. (Simulação)`,
     });
     setIsNewTaskDialogOpen(false);
-    formMethods.reset(); // Usar formMethods.reset
+    formMethods.reset();
   };
 
   return (
@@ -228,7 +248,7 @@ export default function KanbanTarefasPage() {
                       tasksInColumn.map(task => (
                           <Card
                               key={task.id}
-                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full max-w-[300px] overflow-hidden"
+                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full overflow-hidden"
                               draggable="true"
                               onDragStart={(e) => handleDragStart(e, task.id)}
                               onDragEnd={handleDragEnd}
@@ -295,7 +315,7 @@ export default function KanbanTarefasPage() {
             <DialogTitle>Adicionar Nova Tarefa</DialogTitle>
             <DialogDescription>Preencha os detalhes da nova tarefa.</DialogDescription>
           </DialogHeader>
-          <Form {...formMethods}> {/* Usar formMethods aqui */}
+          <Form {...formMethods}>
             <form onSubmit={formMethods.handleSubmit(onSubmitNewTask)} className="space-y-4 py-2">
               <FormField
                 control={formMethods.control}
@@ -378,7 +398,7 @@ export default function KanbanTarefasPage() {
                       render={({ field }) => (
                           <FormItem>
                           <FormLabel>Prioridade</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange as (value: 'Baixa' | 'Média' | 'Alta') => void} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Selecione a prioridade" />
