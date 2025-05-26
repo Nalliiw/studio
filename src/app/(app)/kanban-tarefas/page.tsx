@@ -4,12 +4,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Kanban, PlusCircle, GripVertical, CalendarIcon, AlertTriangle, Filter } from 'lucide-react';
+import { Kanban, PlusCircle, GripVertical, CalendarIcon as CalendarIconLucide, AlertTriangle, Filter } from 'lucide-react'; // Renomeado CalendarIcon para CalendarIconLucide
 import type { KanbanTask, KanbanTaskStatus } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid } from 'date-fns';
@@ -51,7 +51,7 @@ const KANBAN_COLUMNS: { id: KanbanTaskStatus; title: string }[] = [
 const priorityBadgeVariant = (priority?: 'Baixa' | 'Média' | 'Alta'): 'default' | 'secondary' | 'destructive' | 'outline' => {
   switch (priority) {
     case 'Alta': return 'destructive';
-    case 'Média': return 'default'; // Usually primary, but using default for visual variety
+    case 'Média': return 'default'; 
     case 'Baixa': return 'secondary';
     default: return 'outline';
   }
@@ -91,16 +91,20 @@ export default function KanbanTarefasPage() {
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, taskId: string) => {
     setDraggedTaskId(taskId);
     e.dataTransfer.setData('taskId', taskId);
-    e.currentTarget.style.opacity = '0.5';
+    if (e.currentTarget instanceof HTMLElement) {
+        e.currentTarget.style.opacity = '0.5';
+    }
   };
 
   const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
-    e.currentTarget.style.opacity = '1';
+    if (e.currentTarget instanceof HTMLElement) {
+        e.currentTarget.style.opacity = '1';
+    }
     setDraggedTaskId(null);
   };
   
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); // Necessary to allow dropping
+    e.preventDefault(); 
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetStatus: KanbanTaskStatus) => {
@@ -129,8 +133,8 @@ export default function KanbanTarefasPage() {
       assignee: data.assignee,
       relatedTo: data.relatedTo,
       priority: data.priority,
-      dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined, // Ensure correct ISO format
-      tags: [], // Placeholder for tags
+      dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined, 
+      tags: [], 
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
     toast({
@@ -187,7 +191,7 @@ export default function KanbanTarefasPage() {
 
 
       <ScrollArea className="flex-grow whitespace-nowrap pb-4">
-        <div className="flex gap-4 h-full min-h-[calc(100vh-280px)]">
+        <div className="flex gap-4 h-full">
           {KANBAN_COLUMNS.map(column => (
             <Card
               key={column.id}
@@ -203,7 +207,10 @@ export default function KanbanTarefasPage() {
                   {filteredTasks.filter(task => task.status === column.id).length > 0 ? (
                     filteredTasks
                       .filter(task => task.status === column.id)
-                      .sort((a,b) => (a.priority === 'Alta' ? -1 : (b.priority === 'Alta' ? 1 : 0))) // Simple sort: Alta first
+                      .sort((a,b) => {
+                        const priorityOrder = { 'Alta': 1, 'Média': 2, 'Baixa': 3 };
+                        return (priorityOrder[a.priority || 'Baixa'] || 4) - (priorityOrder[b.priority || 'Baixa'] || 4);
+                      })
                       .map(task => (
                         <Card 
                             key={task.id} 
@@ -228,7 +235,7 @@ export default function KanbanTarefasPage() {
                           </CardContent>
                           {task.dueDate && (
                             <CardFooter className="p-3 pt-1 text-xs text-muted-foreground border-t">
-                               <CalendarIcon className="mr-1.5 h-3.5 w-3.5" /> 
+                               <CalendarIconLucide className="mr-1.5 h-3.5 w-3.5" /> 
                                Venc: {isValid(parseISO(task.dueDate)) ? format(parseISO(task.dueDate), "dd/MM/yy", { locale: ptBR }) : "Data inválida"}
                             </CardFooter>
                           )}
