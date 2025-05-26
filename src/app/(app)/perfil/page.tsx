@@ -20,9 +20,18 @@ export default function PerfilPage() {
   }
   
   const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
-  const roleName = user.role === UserRole.ADMIN_SUPREMO ? "Administrador Supremo" :
-                   user.role === UserRole.CLINIC_SPECIALIST ? "Especialista da Clínica" : // Rótulo atualizado
-                   "Paciente";
+  
+  let roleName = "Desconhecido";
+  if (user.role === UserRole.ADMIN_SUPREMO) {
+    roleName = "Administrador Supremo";
+  } else if (user.role === UserRole.CLINIC_SPECIALIST) {
+    // Poderíamos ter uma lógica mais fina aqui se o TeamMember tivesse um "sub-role" (admin_clinica vs especialista_padrao)
+    // Por ora, para um usuário logado como CLINIC_SPECIALIST, vamos assumir que ele é um "Usuário da Clínica"
+    roleName = "Usuário da Clínica"; 
+  } else if (user.role === UserRole.PATIENT) {
+    roleName = "Paciente";
+  }
+
 
   return (
     <div className="space-y-6">
@@ -34,10 +43,10 @@ export default function PerfilPage() {
       <Card className="shadow-md max-w-2xl mx-auto">
         <CardHeader className="items-center text-center">
           <Avatar className="h-24 w-24 mb-4 border-2 border-primary p-1">
-            <AvatarImage src={`https://picsum.photos/seed/${user.id}/100/100`} alt={user.name} data-ai-hint="profile photo large" />
+            <AvatarImage src={`https://picsum.photos/seed/${user.id}/100/100`} alt={user.name || 'Avatar do Usuário'} data-ai-hint="profile photo large" />
             <AvatarFallback className="text-3xl">{initials}</AvatarFallback>
           </Avatar>
-          <CardTitle className="text-2xl">{user.name}</CardTitle>
+          <CardTitle className="text-2xl">{user.displayName || user.name}</CardTitle>
           <CardDescription className="text-base">{roleName}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

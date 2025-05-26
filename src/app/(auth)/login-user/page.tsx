@@ -22,7 +22,7 @@ import { toast } from '@/hooks/use-toast';
 
 const loginUserSchema = z.object({
   email: z.string().email({ message: 'Endereço de email inválido.' }),
-  password: z.string().min(1, { message: 'A senha é obrigatória.' }), // Mock login, can be 1 char
+  password: z.string().min(1, { message: 'A senha é obrigatória.' }),
   role: z.enum([UserRole.CLINIC_SPECIALIST, UserRole.PATIENT], { errorMap: () => ({ message: "Por favor, selecione um perfil."}) }),
 });
 
@@ -44,20 +44,23 @@ export default function LoginUserPage() {
     defaultValues: {
       email: '',
       password: '',
+      // role: undefined, // Deixe o usuário selecionar
     },
   });
   
   const onSubmit: SubmitHandler<LoginUserFormValues> = async (data) => {
     setIsLoading(true);
     try {
-      await authContext.login(data.email, data.password, data.role);
+      await authContext.login(data.email, data.password, data.role); // Passa o papel para o AuthContext simulado
       toast({ title: "Login bem-sucedido!"});
-      // AuthContext's useEffect will handle redirection
+      // AuthContext (simulado) agora deve lidar com o redirecionamento
+      // Com base no mockUser encontrado e seu papel.
     } catch (error: any) {
       console.error("Login failed:", error);
       const errorMessage = error.message || "Falha no login. Verifique suas credenciais.";
+      // Exibe o erro em um campo ou toast geral
       form.setError("email", { type: "manual", message: errorMessage });
-      form.setError("password", { type: "manual", message: " " });
+      form.setError("password", { type: "manual", message: " " }); // Para não repetir a msg
       toast({ title: "Erro no Login", description: errorMessage, variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -82,8 +85,8 @@ export default function LoginUserPage() {
         <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 text-primary w-fit">
             <UserCheck className="h-8 w-8" />
         </div>
-        <CardTitle className="text-3xl font-bold">Acesso Especialista/Paciente</CardTitle>
-        <CardDescription>Faça login com seu perfil de especialista ou paciente.</CardDescription>
+        <CardTitle className="text-3xl font-bold">Acesso Clínica/Paciente</CardTitle>
+        <CardDescription>Faça login com seu perfil de Clínica ou Paciente.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -119,7 +122,7 @@ export default function LoginUserPage() {
               name="role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sou</FormLabel>
+                  <FormLabel>Acessar como</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -127,7 +130,7 @@ export default function LoginUserPage() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem key={UserRole.CLINIC_SPECIALIST} value={UserRole.CLINIC_SPECIALIST}>Especialista (Clínica)</SelectItem>
+                      <SelectItem key={UserRole.CLINIC_SPECIALIST} value={UserRole.CLINIC_SPECIALIST}>Clínica</SelectItem>
                       <SelectItem key={UserRole.PATIENT} value={UserRole.PATIENT}>Paciente</SelectItem>
                     </SelectContent>
                   </Select>
@@ -152,6 +155,7 @@ export default function LoginUserPage() {
                 <Shield className="mr-2 h-4 w-4" /> Acessar como Administrador Principal
             </Button>
         </Link>
+         {/* O botão de cadastro foi removido conforme solicitado */}
          <p className="text-xs mt-2">Problemas para acessar? Contate o suporte.</p>
       </CardFooter>
     </Card>
