@@ -10,6 +10,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetClose, // Adicionado SheetClose
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -17,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { UserCircle, Settings, LogOut, Moon, Sun, HelpCircle, CalendarClock, Users as UsersIcon } from 'lucide-react'; 
+import { UserCircle, Settings, LogOut, Moon, Sun, HelpCircle, CalendarClock, Users as UsersIcon, Kanban, LayoutGrid } from 'lucide-react'; 
 import { UserRole } from '@/types'; 
 
 interface NavItem {
@@ -47,29 +48,43 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
     onOpenChange(false); 
   };
   
+  const allSheetItems: NavItem[] = [
+    // Itens que sempre aparecem se o usuário estiver logado
+    { href: '/perfil', label: 'Ver Perfil', icon: UserCircle, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST, UserRole.PATIENT] },
+    // Adiciona os itens passados por props
+    ...additionalNavItems,
+    // Adiciona itens específicos de Admin Supremo que podem não estar no navItems principal se a lógica de filtro for diferente
+    { href: '/central-ajuda', label: 'Central de Ajuda', icon: HelpCircle, roles: [UserRole.ADMIN_SUPREMO] },
+    { href: '/agenda-admin', label: 'Agenda Admin', icon: CalendarClock, roles: [UserRole.ADMIN_SUPREMO] },
+    { href: '/admin/equipe', label: 'Equipe Admin', icon: UsersIcon, roles: [UserRole.ADMIN_SUPREMO] },
+    // Adiciona o novo CRM (Tarefas) para Admin e Especialista
+    { href: '/kanban-tarefas', label: 'CRM (Tarefas)', icon: LayoutGrid, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] },
+  ];
+
+  // Filtra e remove duplicados, mantendo a ordem de `allSheetItems`
+  const uniqueSheetItems = allSheetItems.reduce((acc, current) => {
+    const x = acc.find(item => item.href === current.href && item.label === current.label);
+    if (!x) {
+      return acc.concat([current]);
+    } else {
+      return acc;
+    }
+  }, [] as NavItem[]);
+
+
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-auto max-h-[70vh] flex flex-col rounded-t-lg p-0">
         <SheetHeader className="p-4 border-b sticky top-0 bg-background z-10">
           <SheetTitle className="text-lg text-center">Mais Opções</SheetTitle>
+          {/* O SheetContent já adiciona um botão X por padrão. Se você quiser um customizado, pode usar SheetClose aqui */}
         </SheetHeader>
         
         <div className="flex-grow overflow-y-auto p-4 space-y-1">
-            {user && (
-                <Button
-                    variant="ghost"
-                    className="w-full justify-start text-base py-3 h-auto gap-3"
-                    onClick={() => handleNavigate('/perfil')}
-                >
-                    <UserCircle className="h-5 w-5" />
-                    Ver Perfil
-                </Button>
-            )}
-            
-            {additionalNavItems.map(item => (
+            {user && uniqueSheetItems.map(item => (
                  item.roles.includes(user?.role as UserRole) && ( 
                     <Button
-                        key={item.href}
+                        key={`${item.href}-${item.label}`}
                         variant="ghost"
                         className="w-full justify-start text-base py-3 h-auto gap-3"
                         onClick={() => handleNavigate(item.href)}
@@ -80,37 +95,6 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
                  )
             ))}
             
-            {/* Explicitly add new Admin Supremo items here if not covered by additionalNavItems logic */}
-             {user?.role === UserRole.ADMIN_SUPREMO && (
-                <>
-                    <Button
-                        variant="ghost"
-                        className="w-full justify-start text-base py-3 h-auto gap-3"
-                        onClick={() => handleNavigate('/central-ajuda')}
-                    >
-                        <HelpCircle className="h-5 w-5" />
-                        Central de Ajuda
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        className="w-full justify-start text-base py-3 h-auto gap-3"
-                        onClick={() => handleNavigate('/agenda-admin')}
-                    >
-                        <CalendarClock className="h-5 w-5" />
-                        Agenda Admin
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        className="w-full justify-start text-base py-3 h-auto gap-3"
-                        onClick={() => handleNavigate('/admin/equipe')}
-                    >
-                        <UsersIcon className="h-5 w-5" />
-                        Equipe Admin
-                    </Button>
-                </>
-            )}
-
-
             <Separator className="my-2"/>
 
             <Button

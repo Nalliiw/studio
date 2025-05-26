@@ -14,7 +14,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  useSidebar,
+  useSidebar, // Added this import
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
@@ -39,7 +39,9 @@ import {
   CalendarDays,
   UsersRound,
   HelpCircle,
-  CalendarClock, // Novo ícone para Agenda Admin
+  CalendarClock,
+  Kanban,
+  LayoutGrid, // Added LayoutGrid icon
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -64,6 +66,9 @@ const navItems: NavItem[] = [
   { href: '/central-ajuda', label: 'Central de Ajuda', icon: HelpCircle, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/agenda-admin', label: 'Agenda Admin', icon: CalendarClock, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/admin/equipe', label: 'Equipe Admin', icon: Users, roles: [UserRole.ADMIN_SUPREMO] },
+  { href: '/kanban-tarefas', label: 'Tarefas (Kanban)', icon: Kanban, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] },
+  { href: '/kanban-tarefas', label: 'CRM (Tarefas)', icon: LayoutGrid, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] }, // New CRM button
+
   // Especialista da Clínica (Clinic Specialist)
   { href: '/dashboard-especialista', label: 'Painel do Especialista', icon: LayoutDashboard, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/pacientes', label: 'Pacientes', icon: Users, roles: [UserRole.CLINIC_SPECIALIST] },
@@ -72,6 +77,8 @@ const navItems: NavItem[] = [
   { href: '/agenda-especialista', label: 'Agenda do Especialista', icon: CalendarDays, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/equipe', label: 'Equipe da Clínica', icon: UsersRound, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/clinica/configuracoes', label: 'Config. Clínica', icon: Settings2, roles: [UserRole.CLINIC_SPECIALIST] },
+  // Note: Tarefas (Kanban) and CRM (Tarefas) are already added above and will be filtered by role.
+
   // Paciente
   { href: '/inicio', label: 'Início', icon: Home, roles: [UserRole.PATIENT] },
   { href: '/formulario', label: 'Formulários', icon: ClipboardList, roles: [UserRole.PATIENT] },
@@ -102,6 +109,8 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!user) {
+    // AuthContext deve lidar com o redirecionamento para /login se não houver usuário
+    // e authLoading for false. AppShellInternal simplesmente não renderiza o shell.
     return null;
   }
 
@@ -123,9 +132,10 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
     logout();
   }
   
-  const handleThemeToggle = (e: React.MouseEvent | React.KeyboardEvent) => {
+  const handleThemeToggleAsButton = (e: React.MouseEvent | React.KeyboardEvent) => {
+    // Verifica se o clique foi no próprio Switch para evitar duplo toggle
     if ((e.target as HTMLElement).closest('[role="switch"]')) {
-        e.stopPropagation();
+        e.stopPropagation(); 
     } else {
         toggleTheme();
     }
@@ -141,10 +151,12 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
           <SidebarContent className="p-2">
             <SidebarMenu>
               {userNavItems.map((item) => {
-                const isActive = pathname === item.href || (item.href !== '/' && !item.href.startsWith('/dashboard') && !item.href.startsWith('/inicio') && !item.href.startsWith('/admin') && !item.href.startsWith('/clinica') && !item.href.startsWith('/central-ajuda') && pathname.startsWith(item.href)) || ((item.href.startsWith('/clinica') || item.href.startsWith('/central-ajuda') || item.href.startsWith('/admin')) && pathname.startsWith(item.href));
+                const isActive = pathname === item.href || 
+                                 (item.href !== '/' && !item.href.startsWith('/dashboard') && !item.href.startsWith('/inicio') && !item.href.startsWith('/admin') && !item.href.startsWith('/clinica') && !item.href.startsWith('/central-ajuda') && pathname.startsWith(item.href)) ||
+                                 ((item.href.startsWith('/clinica') || item.href.startsWith('/central-ajuda') || item.href.startsWith('/admin')) && pathname.startsWith(item.href));
 
                 return (
-                  <SidebarMenuItem key={item.href}>
+                  <SidebarMenuItem key={`${item.href}-${item.label}`}>
                     <Link href={item.href} legacyBehavior passHref>
                       <SidebarMenuButton
                         isActive={isActive}
@@ -192,8 +204,8 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                     "h-8 text-sm", 
                     "justify-between cursor-pointer" 
                   )}
-                  onClick={handleThemeToggle}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleThemeToggle(e);}}
+                  onClick={handleThemeToggleAsButton}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleThemeToggleAsButton(e);}}
                   tabIndex={0}
                   role="button"
                   aria-label={theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
@@ -207,10 +219,10 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                   </div>
                   <Switch
                     checked={theme === 'dark'}
-                    onCheckedChange={toggleTheme}
+                    onCheckedChange={toggleTheme} // O toggleTheme direto no Switch está OK
                     aria-label="Alternar tema"
                     className="ml-auto group-data-[collapsible=icon]:hidden"
-                    onClick={(e) => e.stopPropagation()} 
+                    onClick={(e) => e.stopPropagation()} // Impede que o clique no Switch também dispare o toggle do div pai
                   />
                 </div>
               </SidebarMenuItem>
@@ -228,7 +240,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
       
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto",
-          isMobile ? "px-4 pt-4 pb-16" : "p-6 pt-6" 
+          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" // Ajustado pb-20 para mobile
         )}>
           {children}
       </SidebarInset>
@@ -242,7 +254,11 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
 
-  if (authLoading && (typeof window !== 'undefined' && !localStorage.getItem('nutritrack_user'))) {
+  if (authLoading) {
+    // Se está carregando e não há usuário no localStorage, mostra o loader global
+    // Isso evita que o AppShell tente renderizar ou redirecionar prematuramente
+    // antes do AuthContext determinar o estado inicial.
+    // A verificação de localStorage foi removida pois o AuthContext já lida com isso.
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -251,17 +267,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
   
   if (!user && !authLoading) {
+    // AuthContext irá redirecionar para /login, então não renderizamos o shell
     return null;
   }
   
-  if (authLoading && user) { // Show loader if user exists but still loading company etc.
-     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
+  // Se chegamos aqui, authLoading é false e user existe.
   const sidebarCollapsibleType = "icon";
   const sidebarSidePlacement = "left";
 
