@@ -14,8 +14,8 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  SidebarRail,
-  useSidebar,
+  // SidebarTrigger, // Not used in this simplified header
+  useSidebar, // Import useSidebar
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
@@ -39,7 +39,7 @@ import {
   Moon,
   CalendarDays,
   UsersRound,
-  ImageIcon, // Placeholder for clinic logo/favicon
+  ImageIcon,
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -79,7 +79,7 @@ const navItems: NavItem[] = [
 
 
 const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
-  const { user, logout, loading: authLoading } = useAuth(); // Renomeado para authLoading
+  const { user, logout, loading: authLoading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
@@ -98,9 +98,9 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Se o AuthContext já redirecionou para /login, user será null e authLoading será false.
-  // Nesse caso, não renderizamos nada aqui para evitar piscar a UI do AppShell.
   if (!user) {
+    // AuthContext's useEffect should handle redirection.
+    // Returning null here prevents rendering AppShell content before redirect.
     return null;
   }
 
@@ -123,8 +123,6 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   }
 
   const handleThemeToggle = (e: React.MouseEvent | React.KeyboardEvent) => {
-    // Previne que o clique no Switch dentro do "botão" do tema acione o toggle duas vezes
-    // ou que o clique no "botão" do tema feche o menu se ele for um link/botão real.
     if ((e.target as HTMLElement).closest('[role="switch"]')) {
         e.stopPropagation();
     } else {
@@ -188,17 +186,18 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
               <SidebarMenuItem>
                  <div
                   className={cn(
-                    sidebarMenuButtonVariants({className: "justify-between"}), // Usa as variantes para consistência
-                    "cursor-pointer" // Adiciona cursor-pointer para indicar clicabilidade
+                    "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+                    "h-8 text-sm", // Corresponds to default size
+                    "justify-between cursor-pointer" 
                   )}
                   onClick={handleThemeToggle}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleThemeToggle(e);}}
-                  tabIndex={0} // Torna o div focável
-                  role="button" // Define o papel para acessibilidade
+                  tabIndex={0}
+                  role="button"
                   aria-label={theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
                   title={sidebarState === "collapsed" && !isMobile ? (theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro') : undefined}
                 >
-                  <div className="flex items-center gap-2"> {/* Envolve ícone e texto */}
+                  <div className="flex items-center gap-2">
                     {theme === 'dark' ? <Sun /> : <Moon />}
                     <span className="group-data-[collapsible=icon]:hidden">
                       {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
@@ -209,7 +208,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                     onCheckedChange={toggleTheme}
                     aria-label="Alternar tema"
                     className="ml-auto group-data-[collapsible=icon]:hidden"
-                    onClick={(e) => e.stopPropagation()} // Impede que o clique no switch acione o toggle do div pai
+                    onClick={(e) => e.stopPropagation()} 
                   />
                 </div>
               </SidebarMenuItem>
@@ -227,7 +226,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto",
-          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" // pb-20 para mobile (5rem) para dar espaço para bottom nav de h-16 (4rem) + 1rem de margem
+          isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" 
         )}>
           {children}
       </SidebarInset>
@@ -239,13 +238,12 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth(); // Renomeado para authLoading
+  const { user, loading: authLoading } = useAuth();
 
 
-  if (authLoading && typeof window !== 'undefined' && !localStorage.getItem(AUTH_STORAGE_KEY)) {
-    // Se está carregando e não há usuário no localStorage, mostra o loader global
-    // Isso evita que o AppShell tente renderizar ou redirecionar prematuramente
-    // antes do AuthContext determinar o estado inicial.
+  // If auth is still loading, show a global loader.
+  // AuthContext handles checking localStorage and initial auth state.
+  if (authLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -253,16 +251,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Se não está carregando e não há usuário, o AuthContext cuidará do redirecionamento para /login.
-  // Retornar null aqui evita que o AppShell seja renderizado desnecessariamente.
-  if (!authLoading && !user) {
-      return null;
+  // If not loading and no user, AuthContext's useEffect will redirect to /login.
+  // AppShell should not render its main content in this case.
+  if (!user) {
+    return null;
   }
 
-  // Se chegou aqui, ou está carregando mas tem usuário no localStorage, ou não está carregando e tem usuário.
-  // Em ambos os casos, é seguro renderizar o AppShellInternal (que tem seu próprio handler de loading/user)
-  // ou o loader se o user ainda não foi totalmente carregado no AppShellInternal.
-
+  // If user is loaded, proceed to render the shell with SidebarProvider etc.
   const sidebarCollapsibleType = "icon";
   const sidebarSidePlacement = "left";
 
