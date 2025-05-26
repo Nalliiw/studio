@@ -16,7 +16,6 @@ import { useRouter } from 'next/navigation';
 
 
 const newCompanySchema = z.object({
-  companyId: z.string().min(1, { message: 'ID da Empresa é obrigatório.' }),
   name: z.string().min(3, { message: 'Nome da empresa deve ter no mínimo 3 caracteres.' }),
   cnpj: z.string().regex(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, { message: 'CNPJ inválido. Formato esperado: XX.XXX.XXX/XXXX-XX' }),
   responsibleName: z.string().min(3, { message: 'Nome do responsável é obrigatório.' }),
@@ -31,7 +30,6 @@ export default function NovaEmpresaPage() {
   const form = useForm<NewCompanyFormValues>({
     resolver: zodResolver(newCompanySchema),
     defaultValues: {
-      companyId: '',
       name: '',
       cnpj: '',
       responsibleName: '',
@@ -41,10 +39,13 @@ export default function NovaEmpresaPage() {
   });
 
   const onSubmit: SubmitHandler<NewCompanyFormValues> = async (data) => {
-    console.log("Dados da Nova Empresa (Simulação):", data);
+    const companyId = `comp_${Date.now().toString()}`; // Simula geração de ID
+    const companyDataWithId = { ...data, id: companyId };
+
+    console.log("Dados da Nova Empresa (Simulação):", companyDataWithId);
     // Simulação de chamada de API
     // No futuro, aqui iria:
-    // const response = await fetch('/api/companies', { method: 'POST', body: JSON.stringify(data) });
+    // const response = await fetch('/api/companies', { method: 'POST', body: JSON.stringify(companyDataWithId) });
     // if (!response.ok) { throw new Error('Falha ao criar empresa'); }
     // const newCompany = await response.json();
     
@@ -52,7 +53,7 @@ export default function NovaEmpresaPage() {
     
     toast({
       title: "Empresa Criada (Simulação)!",
-      description: `A empresa ${data.name} (ID: ${data.companyId}) foi registrada com sucesso (simulação).`,
+      description: `A empresa ${data.name} (ID: ${companyId}) foi registrada com sucesso (simulação).`,
     });
     router.push('/empresas');
   };
@@ -79,22 +80,6 @@ export default function NovaEmpresaPage() {
               <CardDescription>Informações básicas e de contato da nova empresa.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="companyId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>ID da Empresa</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: clinica_centro_sp" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Um identificador único para a empresa/clínica.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="name"
