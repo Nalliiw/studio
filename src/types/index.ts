@@ -7,21 +7,27 @@ export enum UserRole {
 
 export interface User {
   id: string;
-  name: string;
-  email: string;
+  name: string | null; // Can be null initially from Firebase Auth
+  email: string | null; // Can be null initially from Firebase Auth
+  displayName?: string | null; // From Firebase Auth
   role: UserRole;
-  companyId?: string; // ID da Clínica/Empresa à qual o especialista ou paciente está associado
+  companyId?: string;
+  companyCnpj?: string; // CNPJ da clínica do especialista
   specialties?: string[];
 }
 
 export interface Company {
   id: string;
-  name: string; // Nome da Clínica/Empresa
+  name: string;
   cnpj: string;
-  nutritionistCount: number; // Considerar renomear para memberCount ou specialistCount no futuro
+  responsibleName?: string; // Novo campo
+  responsibleEmail?: string; // Novo campo
+  responsiblePhone?: string; // Novo campo
+  logoUrl?: string;
+  nutritionistCount: number;
   status: 'active' | 'inactive';
-  createdAt?: any; // Firestore Timestamp or string ISO
-  lastModified?: any; // Firestore Timestamp or string ISO
+  createdAt?: any;
+  lastModified?: any;
 }
 
 export interface Patient {
@@ -29,8 +35,8 @@ export interface Patient {
   name: string;
   email: string;
   lastAccess: string; // ISO date string
-  companyId: string; // ID da clínica à qual o paciente pertence
-  nutritionistId: string; // ID do especialista principal atribuído
+  companyId: string;
+  nutritionistId: string;
 }
 
 export type FlowStepType =
@@ -75,7 +81,7 @@ export interface Flow {
   id: string;
   name: string;
   steps: FlowStep[];
-  nutritionistId: string; // ID do especialista que criou o fluxo
+  nutritionistId: string;
   createdAt?: any;
   lastModified?: any;
   status?: 'draft' | 'active' | 'archived';
@@ -88,7 +94,7 @@ export interface Content {
   title: string;
   url: string;
   category: string;
-  nutritionistId: string; // ID do especialista
+  nutritionistId: string;
 }
 
 export interface Praise {
@@ -117,12 +123,11 @@ export interface TeamMember {
   email: string;
   accessType: ClinicAccessType;
   specialties?: string[];
-  userId?: string; // ID do usuário Firebase Authentication associado
+  userId?: string;
   status: 'active' | 'pending_invitation' | 'inactive';
-  createdAt: any; // Firestore Timestamp or string ISO
-  addedBy: string; // User ID of who added this member
-  invitationToken?: string; // Token para o fluxo de convite
+  createdAt: any;
+  addedBy: string;
+  invitationToken?: string;
 }
 
-// Partial type for updating a team member, making most fields optional
 export type UpdateTeamMemberData = Partial<Omit<TeamMember, 'id' | 'clinicId' | 'createdAt' | 'addedBy' | 'invitationToken'>>;
