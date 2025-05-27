@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Kanban, PlusCircle, GripVertical, CalendarIcon as CalendarIconLucide, AlertTriangle, Filter } from 'lucide-react';
+import { Kanban, PlusCircle, GripVertical, CalendarIcon as CalendarIconLucide, AlertTriangle, Filter, Eye } from 'lucide-react';
 import type { KanbanTask, KanbanTaskStatus } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid, startOfDay } from 'date-fns';
@@ -34,7 +34,6 @@ const taskSchema = z.object({
   dueDate: z.string().optional().refine(val => {
     if (!val || val === '') return true;
     const date = parseISO(val);
-    // Check if date is valid and not in the past (allowing today)
     return isValid(date) && date >= startOfDay(new Date());
   }, { message: "Data inválida ou no passado." }),
 });
@@ -87,6 +86,9 @@ export default function KanbanTarefasPage() {
 
   const [filterAssignee, setFilterAssignee] = useState<string>('todos');
   const [filterPriority, setFilterPriority] = useState<string>('todas');
+
+  const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
+  const [selectedTaskDetail, setSelectedTaskDetail] = useState<KanbanTask | null>(null);
 
   const formMethods = useForm<TaskFormValues>({
     resolver: zodResolver(NewTaskFormSchema),
@@ -175,6 +177,15 @@ export default function KanbanTarefasPage() {
     formMethods.reset(); 
   };
 
+  const handleTaskCardClick = (task: KanbanTask, e: React.MouseEvent<HTMLDivElement>) => {
+    // Evita abrir o modal se o clique foi no ícone de arrastar ou se já está arrastando
+    if (draggedTaskId || (e.target as HTMLElement).closest('[data-drag-handle="true"]')) {
+      return;
+    }
+    setSelectedTaskDetail(task);
+    setIsTaskDetailModalOpen(true);
+  };
+
   return (
     <div className="space-y-6 h-full flex flex-col p-2">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
@@ -245,10 +256,10 @@ export default function KanbanTarefasPage() {
                       tasksInColumn.map(task => (
                           <Card
                               key={task.id}
-                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full max-w-[360px] overflow-hidden"
-                              draggable="true"
-                              onDragStart={(e) => handleDragStart(e, task.id)}
-                              onDragEnd={handleDragEnd}
+                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-pointer w-full max-w-[360px]" // Removido overflow-hidden, cursor-pointer adicionado
+                              draggable="false" // Dragging será feito pelo handle
+                              onClick={(e) => handleTaskCardClick(task, e)}
+                              
                           >
                             <CardHeader className="p-3 pb-2">
                               <div className="flex justify-between items-start gap-2">
@@ -257,7 +268,15 @@ export default function KanbanTarefasPage() {
                                     {task.title}
                                   </CardTitle>
                                 </div>
-                                <GripVertical className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
+                                <div 
+                                  data-drag-handle="true"
+                                  draggable="true"
+                                  onDragStart={(e) => handleDragStart(e, task.id)}
+                                  onDragEnd={handleDragEnd}
+                                  className="p-1 cursor-grab active:cursor-grabbing"
+                                >
+                                  <GripVertical className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
+                                </div>
                               </div>
                               {task.priority && (
                                 <Badge variant={priorityBadgeVariant(task.priority)} className="mt-1 text-xs w-fit">{task.priority}</Badge>
@@ -265,7 +284,7 @@ export default function KanbanTarefasPage() {
                             </CardHeader>
                             <CardContent className="p-3 pt-1 text-xs space-y-1.5">
                               {task.description && (
-                                <p className="text-muted-foreground break-all whitespace-normal">
+                                <p className="text-muted-foreground break-all whitespace-normal line-clamp-3">
                                   {task.description}
                                 </p>
                               )}
@@ -306,6 +325,7 @@ export default function KanbanTarefasPage() {
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
 
+      {/* Modal para Adicionar Nova Tarefa */}
       <Dialog open={isNewTaskDialogOpen} onOpenChange={setIsNewTaskDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -437,6 +457,63 @@ export default function KanbanTarefasPage() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Modal para Detalhes da Tarefa */}
+      {selectedTaskDetail && (
+        <Dialog open={isTaskDetailModalOpen} onOpenChange={setIsTaskDetailModalOpen}>
+          <DialogContent className="sm:max-w-lg max-h-[80vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="break-all">{selectedTaskDetail.title}</DialogTitle>
+              <DialogDescription>
+                Status: {KANBAN_COLUMNS.find(c => c.id === selectedTaskDetail.status)?.title || 'Desconhecido'}
+                {selectedTaskDetail.priority && ` | Prioridade: ${selectedTaskDetail.priority}`}
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="flex-grow my-4 pr-2">
+              <div className="space-y-3 text-sm">
+                {selectedTaskDetail.description && (
+                  <div>
+                    <Label className="font-semibold">Descrição:</Label>
+                    <p className="text-muted-foreground whitespace-pre-wrap break-all">{selectedTaskDetail.description}</p>
+                  </div>
+                )}
+                {selectedTaskDetail.assignee && (
+                  <div>
+                    <Label className="font-semibold">Responsável:</Label>
+                    <p className="text-muted-foreground break-all">{selectedTaskDetail.assignee}</p>
+                  </div>
+                )}
+                {selectedTaskDetail.relatedTo && (
+                  <div>
+                    <Label className="font-semibold">Relacionado a:</Label>
+                    <p className="text-muted-foreground break-all">{selectedTaskDetail.relatedTo}</p>
+                  </div>
+                )}
+                {selectedTaskDetail.dueDate && (
+                  <div>
+                    <Label className="font-semibold">Data de Vencimento:</Label>
+                    <p className="text-muted-foreground">
+                      {isValid(parseISO(selectedTaskDetail.dueDate)) ? format(parseISO(selectedTaskDetail.dueDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : "Data inválida"}
+                    </p>
+                  </div>
+                )}
+                {selectedTaskDetail.tags && selectedTaskDetail.tags.length > 0 && (
+                  <div>
+                    <Label className="font-semibold">Tags:</Label>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {selectedTaskDetail.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+            <DialogFooter className="mt-auto">
+              <Button variant="outline" onClick={() => setIsTaskDetailModalOpen(false)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
+
