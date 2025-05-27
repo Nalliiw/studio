@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Kanban, PlusCircle, GripVertical, CalendarIcon as CalendarIconLucide, AlertTriangle, Filter, Eye } from 'lucide-react';
+import { Kanban, PlusCircle, Minus, CalendarIcon as CalendarIconLucide, AlertTriangle, Filter, Eye } from 'lucide-react'; // Changed GripVertical to Minus
 import type { KanbanTask, KanbanTaskStatus } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid, startOfDay } from 'date-fns';
@@ -177,11 +177,8 @@ export default function KanbanTarefasPage() {
     formMethods.reset(); 
   };
 
-  const handleTaskCardClick = (task: KanbanTask, e: React.MouseEvent<HTMLDivElement>) => {
-    // Evita abrir o modal se o clique foi no ícone de arrastar ou se já está arrastando
-    if (draggedTaskId || (e.target as HTMLElement).closest('[data-drag-handle="true"]')) {
-      return;
-    }
+  const handleTaskCardClick = (task: KanbanTask) => {
+    if (draggedTaskId) return;
     setSelectedTaskDetail(task);
     setIsTaskDetailModalOpen(true);
   };
@@ -196,9 +193,14 @@ export default function KanbanTarefasPage() {
             <p className="text-muted-foreground text-sm">Organize e acompanhe suas tarefas.</p>
           </div>
         </div>
-        <Button onClick={() => setIsNewTaskDialogOpen(true)}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Nova Tarefa
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => alert("Funcionalidade de adicionar colunas personalizadas em desenvolvimento.")}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Coluna
+          </Button>
+          <Button onClick={() => setIsNewTaskDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Nova Tarefa
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 p-3 border rounded-md bg-card shadow-sm">
@@ -256,27 +258,23 @@ export default function KanbanTarefasPage() {
                       tasksInColumn.map(task => (
                           <Card
                               key={task.id}
-                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-pointer w-full max-w-[360px]" // Removido overflow-hidden, cursor-pointer adicionado
-                              draggable="false" // Dragging será feito pelo handle
-                              onClick={(e) => handleTaskCardClick(task, e)}
-                              
+                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full select-none max-w-[360px] overflow-hidden"
+                              draggable="true"
+                              onDragStart={(e) => handleDragStart(e, task.id)}
+                              onDragEnd={handleDragEnd}
+                              onClick={() => handleTaskCardClick(task)}
                           >
                             <CardHeader className="p-3 pb-2">
+                              <div className="w-full h-5 flex items-center justify-center cursor-grab mb-2 bg-muted/30 rounded-t-sm select-none active:bg-muted/50 -mx-3 -mt-3 rounded-b-none">
+                                <Minus className="h-4 w-4 text-muted-foreground/60" />
+                              </div>
                               <div className="flex justify-between items-start gap-2">
                                 <div className="flex-grow min-w-0">
                                   <CardTitle className="text-sm font-semibold break-all">
                                     {task.title}
                                   </CardTitle>
                                 </div>
-                                <div 
-                                  data-drag-handle="true"
-                                  draggable="true"
-                                  onDragStart={(e) => handleDragStart(e, task.id)}
-                                  onDragEnd={handleDragEnd}
-                                  className="p-1 cursor-grab active:cursor-grabbing"
-                                >
-                                  <GripVertical className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
-                                </div>
+                                {/* O ícone GripVertical foi removido desta posição */}
                               </div>
                               {task.priority && (
                                 <Badge variant={priorityBadgeVariant(task.priority)} className="mt-1 text-xs w-fit">{task.priority}</Badge>
@@ -284,24 +282,22 @@ export default function KanbanTarefasPage() {
                             </CardHeader>
                             <CardContent className="p-3 pt-1 text-xs space-y-1.5">
                               {task.description && (
-                                <p className="text-muted-foreground break-all whitespace-normal line-clamp-3">
+                                <p className="text-muted-foreground break-all whitespace-normal">
                                   {task.description}
                                 </p>
                               )}
-                               <div className="space-y-1">
-                                {task.assignee && (
-                                  <div className="flex items-baseline gap-1">
-                                    <strong className="flex-shrink-0 whitespace-nowrap">Responsável:</strong>
-                                    <span className="text-muted-foreground min-w-0 break-all">{task.assignee}</span>
-                                  </div>
-                                )}
-                                {task.relatedTo && (
-                                  <div className="flex items-baseline gap-1">
-                                    <strong className="flex-shrink-0 whitespace-nowrap">Ref:</strong>
-                                    <span className="text-muted-foreground min-w-0 break-all">{task.relatedTo}</span>
-                                  </div>
-                                )}
-                              </div>
+                               {task.assignee && (
+                                <div className="flex items-baseline gap-1">
+                                  <strong className="flex-shrink-0 whitespace-nowrap">Responsável:</strong>
+                                  <span className="text-muted-foreground min-w-0 break-all">{task.assignee}</span>
+                                </div>
+                              )}
+                              {task.relatedTo && (
+                                <div className="flex items-baseline gap-1">
+                                  <strong className="flex-shrink-0 whitespace-nowrap">Ref:</strong>
+                                  <span className="text-muted-foreground min-w-0 break-all">{task.relatedTo}</span>
+                                </div>
+                              )}
                             </CardContent>
                             {task.dueDate && (
                               <CardFooter className="p-3 pt-1 text-xs text-muted-foreground border-t">
@@ -516,4 +512,5 @@ export default function KanbanTarefasPage() {
     </div>
   );
 }
+
 
