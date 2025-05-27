@@ -23,6 +23,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
 import { Form, FormField, FormItem, FormControl, FormMessage, FormLabel } from '@/components/ui/form';
 
+
 const taskSchema = z.object({
   title: z.string().min(3, { message: 'O título deve ter pelo menos 3 caracteres.' }),
   description: z.string().optional(),
@@ -57,7 +58,7 @@ const KANBAN_COLUMNS: { id: KanbanTaskStatus; title: string }[] = [
 const priorityBadgeVariant = (priority?: 'Baixa' | 'Média' | 'Alta'): 'default' | 'secondary' | 'destructive' | 'outline' => {
   switch (priority) {
     case 'Alta': return 'destructive';
-    case 'Média': return 'default'; 
+    case 'Média': return 'default';
     case 'Baixa': return 'secondary';
     default: return 'outline';
   }
@@ -71,7 +72,7 @@ const NewTaskFormSchema = z.object({
     relatedTo: z.string().optional(),
     priority: z.enum(['Baixa', 'Média', 'Alta'], {required_error: "Selecione uma prioridade"}).optional(),
     dueDate: z.string().optional().refine(val => {
-        if (!val || val === '') return true; 
+        if (!val || val === '') return true;
         const date = parseISO(val);
         return isValid(date) && date >= startOfDay(new Date());
       }, { message: "Data inválida ou no passado." }),
@@ -162,7 +163,7 @@ export default function KanbanTarefasPage() {
       relatedTo: data.relatedTo,
       priority: data.priority,
       dueDate: data.dueDate && data.dueDate !== '' ? new Date(data.dueDate).toISOString() : undefined,
-      tags: [], 
+      tags: [],
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
     toast({
@@ -230,14 +231,14 @@ export default function KanbanTarefasPage() {
             return (
               <Card
                 key={column.id}
-                className="w-[300px] sm:w-[360px] md:w-[380px] h-full flex flex-col shadow-md bg-muted/50 flex-shrink-0"
+                className="w-[380px] h-full flex flex-col shadow-md bg-muted/50 flex-shrink-0"
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, column.id)}
               >
                 <CardHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10 p-4 border-b">
                   <CardTitle className="text-base font-semibold">{column.title} ({tasksInColumn.length})</CardTitle>
                 </CardHeader>
-                <ScrollArea className="flex-grow"> 
+                <ScrollArea className="flex-grow">
                   <CardContent className="p-3 space-y-3">
                     {tasksInColumn.length > 0 ? (
                       tasksInColumn.map(task => (
@@ -250,12 +251,12 @@ export default function KanbanTarefasPage() {
                           >
                             <CardHeader className="p-3 pb-2">
                               <div className="flex justify-between items-start gap-2">
-                                  <div className="flex-grow min-w-0">
-                                    <CardTitle className="text-sm font-semibold break-all">
-                                        {task.title}
-                                    </CardTitle>
-                                  </div>
-                                  <GripVertical className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
+                                <div className="flex-grow min-w-0">
+                                  <CardTitle className="text-sm font-semibold break-all">
+                                    {task.title}
+                                  </CardTitle>
+                                </div>
+                                <GripVertical className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
                               </div>
                               {task.priority && (
                                 <Badge variant={priorityBadgeVariant(task.priority)} className="mt-1 text-xs w-fit">{task.priority}</Badge>
@@ -438,3 +439,5 @@ export default function KanbanTarefasPage() {
     </div>
   );
 }
+
+    
