@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Kanban, PlusCircle, Minus, CalendarIcon as CalendarIconLucide, AlertTriangle, Filter, Eye } from 'lucide-react'; // Changed GripVertical to Minus
+import { Kanban, PlusCircle, Minus, CalendarIcon as CalendarIconLucide, AlertTriangle, Filter, Eye } from 'lucide-react';
 import type { KanbanTask, KanbanTaskStatus } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid, startOfDay } from 'date-fns';
@@ -58,8 +58,8 @@ const KANBAN_COLUMNS: { id: KanbanTaskStatus; title: string }[] = [
 const priorityBadgeVariant = (priority?: 'Baixa' | 'Média' | 'Alta'): 'default' | 'secondary' | 'destructive' | 'outline' => {
   switch (priority) {
     case 'Alta': return 'destructive';
-    case 'Média': return 'default'; 
-    case 'Baixa': return 'secondary'; 
+    case 'Média': return 'default';
+    case 'Baixa': return 'secondary';
     default: return 'outline';
   }
 };
@@ -72,7 +72,7 @@ const NewTaskFormSchema = z.object({
     relatedTo: z.string().optional(),
     priority: z.enum(['Baixa', 'Média', 'Alta'], {required_error: "Selecione uma prioridade"}).optional(),
     dueDate: z.string().optional().refine(val => {
-        if (!val || val === '') return true; 
+        if (!val || val === '') return true;
         const date = parseISO(val);
         return isValid(date) && date >= startOfDay(new Date());
       }, { message: "Data inválida ou no passado." }),
@@ -136,7 +136,7 @@ export default function KanbanTarefasPage() {
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); 
+    e.preventDefault();
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetStatus: KanbanTaskStatus) => {
@@ -158,7 +158,7 @@ export default function KanbanTarefasPage() {
 
   const onSubmitNewTask: SubmitHandler<TaskFormValues> = (data) => {
     const newTask: KanbanTask = {
-      id: `task_${Date.now().toString()}`, 
+      id: `task_${Date.now().toString()}`,
       title: data.title,
       description: data.description,
       status: data.status,
@@ -166,7 +166,7 @@ export default function KanbanTarefasPage() {
       relatedTo: data.relatedTo,
       priority: data.priority,
       dueDate: data.dueDate && data.dueDate !== '' ? new Date(data.dueDate).toISOString() : undefined,
-      tags: [], 
+      tags: [],
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
     toast({
@@ -174,11 +174,10 @@ export default function KanbanTarefasPage() {
       description: `A tarefa "${newTask.title}" foi criada com sucesso.`,
     });
     setIsNewTaskDialogOpen(false);
-    formMethods.reset(); 
+    formMethods.reset();
   };
 
   const handleTaskCardClick = (task: KanbanTask) => {
-    if (draggedTaskId) return;
     setSelectedTaskDetail(task);
     setIsTaskDetailModalOpen(true);
   };
@@ -194,9 +193,6 @@ export default function KanbanTarefasPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => alert("Funcionalidade de adicionar colunas personalizadas em desenvolvimento.")}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Coluna
-          </Button>
           <Button onClick={() => setIsNewTaskDialogOpen(true)}>
             <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Nova Tarefa
           </Button>
@@ -237,7 +233,7 @@ export default function KanbanTarefasPage() {
           {KANBAN_COLUMNS.map(column => {
             const tasksInColumn = filteredTasks
               .filter(task => task.status === column.id)
-              .sort((a,b) => { 
+              .sort((a,b) => {
                 const priorityOrder = { 'Alta': 1, 'Média': 2, 'Baixa': 3 };
                 return (priorityOrder[a.priority || 'Baixa'] || 4) - (priorityOrder[b.priority || 'Baixa'] || 4);
               });
@@ -258,14 +254,16 @@ export default function KanbanTarefasPage() {
                       tasksInColumn.map(task => (
                           <Card
                               key={task.id}
-                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full select-none max-w-[360px] overflow-hidden"
+                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-pointer w-full max-w-[360px] overflow-hidden select-none"
                               draggable="true"
                               onDragStart={(e) => handleDragStart(e, task.id)}
                               onDragEnd={handleDragEnd}
                               onClick={() => handleTaskCardClick(task)}
                           >
                             <CardHeader className="p-3 pb-2">
-                              <div className="w-full h-5 flex items-center justify-center cursor-grab mb-2 bg-muted/30 rounded-t-sm select-none active:bg-muted/50 -mx-3 -mt-3 rounded-b-none">
+                              <div
+                                className="w-full h-5 flex items-center justify-center cursor-grab mb-2 bg-muted/30 rounded-t-sm select-none active:bg-muted/50 -mx-3 -mt-3 rounded-b-none"
+                              >
                                 <Minus className="h-4 w-4 text-muted-foreground/60" />
                               </div>
                               <div className="flex justify-between items-start gap-2">
@@ -274,14 +272,13 @@ export default function KanbanTarefasPage() {
                                     {task.title}
                                   </CardTitle>
                                 </div>
-                                {/* O ícone GripVertical foi removido desta posição */}
                               </div>
                               {task.priority && (
                                 <Badge variant={priorityBadgeVariant(task.priority)} className="mt-1 text-xs w-fit">{task.priority}</Badge>
                               )}
                             </CardHeader>
                             <CardContent className="p-3 pt-1 text-xs space-y-1.5">
-                              {task.description && (
+                               {task.description && (
                                 <p className="text-muted-foreground break-all whitespace-normal">
                                   {task.description}
                                 </p>
@@ -317,6 +314,17 @@ export default function KanbanTarefasPage() {
               </Card>
             );
           })}
+          <Button
+            variant="outline"
+            className="h-full w-20 flex flex-col items-center justify-center text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/50 flex-shrink-0"
+            onClick={() => toast({
+              title: "Funcionalidade em Desenvolvimento",
+              description: "A capacidade de adicionar colunas personalizadas será implementada em breve.",
+            })}
+          >
+            <PlusCircle className="h-6 w-6 mb-1" />
+            <span className="text-xs">Coluna</span>
+          </Button>
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
@@ -512,5 +520,4 @@ export default function KanbanTarefasPage() {
     </div>
   );
 }
-
-
+    
