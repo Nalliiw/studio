@@ -176,7 +176,7 @@ export default function KanbanTarefasPage() {
     setIsNewTaskDialogOpen(false);
     formMethods.reset();
   };
-
+  
   const handleTaskCardClick = (task: KanbanTask) => {
     setSelectedTaskDetail(task);
     setIsTaskDetailModalOpen(true);
@@ -241,11 +241,11 @@ export default function KanbanTarefasPage() {
             return (
               <Card
                 key={column.id}
-                className="w-[380px] h-full flex flex-col shadow-md bg-muted/50 flex-shrink-0"
+                className="w-[380px] h-full flex flex-col shadow-md bg-muted/50 flex-shrink-0 rounded-lg"
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, column.id)}
               >
-                <CardHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10 p-4 border-b">
+                <CardHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10 p-4 border-b rounded-t-lg">
                   <CardTitle className="text-base font-semibold">{column.title} ({tasksInColumn.length})</CardTitle>
                 </CardHeader>
                 <ScrollArea className="flex-grow">
@@ -254,7 +254,7 @@ export default function KanbanTarefasPage() {
                       tasksInColumn.map(task => (
                           <Card
                               key={task.id}
-                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-pointer w-full max-w-[360px] overflow-hidden select-none"
+                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-pointer w-full max-w-[360px] overflow-hidden select-none rounded-md"
                               draggable="true"
                               onDragStart={(e) => handleDragStart(e, task.id)}
                               onDragEnd={handleDragEnd}
@@ -279,7 +279,7 @@ export default function KanbanTarefasPage() {
                             </CardHeader>
                             <CardContent className="p-3 pt-1 text-xs space-y-1.5">
                                {task.description && (
-                                <p className="text-muted-foreground break-all whitespace-normal">
+                                <p className="text-muted-foreground break-all whitespace-normal line-clamp-3">
                                   {task.description}
                                 </p>
                               )}
@@ -316,7 +316,7 @@ export default function KanbanTarefasPage() {
           })}
           <Button
             variant="outline"
-            className="h-full w-20 flex flex-col items-center justify-center text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/50 flex-shrink-0"
+            className="h-full w-20 flex flex-col items-center justify-center text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/50 flex-shrink-0 rounded-lg"
             onClick={() => toast({
               title: "Funcionalidade em Desenvolvimento",
               description: "A capacidade de adicionar colunas personalizadas será implementada em breve.",
