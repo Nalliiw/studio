@@ -33,12 +33,8 @@ const taskSchema = z.object({
   dueDate: z.string().optional().refine(val => {
     if (!val || val === '') return true;
     const date = parseISO(val);
-    // Permite datas no passado para tarefas concluídas, mas não para novas/em andamento no formulário.
-    // Para o formulário, a validação de data futura é mais apropriada.
-    // Se a tarefa já existe e tem uma data no passado, isso é aceitável.
-    // Para novas tarefas, idealmente a data não deveria ser no passado.
-    return isValid(date); // Simplificado para apenas validar se é uma data válida
-  }, { message: "Data inválida." }),
+    return isValid(date) && date >= startOfDay(new Date());
+  }, { message: "Data inválida ou no passado." }),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -75,9 +71,8 @@ const NewTaskFormSchema = z.object({
     relatedTo: z.string().optional(),
     priority: z.enum(['Baixa', 'Média', 'Alta'], {required_error: "Selecione uma prioridade"}).optional(),
     dueDate: z.string().optional().refine(val => {
-        if (!val || val === '') return true; // Permite campo vazio
+        if (!val || val === '') return true; 
         const date = parseISO(val);
-        // Para novas tarefas, não permitir datas no passado
         return isValid(date) && date >= startOfDay(new Date());
       }, { message: "Data inválida ou no passado." }),
 });
@@ -274,15 +269,15 @@ export default function KanbanTarefasPage() {
                               )}
                                <div className="space-y-1">
                                 {task.assignee && (
-                                  <div className="flex gap-1 min-w-0">
-                                    <span className="font-medium flex-shrink-0">Responsável:</span>
-                                    <span className="text-muted-foreground break-all min-w-0">{task.assignee}</span>
+                                  <div className="flex items-baseline gap-1">
+                                    <strong className="flex-shrink-0 whitespace-nowrap">Responsável:</strong>
+                                    <span className="text-muted-foreground min-w-0 break-all">{task.assignee}</span>
                                   </div>
                                 )}
                                 {task.relatedTo && (
-                                  <div className="flex gap-1 min-w-0">
-                                    <span className="font-medium flex-shrink-0">Ref:</span>
-                                    <span className="text-muted-foreground break-all min-w-0">{task.relatedTo}</span>
+                                  <div className="flex items-baseline gap-1">
+                                    <strong className="flex-shrink-0 whitespace-nowrap">Ref:</strong>
+                                    <span className="text-muted-foreground min-w-0 break-all">{task.relatedTo}</span>
                                   </div>
                                 )}
                               </div>
@@ -443,4 +438,3 @@ export default function KanbanTarefasPage() {
     </div>
   );
 }
-
