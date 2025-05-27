@@ -59,24 +59,23 @@ const KANBAN_COLUMNS: { id: KanbanTaskStatus; title: string }[] = [
 const priorityBadgeVariant = (priority?: 'Baixa' | 'Média' | 'Alta'): 'default' | 'secondary' | 'destructive' | 'outline' => {
   switch (priority) {
     case 'Alta': return 'destructive';
-    case 'Média': return 'default'; // Standard blue/primary
-    case 'Baixa': return 'secondary'; // Grayish
+    case 'Média': return 'default'; 
+    case 'Baixa': return 'secondary'; 
     default: return 'outline';
   }
 };
 
-// Schema for the form within the modal
 const NewTaskFormSchema = z.object({
     title: z.string().min(3, { message: 'O título deve ter pelo menos 3 caracteres.' }),
     description: z.string().optional(),
     status: z.enum(['a_fazer', 'em_andamento', 'concluido'], { required_error: "Selecione um status" }),
     assignee: z.string().optional(),
     relatedTo: z.string().optional(),
-    priority: z.enum(['Baixa', 'Média', 'Alta'], {required_error: "Selecione uma prioridade"}).optional(), // Made optional for default
+    priority: z.enum(['Baixa', 'Média', 'Alta'], {required_error: "Selecione uma prioridade"}).optional(),
     dueDate: z.string().optional().refine(val => {
-        if (!val || val === '') return true; // Allow empty string or undefined
+        if (!val || val === '') return true; 
         const date = parseISO(val);
-        return isValid(date) && date >= startOfDay(new Date()); // Validate if date is present and not in the past
+        return isValid(date) && date >= startOfDay(new Date());
       }, { message: "Data inválida ou no passado." }),
 });
 
@@ -95,7 +94,7 @@ export default function KanbanTarefasPage() {
       title: '',
       description: '',
       status: 'a_fazer',
-      priority: 'Média', // Default priority
+      priority: 'Média',
       assignee: '',
       relatedTo: '',
       dueDate: '',
@@ -122,14 +121,12 @@ export default function KanbanTarefasPage() {
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, taskId: string) => {
     setDraggedTaskId(taskId);
     e.dataTransfer.setData('taskId', taskId);
-    // Optional: style the dragged item
     if (e.currentTarget instanceof HTMLElement) {
         e.currentTarget.style.opacity = '0.5';
     }
   };
 
   const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
-    // Optional: reset style of the dragged item
     if (e.currentTarget instanceof HTMLElement) {
         e.currentTarget.style.opacity = '1';
     }
@@ -137,7 +134,7 @@ export default function KanbanTarefasPage() {
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); // Necessary to allow dropping
+    e.preventDefault(); 
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetStatus: KanbanTaskStatus) => {
@@ -159,7 +156,7 @@ export default function KanbanTarefasPage() {
 
   const onSubmitNewTask: SubmitHandler<TaskFormValues> = (data) => {
     const newTask: KanbanTask = {
-      id: `task_${Date.now().toString()}`, // Simple unique ID generation
+      id: `task_${Date.now().toString()}`, 
       title: data.title,
       description: data.description,
       status: data.status,
@@ -167,7 +164,7 @@ export default function KanbanTarefasPage() {
       relatedTo: data.relatedTo,
       priority: data.priority,
       dueDate: data.dueDate && data.dueDate !== '' ? new Date(data.dueDate).toISOString() : undefined,
-      tags: [], // Placeholder for tags
+      tags: [], 
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
     toast({
@@ -175,7 +172,7 @@ export default function KanbanTarefasPage() {
       description: `A tarefa "${newTask.title}" foi criada com sucesso.`,
     });
     setIsNewTaskDialogOpen(false);
-    formMethods.reset(); // Reset form after submission
+    formMethods.reset(); 
   };
 
   return (
@@ -227,7 +224,7 @@ export default function KanbanTarefasPage() {
           {KANBAN_COLUMNS.map(column => {
             const tasksInColumn = filteredTasks
               .filter(task => task.status === column.id)
-              .sort((a,b) => { // Simple sort: High > Medium > Low
+              .sort((a,b) => { 
                 const priorityOrder = { 'Alta': 1, 'Média': 2, 'Baixa': 3 };
                 return (priorityOrder[a.priority || 'Baixa'] || 4) - (priorityOrder[b.priority || 'Baixa'] || 4);
               });
@@ -248,7 +245,7 @@ export default function KanbanTarefasPage() {
                       tasksInColumn.map(task => (
                           <Card
                               key={task.id}
-                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full overflow-hidden max-w-[380px]"
+                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full max-w-[360px] overflow-hidden"
                               draggable="true"
                               onDragStart={(e) => handleDragStart(e, task.id)}
                               onDragEnd={handleDragEnd}
@@ -443,5 +440,3 @@ export default function KanbanTarefasPage() {
     </div>
   );
 }
-
-    
