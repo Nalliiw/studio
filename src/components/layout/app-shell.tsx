@@ -14,7 +14,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  useSidebar, // Keep this import for AppShellInternal
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
@@ -41,14 +41,15 @@ import {
   HelpCircle,
   CalendarClock,
   Kanban,
-  LayoutGrid, // Added for CRM (Tarefas)
   ImageIcon,
+  MessagesSquare, // Novo ícone para Mensagens
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import BottomNavigation from './bottom-navigation';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 
 
 interface NavItem {
@@ -57,22 +58,25 @@ interface NavItem {
   icon: React.ElementType;
   roles: UserRole[];
   subItems?: NavItem[];
+  notifications?: number; // Para o badge de notificação
 }
 
 const navItems: NavItem[] = [
   // Admin Supremo
   { href: '/dashboard-geral', label: 'Dashboard Geral', icon: LayoutDashboard, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/empresas', label: 'Empresas (Clínicas)', icon: Building, roles: [UserRole.ADMIN_SUPREMO] },
-  { href: '/relatorios-gerais', label: 'Relatórios Gerais', icon: BarChart3, roles: [UserRole.ADMIN_SUPREMO] },
-  { href: '/central-ajuda', label: 'Central de Ajuda', icon: HelpCircle, roles: [UserRole.ADMIN_SUPREMO] },
-  { href: '/agenda-admin', label: 'Agenda Admin', icon: CalendarClock, roles: [UserRole.ADMIN_SUPREMO] },
+  { href: '/mensagens', label: 'Mensagens', icon: MessagesSquare, roles: [UserRole.ADMIN_SUPREMO], notifications: 3 },
   { href: '/admin/equipe', label: 'Equipe Admin', icon: Users, roles: [UserRole.ADMIN_SUPREMO] },
+  { href: '/agenda-admin', label: 'Agenda Admin', icon: CalendarClock, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/kanban-tarefas', label: 'Tarefas (Kanban)', icon: Kanban, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] },
+  { href: '/central-ajuda', label: 'Central de Ajuda', icon: HelpCircle, roles: [UserRole.ADMIN_SUPREMO] },
+  { href: '/relatorios-gerais', label: 'Relatórios Gerais', icon: BarChart3, roles: [UserRole.ADMIN_SUPREMO] },
 
 
   // Especialista da Clínica (Clinic Specialist)
   { href: '/dashboard-especialista', label: 'Painel do Especialista', icon: LayoutDashboard, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/pacientes', label: 'Pacientes', icon: Users, roles: [UserRole.CLINIC_SPECIALIST] },
+  { href: '/mensagens', label: 'Mensagens', icon: MessagesSquare, roles: [UserRole.CLINIC_SPECIALIST], notifications: 5 },
   { href: '/flowbuilder/meus-fluxos', label: 'Meus Fluxos', icon: Workflow, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/biblioteca', label: 'Biblioteca', icon: Library, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/agenda-especialista', label: 'Agenda do Especialista', icon: CalendarDays, roles: [UserRole.CLINIC_SPECIALIST] },
@@ -110,8 +114,6 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
   if (!user) {
     // AuthContext's useEffect should handle redirection to /login
-    // If we reach here and !user, it means AuthContext is done loading and there's no user.
-    // Return null or a minimal loader while redirect happens.
     return (
         <div className="flex h-screen items-center justify-center bg-background">
             <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
@@ -156,8 +158,8 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
             <SidebarMenu>
               {userNavItems.map((item) => {
                 const isActive = pathname === item.href || 
-                                 (item.href !== '/' && !item.href.startsWith('/dashboard') && !item.href.startsWith('/inicio') && !item.href.startsWith('/admin') && !item.href.startsWith('/clinica') && !item.href.startsWith('/central-ajuda') && pathname.startsWith(item.href)) ||
-                                 ((item.href.startsWith('/clinica') || item.href.startsWith('/central-ajuda') || item.href.startsWith('/admin')) && pathname.startsWith(item.href));
+                                 (item.href !== '/' && !item.href.startsWith('/dashboard') && !item.href.startsWith('/inicio') && !item.href.startsWith('/admin') && !item.href.startsWith('/clinica') && !item.href.startsWith('/central-ajuda') && !item.href.startsWith('/mensagens') && pathname.startsWith(item.href)) ||
+                                 ((item.href.startsWith('/clinica') || item.href.startsWith('/central-ajuda') || item.href.startsWith('/admin') || item.href.startsWith('/mensagens')) && pathname.startsWith(item.href));
 
                 return (
                   <SidebarMenuItem key={`${item.href}-${item.label}`}>
@@ -165,10 +167,21 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                       <SidebarMenuButton
                         isActive={isActive}
                         tooltip={item.label}
-                        className={cn(isActive && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90")}
+                        className={cn("relative", isActive && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90")}
                       >
                         <item.icon />
                         <span>{item.label}</span>
+                         {item.notifications && item.notifications > 0 && (
+                          <Badge
+                            variant="destructive"
+                            className={cn(
+                              "absolute text-xs p-0.5 h-4 min-w-[1rem] flex items-center justify-center rounded-full",
+                              sidebarState === 'collapsed' && !isMobile ? "top-0.5 right-0.5" : "top-1 right-1 group-data-[collapsible=icon]:hidden"
+                            )}
+                          >
+                            {item.notifications}
+                          </Badge>
+                        )}
                       </SidebarMenuButton>
                     </Link>
                   </SidebarMenuItem>
@@ -204,7 +217,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
               <SidebarMenuItem>
                  <div
                   className={cn(
-                    "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+                    sidebarMenuButtonVariants({variant: "default", size: "default"}), // Use variants here
                     "h-8 text-sm", 
                     "justify-between cursor-pointer" 
                   )}
@@ -244,7 +257,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
       
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto",
-          isMobile ? "px-4 pt-4 pb-16" : "p-6 pt-6" // Ensure consistent pt-6 for desktop, adjusted pb for mobile
+           isMobile ? "px-4 pt-4 pb-20" : "p-6" // Ensure consistent pt-6 for desktop, adjusted pb for mobile
         )}>
           {children}
       </SidebarInset>
@@ -254,11 +267,28 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// Helper for sidebarMenuButtonVariants - ensure this is defined or imported correctly if used.
+// For this example, I've inlined the classes to the div.
+const sidebarMenuButtonVariants = cva(
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  {
+    variants: {
+      variant: {
+        default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+      },
+      size: {
+        default: "h-8 text-sm",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+);
+
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  // Removed useAuth() and clientHasMounted from here.
-  // AppShellInternal will handle auth state and client mount checks.
-
   const sidebarCollapsibleType = "icon";
   const sidebarSidePlacement = "left";
 
@@ -269,7 +299,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           collapsible={sidebarCollapsibleType}
           side={sidebarSidePlacement}
       >
-        {/* AppShellInternal will now be responsible for checking auth state and client mount before rendering its content or a loader */}
         <AppShellInternal>{children}</AppShellInternal>
       </SidebarProvider>
     </TooltipProvider>

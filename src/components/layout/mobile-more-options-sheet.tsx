@@ -17,14 +17,17 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { UserCircle, Settings, LogOut, Moon, Sun, HelpCircle, CalendarClock, Users as UsersIcon, Kanban } from 'lucide-react'; 
+import { UserCircle, Settings, LogOut, Moon, Sun, HelpCircle, CalendarClock, Users as UsersIcon, Kanban, MessagesSquare } from 'lucide-react'; 
 import { UserRole } from '@/types'; 
+import { Badge } from '@/components/ui/badge';
+
 
 interface NavItem {
   href: string;
   label: string;
   icon: React.ElementType;
   roles: UserRole[];
+  notifications?: number;
 }
 interface MobileMoreOptionsSheetProps {
   isOpen: boolean;
@@ -47,21 +50,16 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
     onOpenChange(false); 
   };
   
-  // Combine a base set of "more" options with any dynamically passed additionalNavItems
   const baseMoreOptions: NavItem[] = [
     { href: '/perfil', label: 'Ver Perfil', icon: UserCircle, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST, UserRole.PATIENT] },
-    // Add other static "more" items if any
+    // O item "Mensagens" será incluído via additionalNavItems se não estiver na barra principal.
   ];
 
   const allPotentialSheetItems: NavItem[] = [
     ...baseMoreOptions,
     ...additionalNavItems,
-    // Ensure these ADMIN_SUPREMO specific items are only added if not already in additionalNavItems
-    // or define them as base if they ALWAYS appear in "more" for admin.
-    // For now, let additionalNavItems take precedence if there are overlaps.
   ];
   
-  // Filter unique items and then filter by role
   const uniqueSheetItems = allPotentialSheetItems.reduce((acc, current) => {
     const x = acc.find(item => item.href === current.href && item.label === current.label);
     if (!x) {
@@ -86,11 +84,16 @@ export default function MobileMoreOptionsSheet({ isOpen, onOpenChange, additiona
                 <Button
                     key={`${item.href}-${item.label}`}
                     variant="ghost"
-                    className="w-full justify-start text-base py-3 h-auto gap-3"
+                    className="w-full justify-start text-base py-3 h-auto gap-3 relative"
                     onClick={() => handleNavigate(item.href)}
                 >
                     <item.icon className="h-5 w-5" />
                     {item.label}
+                    {item.notifications && item.notifications > 0 && (
+                        <Badge variant="destructive" className="absolute right-3 top-1/2 -translate-y-1/2 text-xs p-0.5 h-5 min-w-[1.25rem] flex items-center justify-center">
+                            {item.notifications}
+                        </Badge>
+                    )}
                 </Button>
             ))}
             

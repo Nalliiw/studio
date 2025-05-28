@@ -7,10 +7,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { UserRole } from '@/types'; 
-import { SlidersHorizontal, Home, ClipboardList, PlaySquare, Award, LayoutDashboard, Users, Workflow, Library, CalendarDays, UsersRound, Settings2, ImageIcon } from 'lucide-react';
+import { SlidersHorizontal, Home, ClipboardList, PlaySquare, Award, LayoutDashboard, Users, Workflow, Library, CalendarDays, UsersRound, Settings2, ImageIcon, MessagesSquare } from 'lucide-react';
 import MobileMoreOptionsSheet from './mobile-more-options-sheet';
 import { useAuth } from '@/hooks/useAuth';
-import Image from 'next/image'; // Added for next/image
+import Image from 'next/image';
+import { Badge } from '@/components/ui/badge';
+
 
 interface NavItem {
   href: string;
@@ -18,6 +20,7 @@ interface NavItem {
   icon: React.ElementType; 
   roles: UserRole[];
   subItems?: NavItem[];
+  notifications?: number;
 }
 
 interface BottomNavigationProps {
@@ -25,15 +28,15 @@ interface BottomNavigationProps {
 }
 
 // Main nav items that might appear directly on the bottom bar
-const mainBottomNavLinksPatient: string[] = ['/formulario', '/conteudos', '/minha-agenda']; // Removed /inicio as logo takes its place
-const mainBottomNavLinksSpecialist: string[] = ['/pacientes', '/flowbuilder/meus-fluxos', '/agenda-especialista']; // Removed dashboard as logo takes its place
-const mainBottomNavLinksAdmin: string[] = ['/empresas', '/relatorios-gerais']; // Removed dashboard as logo takes its place
+const mainBottomNavLinksPatient: string[] = ['/formulario', '/conteudos', '/minha-agenda'];
+const mainBottomNavLinksSpecialist: string[] = ['/pacientes', '/mensagens', '/flowbuilder/meus-fluxos'];
+const mainBottomNavLinksAdmin: string[] = ['/empresas', '/mensagens', '/admin/equipe'];
 
 
 export default function BottomNavigation({ userNavItems }: BottomNavigationProps) {
   const pathname = usePathname();
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
-  const { user, company } = useAuth(); // Added company from useAuth
+  const { user, company } = useAuth();
   const [clientHasMounted, setClientHasMounted] = useState(false);
 
   useEffect(() => {
@@ -69,7 +72,8 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
       allRoleSpecificNavItems = [];
   }
   
-  const displayItems = allRoleSpecificNavItems.filter(item => relevantMainLinks.includes(item.href) && item.href !== homePath).slice(0, 3);
+  // Ensure homePath related item is not duplicated in displayItems if it's also in userNavItems
+  const displayItems = allRoleSpecificNavItems.filter(item => relevantMainLinks.includes(item.href) && item.href !== homePath).slice(0, 3); // Max 3 + Home + More = 5 items
   const moreSheetItems = allRoleSpecificNavItems.filter(item => !displayItems.find(displayed => displayed.href === item.href) && item.href !== homePath);
 
 
@@ -82,7 +86,7 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
             aria-label="Página Inicial"
         >
             {company?.logoUrl ? (
-              <Image src={company.logoUrl} alt="Logo da Clínica" width={24} height={24} className="h-6 w-6 object-contain rounded-sm" data-ai-hint="company logo small"/>
+              <Image src={company.logoUrl} alt="Logo" width={24} height={24} className="h-6 w-6 object-contain rounded-sm" data-ai-hint="company logo small"/>
             ) : (
               <ImageIcon className={cn("h-6 w-6", pathname === homePath ? "text-primary" : "")} />
             )}
@@ -99,19 +103,24 @@ export default function BottomNavigation({ userNavItems }: BottomNavigationProps
                 key={item.href}
                 href={item.href}
                 className={cn(
-                    "flex flex-col items-center justify-center p-1 text-xs transition-colors duration-150 ease-in-out min-w-0",
+                    "relative flex flex-col items-center justify-center p-1 text-xs transition-colors duration-150 ease-in-out min-w-0",
                     isActive ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted/50"
                 )}
                 aria-current={isActive ? "page" : undefined}
                 >
                 <IconComponent className={cn("h-5 w-5 mb-0.5", isActive ? "text-primary" : "")} />
                 <span className="truncate text-[10px] leading-tight w-full text-center">{item.label}</span>
+                {item.notifications && item.notifications > 0 && (
+                  <Badge variant="destructive" className="absolute top-1 right-1 text-[8px] p-0.5 h-3.5 w-3.5 flex items-center justify-center rounded-full">
+                    {item.notifications}
+                  </Badge>
+                )}
                 </Link>
             );
             })}
         </div>
 
-        {(moreSheetItems.length > 0 || user) && (
+        {(moreSheetItems.length > 0 || user) && ( // Ensure "More" button always shows if there's a user for profile/settings access
           <button
             onClick={() => setIsMoreSheetOpen(true)}
             className={cn(
