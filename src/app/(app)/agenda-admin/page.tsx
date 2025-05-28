@@ -6,10 +6,10 @@ import React, { useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { List, Clock, Users, MessageSquare, CalendarClock, Building, CalendarDays } from 'lucide-react'; // Added CalendarDays
+import { List, Clock, Users, MessageSquare, CalendarClock, Building, CalendarDays, ListChecks } from 'lucide-react';
 import { format, isSameDay, parseISO, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils'; 
+import { cn } from '@/lib/utils';
 import type { AdminAgendaItem } from '@/types';
 
 const mockAdminAgenda: AdminAgendaItem[] = [
@@ -18,6 +18,8 @@ const mockAdminAgenda: AdminAgendaItem[] = [
   { id: 'adm_sch3', type: 'reminder_admin', title: 'Lembrete: Follow-up Clínica BemEstar', date: addDays(new Date(), 1).toISOString(), time: '11:00', description: 'Entrar em contato para verificar a adaptação.', status: 'scheduled' },
   { id: 'adm_sch4', type: 'meeting_clinic', title: 'Chamada de Suporte - Clínica Saúde Plena', clinicName: 'Clínica Saúde Plena', clinicId: 'c2',date: addDays(new Date(), 2).toISOString(), time: '15:00', description: 'Sessão de suporte técnico agendada.', status: 'scheduled' },
   { id: 'adm_sch5', type: 'task_admin', title: 'Preparar Relatório Mensal de Uso', date: addDays(new Date(), -1).toISOString(), time: '09:00', description: 'Consolidar dados para o relatório de uso da plataforma.', status: 'completed' },
+  { id: 'adm_task1', type: 'task_kanban', kanbanTaskId: 'task1_admin', kanbanTaskTitle: 'Revisar Onboarding Clínica X', title: 'Tarefa Kanban: Onboarding Clínica X', date: format(addDays(new Date(), 2), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"), time: 'Dia todo', description: 'Vencimento da tarefa do Kanban: Verificar documentos pendentes e conclusão do treinamento.', status: 'pending' },
+  { id: 'adm_task2', type: 'task_kanban', kanbanTaskId: 'task2_admin', kanbanTaskTitle: 'Relatório Mensal de Uso', title: 'Tarefa Kanban: Relatório Mensal', date: format(addDays(new Date(), 5), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"), time: '18:00', description: 'Vencimento da tarefa do Kanban: Coletar dados e gerar relatório.', status: 'pending' },
 ];
 
 const AgendaItemIcon = ({ type }: { type: AdminAgendaItem['type'] }) => {
@@ -25,6 +27,7 @@ const AgendaItemIcon = ({ type }: { type: AdminAgendaItem['type'] }) => {
     case 'meeting_clinic': return <Users className="h-5 w-5 text-purple-500" />;
     case 'task_admin': return <List className="h-5 w-5 text-green-500" />;
     case 'reminder_admin': return <MessageSquare className="h-5 w-5 text-orange-500" />;
+    case 'task_kanban': return <ListChecks className="h-5 w-5 text-teal-500" />;
     default: return <CalendarClock className="h-5 w-5 text-muted-foreground" />;
   }
 };
@@ -32,8 +35,9 @@ const AgendaItemIcon = ({ type }: { type: AdminAgendaItem['type'] }) => {
 const getStatusBadgeVariant = (status?: AdminAgendaItem['status']) => {
   switch (status) {
     case 'scheduled': return 'default';
-    case 'completed': return 'secondary'; 
+    case 'completed': return 'secondary';
     case 'cancelled': return 'destructive';
+    case 'pending': return 'outline';
     default: return 'outline';
   }
 };
@@ -43,11 +47,12 @@ const getStatusText = (status?: AdminAgendaItem['status']) => {
         case 'scheduled': return 'Agendado';
         case 'completed': return 'Concluído';
         case 'cancelled': return 'Cancelado';
+        case 'pending': return 'Pendente';
         default: return 'Status Desconhecido';
     }
 };
 
-export default function AgendaAdminPage() { 
+export default function AgendaAdminPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   const scheduledItemsForSelectedDate = selectedDate
@@ -59,7 +64,7 @@ export default function AgendaAdminPage() {
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Agenda do Administrador</h1>
-            <p className="text-muted-foreground">Gerencie seus compromissos e eventos com as clínicas.</p>
+            <p className="text-muted-foreground">Gerencie seus compromissos, tarefas e eventos com as clínicas.</p>
         </div>
         {/* Futuramente, botão para adicionar novo evento */}
       </div>
@@ -111,12 +116,13 @@ export default function AgendaAdminPage() {
                     <div className="flex justify-between items-center">
                         <h3 className="font-semibold">{item.title}</h3>
                         {item.status && (
-                             <Badge 
-                                variant={getStatusBadgeVariant(item.status)} 
+                             <Badge
+                                variant={getStatusBadgeVariant(item.status)}
                                 className={cn(
                                     item.status === 'scheduled' && 'bg-blue-100 text-blue-700 border-blue-300',
                                     item.status === 'completed' && 'bg-green-100 text-green-700 border-green-300',
                                     item.status === 'cancelled' && 'bg-red-100 text-red-700 border-red-300',
+                                    item.status === 'pending' && 'bg-yellow-100 text-yellow-700 border-yellow-300',
                                 )}
                             >
                                 {getStatusText(item.status)}
@@ -126,6 +132,9 @@ export default function AgendaAdminPage() {
                     {item.time && <p className="text-xs text-muted-foreground"><Clock className="inline h-3 w-3 mr-1" />{item.time}</p>}
                     {item.clinicName && <p className="text-sm text-foreground mt-0.5 flex items-center"><Building className="h-4 w-4 mr-1.5 text-muted-foreground"/>Clínica: {item.clinicName}</p>}
                     {item.description && <p className="text-sm text-muted-foreground mt-1">{item.description}</p>}
+                    {item.type === 'task_kanban' && item.kanbanTaskTitle && (
+                      <p className="text-xs text-muted-foreground mt-0.5">Ref. Kanban: {item.kanbanTaskTitle}</p>
+                    )}
                   </div>
                 </div>
               ))
@@ -141,4 +150,3 @@ export default function AgendaAdminPage() {
     </div>
   );
 }
-

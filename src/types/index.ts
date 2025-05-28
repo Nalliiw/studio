@@ -24,7 +24,7 @@ export interface Company {
   responsibleEmail?: string;
   responsiblePhone?: string;
   logoUrl?: string;
-  nutritionistCount: number;
+  nutritionistCount: number; // Manteremos por enquanto, pode ser 'memberCount' no futuro
   status: 'active' | 'inactive';
   createdAt?: any; // Firebase Timestamp or string
   lastModified?: any; // Firebase Timestamp or string
@@ -143,7 +143,7 @@ export interface HelpMaterial {
   id: string;
   title: string;
   type: HelpMaterialType;
-  content: string;
+  content: string; // Pode ser texto, URL, etc.
   audience: HelpMaterialAudience[];
   category?: string;
   createdAt?: string; // ISO date string
@@ -153,14 +153,16 @@ export interface HelpMaterial {
 // Para Agenda do Admin Supremo com Clínicas
 export interface AdminAgendaItem {
   id: string;
-  type: 'meeting_clinic' | 'task_admin' | 'reminder_admin';
+  type: 'meeting_clinic' | 'task_admin' | 'reminder_admin' | 'task_kanban';
   title: string;
   clinicName?: string; // Nome da clínica envolvida
   clinicId?: string;   // ID da clínica envolvida
   date: string; // ISO String
   time?: string; // HH:mm
   description?: string;
-  status?: 'scheduled' | 'completed' | 'cancelled';
+  status?: 'scheduled' | 'completed' | 'cancelled' | 'pending'; // Adicionado pending para task_kanban
+  kanbanTaskId?: string;
+  kanbanTaskTitle?: string;
 }
 
 // Para Equipe Interna do Admin Supremo
@@ -171,4 +173,34 @@ export interface AdminTeamMember {
   roleAdminTeam: string; // Ex: 'Suporte Técnico', 'Gerente de Contas'
   status: 'active' | 'inactive';
   addedAt: string; // ISO string
+}
+
+// Para Agenda do Especialista (Nutricionista da Clínica)
+export interface EspecialistaScheduledItem {
+  id: string;
+  type: 'appointment' | 'patient_flow' | 'personal_reminder' | 'meeting' | 'task_kanban';
+  title: string;
+  date: string; // ISO String
+  time?: string; // HH:mm
+  description?: string;
+  patientName?: string;
+  patientId?: string;
+  status?: 'scheduled' | 'completed' | 'cancelled' | 'pending'; // Adicionado pending para task_kanban
+  kanbanTaskId?: string;
+  kanbanTaskTitle?: string;
+}
+
+// Para Kanban de Tarefas
+export type KanbanTaskStatus = 'a_fazer' | 'em_andamento' | 'concluido';
+
+export interface KanbanTask {
+  id: string;
+  title: string;
+  description?: string;
+  status: KanbanTaskStatus;
+  assignee?: string;
+  relatedTo?: string; // Ex: ID da Clínica, ID do Paciente, Nome do Projeto
+  dueDate?: string; // ISO String
+  priority?: 'Baixa' | 'Média' | 'Alta';
+  tags?: string[];
 }
