@@ -14,6 +14,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
+  // SidebarTrigger, // Não usado diretamente aqui se o AppShell não tiver o botão de toggle
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -42,7 +43,8 @@ import {
   CalendarClock,
   Kanban,
   ImageIcon,
-  MessagesSquare, // Novo ícone para Mensagens
+  MessagesSquare,
+  LayoutGrid, // Adicionado para CRM
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/hooks/useTheme';
@@ -50,6 +52,7 @@ import { cn } from '@/lib/utils';
 import BottomNavigation from './bottom-navigation';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import { cva, type VariantProps } from "class-variance-authority"; // Import cva
 
 
 interface NavItem {
@@ -65,18 +68,19 @@ const navItems: NavItem[] = [
   // Admin Supremo
   { href: '/dashboard-geral', label: 'Dashboard Geral', icon: LayoutDashboard, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/empresas', label: 'Empresas (Clínicas)', icon: Building, roles: [UserRole.ADMIN_SUPREMO] },
-  { href: '/mensagens', label: 'Mensagens', icon: MessagesSquare, roles: [UserRole.ADMIN_SUPREMO], notifications: 3 },
   { href: '/admin/equipe', label: 'Equipe Admin', icon: Users, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/agenda-admin', label: 'Agenda Admin', icon: CalendarClock, roles: [UserRole.ADMIN_SUPREMO] },
   { href: '/kanban-tarefas', label: 'Tarefas (Kanban)', icon: Kanban, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] },
+  // { href: '/kanban-tarefas', label: 'CRM (Tarefas)', icon: LayoutGrid, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST] }, // Removido
   { href: '/central-ajuda', label: 'Central de Ajuda', icon: HelpCircle, roles: [UserRole.ADMIN_SUPREMO] },
+  { href: '/mensagens', label: 'Mensagens', icon: MessagesSquare, roles: [UserRole.ADMIN_SUPREMO, UserRole.CLINIC_SPECIALIST], notifications: 3 },
   { href: '/relatorios-gerais', label: 'Relatórios Gerais', icon: BarChart3, roles: [UserRole.ADMIN_SUPREMO] },
 
 
   // Especialista da Clínica (Clinic Specialist)
   { href: '/dashboard-especialista', label: 'Painel do Especialista', icon: LayoutDashboard, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/pacientes', label: 'Pacientes', icon: Users, roles: [UserRole.CLINIC_SPECIALIST] },
-  { href: '/mensagens', label: 'Mensagens', icon: MessagesSquare, roles: [UserRole.CLINIC_SPECIALIST], notifications: 5 },
+  // Mensagens já está acima e inclui CLINIC_SPECIALIST
   { href: '/flowbuilder/meus-fluxos', label: 'Meus Fluxos', icon: Workflow, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/biblioteca', label: 'Biblioteca', icon: Library, roles: [UserRole.CLINIC_SPECIALIST] },
   { href: '/agenda-especialista', label: 'Agenda do Especialista', icon: CalendarDays, roles: [UserRole.CLINIC_SPECIALIST] },
@@ -106,23 +110,25 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
 
   if (!clientHasMounted || authLoading) {
     return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    // AuthContext deve lidar com o redirecionamento para /login.
+    // AppShellInternal retorna null ou um loader mínimo enquanto o redirecionamento acontece.
+    return (
         <div className="flex h-screen items-center justify-center bg-background">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
     );
   }
 
-  if (!user) {
-    // AuthContext's useEffect should handle redirection to /login
-    return (
-        <div className="flex h-screen items-center justify-center bg-background">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-        </div>
-    );
-  }
 
   const userNavItems = navItems.filter(item => item.roles.includes(user.role));
-  const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
+  const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U';
 
   const handleUserAvatarClick = () => {
     if (isMobile) setOpenMobile(false);
@@ -140,9 +146,11 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
   }
   
   const handleThemeToggleAsButton = (e: React.MouseEvent | React.KeyboardEvent) => {
+    // Impede que o evento de clique no Switch propague para o div e chame toggleTheme duas vezes.
     if ((e.target as HTMLElement).closest('[role="switch"]')) {
         e.stopPropagation(); 
     } else {
+        // Se o clique for no div (ou pelo teclado no div), chama toggleTheme.
         toggleTheme();
     }
   };
@@ -198,7 +206,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
                     onClick={handleUserAvatarClick}
                   >
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={`https://placehold.co/40x40.png`} data-ai-hint="profile avatar" alt={user.name || 'Avatar'}/>
+                      <AvatarImage src={user.photoURL || `https://placehold.co/40x40.png`} data-ai-hint="profile avatar" alt={user.name || 'Avatar'}/>
                       <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
                     <span className="flex flex-col items-start group-data-[collapsible=icon]:hidden">
@@ -257,7 +265,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
       
       <SidebarInset className={cn(
           "flex-1 overflow-y-auto",
-           isMobile ? "px-4 pt-4 pb-20" : "p-6" // Ensure consistent pt-6 for desktop, adjusted pb for mobile
+           isMobile ? "px-4 pt-4 pb-20" : "p-6 pt-6" 
         )}>
           {children}
       </SidebarInset>
@@ -266,6 +274,7 @@ const AppShellInternal = ({ children }: { children: React.ReactNode }) => {
     </>
   );
 };
+
 
 // Helper for sidebarMenuButtonVariants - ensure this is defined or imported correctly if used.
 // For this example, I've inlined the classes to the div.
@@ -292,6 +301,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const sidebarCollapsibleType = "icon";
   const sidebarSidePlacement = "left";
 
+  // Early return for loader if auth is still loading and no user is present in localStorage
+  // This helps prevent flashing of login page or app shell before auth state is determined.
+  // Note: Direct localStorage access in top-level of component might be problematic for SSR,
+  // but useAuth() itself handles loading state based on localStorage internally in its useEffect.
+  // const { loading: authLoadingFromHook } = useAuth(); // Avoid calling useAuth here
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  useEffect(() => {
+    // This effect is just to manage the initial "show loader" state
+    // before AuthContext's own loading state takes over.
+    const timer = setTimeout(() => {
+      setInitialLoading(false);
+    }, 100); // Small delay to allow AuthContext to potentially load from localStorage
+    return () => clearTimeout(timer);
+  }, []);
+
+  // The AuthContext's loading state is the primary driver for showing the loader inside AppShellInternal.
+  // This top-level AppShell ensures providers are always rendered.
   return (
     <TooltipProvider>
       <SidebarProvider
