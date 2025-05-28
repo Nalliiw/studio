@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Kanban, PlusCircle, Minus, CalendarIcon as CalendarIconLucide, AlertTriangle, Filter, Eye } from 'lucide-react';
+import { Kanban, PlusCircle, GripVertical, CalendarIcon as CalendarIconLucide, AlertTriangle, Filter, Eye, Minus } from 'lucide-react';
 import type { KanbanTask, KanbanTaskStatus } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, isValid, startOfDay } from 'date-fns';
@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { Form, FormField, FormItem, FormControl, FormMessage, FormLabel } from '@/components/ui/form';
 
 
-const taskSchema = z.object({
+const taskFormSchema = z.object({
   title: z.string().min(3, { message: 'O título deve ter pelo menos 3 caracteres.' }),
   description: z.string().optional(),
   status: z.enum(['a_fazer', 'em_andamento', 'concluido'], { required_error: "Selecione um status" }),
@@ -32,13 +32,14 @@ const taskSchema = z.object({
   relatedTo: z.string().optional(),
   priority: z.enum(['Baixa', 'Média', 'Alta']).optional(),
   dueDate: z.string().optional().refine(val => {
-    if (!val || val === '') return true;
+    if (!val || val === '') return true; // Optional field
     const date = parseISO(val);
+    // Check if date is valid and not in the past (allowing today)
     return isValid(date) && date >= startOfDay(new Date());
   }, { message: "Data inválida ou no passado." }),
 });
 
-type TaskFormValues = z.infer<typeof taskSchema>;
+type TaskFormValues = z.infer<typeof taskFormSchema>;
 
 const initialMockKanbanTasks: KanbanTask[] = [
   { id: 'task1', title: 'Revisar Onboarding Clínica X e verificar documentos pendentes', description: 'Verificar se todos os documentos foram enviados e se o treinamento inicial foi concluído. Este é um texto de descrição um pouco mais longo para testar a quebra de linha e como o card se ajusta ao conteúdo completo sem truncamento excessivo.', status: 'a_fazer', assignee: 'Admin Equipe Suporte Principal com Nome Muito Longo Para Teste de Quebra de Linha no Campo de Responsável Para Garantir que Nao Quebre o Layout', relatedTo: 'Clínica X - Projeto Alpha de Integração Completa e Detalhada Para Testar Limites', dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(), priority: 'Alta', tags: ['Onboarding'] },
@@ -58,25 +59,11 @@ const KANBAN_COLUMNS: { id: KanbanTaskStatus; title: string }[] = [
 const priorityBadgeVariant = (priority?: 'Baixa' | 'Média' | 'Alta'): 'default' | 'secondary' | 'destructive' | 'outline' => {
   switch (priority) {
     case 'Alta': return 'destructive';
-    case 'Média': return 'default';
+    case 'Média': return 'default'; // Changed to default for better contrast than 'warning'
     case 'Baixa': return 'secondary';
     default: return 'outline';
   }
 };
-
-const NewTaskFormSchema = z.object({
-    title: z.string().min(3, { message: 'O título deve ter pelo menos 3 caracteres.' }),
-    description: z.string().optional(),
-    status: z.enum(['a_fazer', 'em_andamento', 'concluido'], { required_error: "Selecione um status" }),
-    assignee: z.string().optional(),
-    relatedTo: z.string().optional(),
-    priority: z.enum(['Baixa', 'Média', 'Alta'], {required_error: "Selecione uma prioridade"}).optional(),
-    dueDate: z.string().optional().refine(val => {
-        if (!val || val === '') return true;
-        const date = parseISO(val);
-        return isValid(date) && date >= startOfDay(new Date());
-      }, { message: "Data inválida ou no passado." }),
-});
 
 
 export default function KanbanTarefasPage() {
@@ -91,7 +78,7 @@ export default function KanbanTarefasPage() {
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<KanbanTask | null>(null);
 
   const formMethods = useForm<TaskFormValues>({
-    resolver: zodResolver(NewTaskFormSchema),
+    resolver: zodResolver(taskFormSchema),
     defaultValues: {
       title: '',
       description: '',
@@ -136,7 +123,7 @@ export default function KanbanTarefasPage() {
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
+    e.preventDefault(); // Necessary to allow dropping
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetStatus: KanbanTaskStatus) => {
@@ -151,7 +138,7 @@ export default function KanbanTarefasPage() {
     );
     const movedTask = tasks.find(t => t.id === taskIdToMove);
     toast({
-      title: "Tarefa Movida! (Simulação)",
+      title: "Tarefa Movida!",
       description: `A tarefa "${movedTask?.title || taskIdToMove}" foi movida para "${KANBAN_COLUMNS.find(c => c.id === targetStatus)?.title}".`,
     });
   };
@@ -166,11 +153,11 @@ export default function KanbanTarefasPage() {
       relatedTo: data.relatedTo,
       priority: data.priority,
       dueDate: data.dueDate && data.dueDate !== '' ? new Date(data.dueDate).toISOString() : undefined,
-      tags: [],
+      tags: [], // Placeholder for tags
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
     toast({
-      title: "Nova Tarefa Adicionada! (Simulação)",
+      title: "Nova Tarefa Adicionada!",
       description: `A tarefa "${newTask.title}" foi criada com sucesso.`,
     });
     setIsNewTaskDialogOpen(false);
@@ -233,7 +220,7 @@ export default function KanbanTarefasPage() {
           {KANBAN_COLUMNS.map(column => {
             const tasksInColumn = filteredTasks
               .filter(task => task.status === column.id)
-              .sort((a,b) => {
+              .sort((a,b) => { // Basic sort: High > Medium > Low
                 const priorityOrder = { 'Alta': 1, 'Média': 2, 'Baixa': 3 };
                 return (priorityOrder[a.priority || 'Baixa'] || 4) - (priorityOrder[b.priority || 'Baixa'] || 4);
               });
@@ -254,7 +241,7 @@ export default function KanbanTarefasPage() {
                       tasksInColumn.map(task => (
                           <Card
                               key={task.id}
-                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-pointer w-full max-w-[360px] overflow-hidden select-none rounded-md"
+                              className="shadow-sm bg-card hover:shadow-md transition-shadow cursor-grab w-full max-w-[360px] overflow-hidden select-none rounded-md"
                               draggable="true"
                               onDragStart={(e) => handleDragStart(e, task.id)}
                               onDragEnd={handleDragEnd}
@@ -279,22 +266,22 @@ export default function KanbanTarefasPage() {
                             </CardHeader>
                             <CardContent className="p-3 pt-1 text-xs space-y-1.5">
                                {task.description && (
-                                <p className="text-muted-foreground break-all whitespace-normal line-clamp-3">
+                                <p className="text-muted-foreground break-all whitespace-normal">
                                   {task.description}
                                 </p>
                               )}
                                {task.assignee && (
-                                <div className="flex items-baseline gap-1">
-                                  <strong className="flex-shrink-0 whitespace-nowrap">Responsável:</strong>
-                                  <span className="text-muted-foreground min-w-0 break-all">{task.assignee}</span>
-                                </div>
-                              )}
-                              {task.relatedTo && (
-                                <div className="flex items-baseline gap-1">
-                                  <strong className="flex-shrink-0 whitespace-nowrap">Ref:</strong>
-                                  <span className="text-muted-foreground min-w-0 break-all">{task.relatedTo}</span>
-                                </div>
-                              )}
+                                  <div className="flex items-baseline gap-1">
+                                    <strong className="flex-shrink-0 whitespace-nowrap">Responsável:</strong>
+                                    <span className="text-muted-foreground min-w-0 break-all">{task.assignee}</span>
+                                  </div>
+                                )}
+                                {task.relatedTo && (
+                                  <div className="flex items-baseline gap-1">
+                                    <strong className="flex-shrink-0 whitespace-nowrap">Ref:</strong>
+                                    <span className="text-muted-foreground min-w-0 break-all">{task.relatedTo}</span>
+                                  </div>
+                                )}
                             </CardContent>
                             {task.dueDate && (
                               <CardFooter className="p-3 pt-1 text-xs text-muted-foreground border-t">
